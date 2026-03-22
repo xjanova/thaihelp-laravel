@@ -1,0 +1,61 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy ThaiHelp Laravel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+
+            APP_DIR="/home/admin/domains/thaihelp.xman4289.com/app"
+
+            echo "=========================================="
+            echo "  ThaiHelp Laravel - Auto Deploy"
+            echo "=========================================="
+
+            # First-time: clone repo if app dir doesn't exist
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo ">>> First-time setup: cloning repo..."
+              mkdir -p "$APP_DIR"
+              git clone https://github.com/xjanova/thaihelp-laravel.git "$APP_DIR"
+              cd "$APP_DIR"
+
+              # Setup .env
+              if [ ! -f .env ]; then
+                cp .env.example .env
+                php artisan key:generate --force
+                echo ">>> .env created — EDIT IT with your credentials!"
+                echo ">>> Run: nano $APP_DIR/.env"
+              fi
+
+              # Install dependencies
+              composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+              npm ci && npm run build
+
+              # Storage & permissions
+              mkdir -p storage/logs storage/framework/{sessions,views,cache} storage/backups bootstrap/cache
+              chmod -R 775 storage bootstrap/cache
+
+              echo ">>> First-time setup complete!"
+              echo ">>> Open your site → /setup to create DB & admin account"
+              exit 0
+            fi
+
+            # Normal deploy: use deploy.sh
+            cd "$APP_DIR"
+            echo ">>> Running deploy.sh..."
+            bash deploy.sh main
