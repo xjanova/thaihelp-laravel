@@ -1,0 +1,177 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="flex flex-col" style="height: calc(100vh - 7.5rem);" x-data="chatApp()">
+    {{-- Chat Messages --}}
+    <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3" id="chat-messages" x-ref="messages">
+        {{-- Welcome Message --}}
+        <div class="flex gap-2 items-start">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-sm flex-shrink-0">
+                👧
+            </div>
+            <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
+                <p class="text-sm text-slate-200">สวัสดีค่ะ! หญิงเองค่ะ 😊 มีอะไรให้ช่วยไหมคะ?</p>
+                <p class="text-[10px] text-slate-500 mt-1">น้องหญิง AI</p>
+            </div>
+        </div>
+
+        {{-- Dynamic Messages --}}
+        <template x-for="(msg, index) in messages" :key="index">
+            <div>
+                {{-- Assistant Message --}}
+                <template x-if="msg.role === 'assistant'">
+                    <div class="flex gap-2 items-start">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-sm flex-shrink-0">
+                            👧
+                        </div>
+                        <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
+                            <p class="text-sm text-slate-200 whitespace-pre-wrap" x-text="msg.content"></p>
+                            <p class="text-[10px] text-slate-500 mt-1" x-text="msg.time"></p>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- User Message --}}
+                <template x-if="msg.role === 'user'">
+                    <div class="flex gap-2 items-start justify-end">
+                        <div class="rounded-2xl rounded-tr-sm px-3 py-2 max-w-[80%]" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                            <p class="text-sm text-white whitespace-pre-wrap" x-text="msg.content"></p>
+                            <p class="text-[10px] text-orange-200/60 mt-1" x-text="msg.time"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        {{-- Typing Indicator --}}
+        <div x-show="isTyping" class="flex gap-2 items-start">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-sm flex-shrink-0">
+                👧
+            </div>
+            <div class="metal-panel rounded-2xl rounded-tl-sm px-4 py-3">
+                <div class="flex gap-1">
+                    <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                    <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                    <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Input Bar --}}
+    <div class="chrome-bar-bottom px-3 py-2">
+        <div class="flex items-center gap-2">
+            {{-- Mic Button --}}
+            <button @click="toggleMic()" :class="isRecording ? 'metal-btn-accent glow-orange' : 'metal-btn'"
+                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" :class="isRecording ? 'text-white' : 'text-slate-400'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/>
+                </svg>
+            </button>
+
+            {{-- Text Input --}}
+            <div class="flex-1 relative">
+                <input type="text" x-model="input" @keydown.enter="send()"
+                       class="metal-input w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                       placeholder="พิมพ์ข้อความ..."
+                       :disabled="isTyping">
+            </div>
+
+            {{-- Send Button --}}
+            <button @click="send()" :disabled="!input.trim() || isTyping"
+                    :class="input.trim() && !isTyping ? 'metal-btn-accent' : 'metal-btn opacity-50'"
+                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    function chatApp() {
+        return {
+            messages: [],
+            input: '',
+            isTyping: false,
+            isRecording: false,
+
+            formatTime() {
+                return new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            },
+
+            scrollToBottom() {
+                this.$nextTick(() => {
+                    const el = this.$refs.messages;
+                    if (el) el.scrollTop = el.scrollHeight;
+                });
+            },
+
+            async send() {
+                const text = this.input.trim();
+                if (!text || this.isTyping) return;
+
+                // Add user message
+                this.messages.push({
+                    role: 'user',
+                    content: text,
+                    time: this.formatTime(),
+                });
+                this.input = '';
+                this.scrollToBottom();
+
+                // Show typing indicator
+                this.isTyping = true;
+                this.scrollToBottom();
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({
+                            message: text,
+                            history: this.messages.slice(-10),
+                        }),
+                    });
+
+                    if (!response.ok) throw new Error('Chat request failed');
+
+                    const data = await response.json();
+
+                    this.messages.push({
+                        role: 'assistant',
+                        content: data.reply || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่นะคะ',
+                        time: this.formatTime(),
+                    });
+                } catch (err) {
+                    this.messages.push({
+                        role: 'assistant',
+                        content: 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่อีกครั้งนะคะ 😢',
+                        time: this.formatTime(),
+                    });
+                } finally {
+                    this.isTyping = false;
+                    this.scrollToBottom();
+                }
+            },
+
+            toggleMic() {
+                this.isRecording = !this.isRecording;
+                if (this.isRecording) {
+                    // TODO: Start speech recognition
+                    console.log('Start recording...');
+                } else {
+                    // TODO: Stop speech recognition
+                    console.log('Stop recording...');
+                }
+            }
+        };
+    }
+</script>
+@endpush
