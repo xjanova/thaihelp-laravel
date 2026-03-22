@@ -16,12 +16,12 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: ${{ secrets.SSH_PORT }}
           script_stop: true
           script: |
             set -e
 
-            APP_DIR="/home/admin/domains/thaihelp.xman4289.com/app"
+            APP_DIR="${{ secrets.DEPLOY_PATH }}"
 
             echo "=========================================="
             echo "  ThaiHelp Laravel - Auto Deploy"
@@ -30,7 +30,7 @@ jobs:
             # First-time: clone repo if app dir doesn't exist
             if [ ! -d "$APP_DIR/.git" ]; then
               echo ">>> First-time setup: cloning repo..."
-              mkdir -p "$APP_DIR"
+              mkdir -p "$(dirname "$APP_DIR")"
               git clone https://github.com/xjanova/thaihelp-laravel.git "$APP_DIR"
               cd "$APP_DIR"
 
@@ -38,8 +38,11 @@ jobs:
               if [ ! -f .env ]; then
                 cp .env.example .env
                 php artisan key:generate --force
-                echo ">>> .env created — EDIT IT with your credentials!"
-                echo ">>> Run: nano $APP_DIR/.env"
+                echo ""
+                echo "=========================================="
+                echo "  .env created — EDIT credentials!"
+                echo "  nano $APP_DIR/.env"
+                echo "=========================================="
               fi
 
               # Install dependencies
@@ -49,9 +52,13 @@ jobs:
               # Storage & permissions
               mkdir -p storage/logs storage/framework/{sessions,views,cache} storage/backups bootstrap/cache
               chmod -R 775 storage bootstrap/cache
+              chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
-              echo ">>> First-time setup complete!"
-              echo ">>> Open your site → /setup to create DB & admin account"
+              echo ""
+              echo "=========================================="
+              echo "  First-time setup complete!"
+              echo "  Open site → /setup to create DB & admin"
+              echo "=========================================="
               exit 0
             fi
 
