@@ -8,46 +8,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('incidents', function (Blueprint $table) {
-            // New categories support (expand enum → varchar)
-            $table->string('category', 50)->change();
+        $cols = Schema::getColumnListing('incidents');
 
-            // Severity & status
-            $table->string('severity', 20)->default('medium')->after('description');
-            $table->string('status', 20)->default('active')->after('severity');
-
-            // Location details
-            $table->string('location_name', 500)->nullable()->after('longitude');
-            $table->string('road_name', 255)->nullable()->after('location_name');
-
-            // Rich media
-            $table->string('video_url', 500)->nullable()->after('photos');
-
-            // Incident details
-            $table->timestamp('incident_at')->nullable()->after('video_url');
-            $table->tinyInteger('affected_lanes')->nullable()->after('incident_at');
-            $table->boolean('has_injuries')->default(false)->after('affected_lanes');
-            $table->boolean('emergency_notified')->default(false)->after('has_injuries');
-
-            // Reporter info
-            $table->string('reporter_ip', 45)->nullable()->after('emergency_notified');
-            $table->string('report_source', 20)->default('app')->after('reporter_ip');
-
-            // Confirmation system
-            $table->unsignedInteger('confirmation_count')->default(0)->after('upvotes');
-
-            // Danger zone (ตีกรอบแดงห้ามเข้า)
-            $table->boolean('is_danger_zone')->default(false)->after('is_demo');
-            $table->double('danger_radius_km')->default(0.5)->after('is_danger_zone');
-
-            // Resolution
-            $table->timestamp('resolved_at')->nullable()->after('expires_at');
-
-            // Indexes
-            $table->index(['status', 'is_active']);
-            $table->index(['category', 'status']);
-            $table->index(['severity', 'is_active']);
-            $table->index(['latitude', 'longitude']);
+        Schema::table('incidents', function (Blueprint $table) use ($cols) {
+            if (!in_array('severity', $cols)) $table->string('severity', 20)->default('medium')->after('description');
+            if (!in_array('status', $cols)) $table->string('status', 20)->default('active')->after('description');
+            if (!in_array('location_name', $cols)) $table->string('location_name', 500)->nullable()->after('longitude');
+            if (!in_array('road_name', $cols)) $table->string('road_name', 255)->nullable()->after('longitude');
+            if (!in_array('video_url', $cols)) $table->string('video_url', 500)->nullable()->after('image_url');
+            if (!in_array('incident_at', $cols)) $table->timestamp('incident_at')->nullable()->after('image_url');
+            if (!in_array('affected_lanes', $cols)) $table->tinyInteger('affected_lanes')->nullable()->after('image_url');
+            if (!in_array('has_injuries', $cols)) $table->boolean('has_injuries')->default(false)->after('image_url');
+            if (!in_array('emergency_notified', $cols)) $table->boolean('emergency_notified')->default(false)->after('image_url');
+            if (!in_array('reporter_ip', $cols)) $table->string('reporter_ip', 45)->nullable()->after('upvotes');
+            if (!in_array('report_source', $cols)) $table->string('report_source', 20)->default('app')->after('upvotes');
+            if (!in_array('confirmation_count', $cols)) $table->unsignedInteger('confirmation_count')->default(0)->after('upvotes');
+            if (!in_array('is_danger_zone', $cols)) $table->boolean('is_danger_zone')->default(false)->after('is_active');
+            if (!in_array('danger_radius_km', $cols)) $table->double('danger_radius_km')->default(0.5)->after('is_active');
+            if (!in_array('resolved_at', $cols)) $table->timestamp('resolved_at')->nullable()->after('expires_at');
         });
     }
 

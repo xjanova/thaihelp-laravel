@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('breaking_news')) return;
         Schema::create('breaking_news', function (Blueprint $table) {
             $table->id();
             $table->string('title', 500);
@@ -27,9 +28,11 @@ return new class extends Migration
         });
 
         // Add photo upload support to incidents
-        Schema::table('incidents', function (Blueprint $table) {
-            $table->json('photos')->nullable()->after('image_url');
-        });
+        if (!Schema::hasColumn('incidents', 'photos')) {
+            Schema::table('incidents', function (Blueprint $table) {
+                $table->json('photos')->nullable()->after('image_url');
+            });
+        }
     }
 
     public function down(): void

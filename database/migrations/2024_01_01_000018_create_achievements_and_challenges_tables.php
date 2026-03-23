@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('achievements', function (Blueprint $table) {
+        if (!Schema::hasTable('achievements')) Schema::create('achievements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('type', 50);
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->index(['user_id', 'type']);
         });
 
-        Schema::create('daily_challenges', function (Blueprint $table) {
+        if (!Schema::hasTable('daily_challenges')) Schema::create('daily_challenges', function (Blueprint $table) {
             $table->id();
             $table->string('title', 255);
             $table->text('description');
@@ -35,7 +35,7 @@ return new class extends Migration
             $table->index(['date', 'is_active']);
         });
 
-        Schema::create('user_challenges', function (Blueprint $table) {
+        if (!Schema::hasTable('user_challenges')) Schema::create('user_challenges', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('challenge_id')->constrained('daily_challenges')->cascadeOnDelete();
