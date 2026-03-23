@@ -357,9 +357,8 @@ function reportPage() {
                     if (action === 'FUEL_REPORT' || action === 'FIND_DIESEL' || action === 'FIND_GASOHOL') {
                         this.activeTab = 'fuel';
                         if (fuelType) {
-                            this.fuel.selectedFuels[fuelType] = true;
-                            if (!this.fuel.fuelData[fuelType]) this.fuel.fuelData[fuelType] = {};
-                            this.fuel.fuelData[fuelType].status = fuelStatus || 'available';
+                            this.fuel.selectedFuels = { ...this.fuel.selectedFuels, [fuelType]: true };
+                            this.fuel.fuelData = { ...this.fuel.fuelData, [fuelType]: { status: fuelStatus || 'available', price: '' } };
                         }
                         // Try to extract station name from transcript
                         const stationMatch = transcript.match(/(PTT|Shell|Bangchak|Esso|Caltex|ปตท|เชลล์|บางจาก|เอสโซ่|คาลเท็กซ์|ซัสโก้|Susco)[\s\S]*/i);
@@ -384,20 +383,21 @@ function reportPage() {
 
         // ─── Fuel helpers ───
         toggleFuel(key) {
-            this.fuel.selectedFuels[key] = !this.fuel.selectedFuels[key];
-            if (this.fuel.selectedFuels[key] && !this.fuel.fuelData[key]) {
-                this.fuel.fuelData[key] = { status: 'available', price: '' };
+            const cur = this.fuel.selectedFuels[key] || false;
+            this.fuel.selectedFuels = { ...this.fuel.selectedFuels, [key]: !cur };
+            if (!cur && !this.fuel.fuelData[key]) {
+                this.fuel.fuelData = { ...this.fuel.fuelData, [key]: { status: 'available', price: '' } };
             }
         },
 
         setFuelStatus(key, status) {
-            if (!this.fuel.fuelData[key]) this.fuel.fuelData[key] = {};
-            this.fuel.fuelData[key].status = status;
+            const existing = this.fuel.fuelData[key] || {};
+            this.fuel.fuelData = { ...this.fuel.fuelData, [key]: { ...existing, status } };
         },
 
         setFuelPrice(key, price) {
-            if (!this.fuel.fuelData[key]) this.fuel.fuelData[key] = {};
-            this.fuel.fuelData[key].price = price ? parseFloat(price) : null;
+            const existing = this.fuel.fuelData[key] || {};
+            this.fuel.fuelData = { ...this.fuel.fuelData, [key]: { ...existing, price: price ? parseFloat(price) : null } };
         },
 
         // ─── Validation ───
