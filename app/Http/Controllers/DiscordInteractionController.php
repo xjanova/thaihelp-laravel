@@ -133,8 +133,7 @@ class DiscordInteractionController extends Controller
     private function handleIncident(array $options, string $username): JsonResponse
     {
         $category = $options['category'] ?? 'other';
-        $validCategories = ['accident', 'flood', 'roadblock', 'checkpoint', 'construction', 'other'];
-        $category = in_array($category, $validCategories) ? $category : 'other';
+        $category = in_array($category, \App\Models\Incident::CATEGORIES) ? $category : 'other';
         $title = $options['title'] ?? 'ไม่ระบุ';
         $description = $options['description'] ?? null;
         $latitude = $options['latitude'] ?? 13.7563;

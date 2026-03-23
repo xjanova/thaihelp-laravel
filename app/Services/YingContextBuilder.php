@@ -137,9 +137,9 @@ class YingContextBuilder
 
             $lines = ["\n═══ ราคาน้ำมันวันนี้ ═══"];
             foreach ($prices as $type => $data) {
-                $label = $data['label'] ?? $type;
-                $avg = $data['avg_price'] ?? '-';
-                $lines[] = "- {$label}: เฉลี่ย {$avg} บาท/ลิตร";
+                $label = $data['name'] ?? $type;
+                $price = $data['price'] ?? '-';
+                $lines[] = "- {$label}: {$price} บาท/ลิตร";
             }
             return implode("\n", $lines);
         } catch (\Exception $e) {
@@ -229,7 +229,8 @@ class YingContextBuilder
             $user = \App\Models\User::find($userId);
             if (!$user) return '';
 
-            $starLevel = \App\Models\Achievement::STAR_LEVELS[$user->star_level ?? 0] ?? ['name' => 'สมาชิกใหม่', 'icon' => '⭐'];
+            $starInfo = $user->getStarLevel();
+            $starLevel = is_array($starInfo) ? $starInfo : ['name' => 'สมาชิกใหม่', 'icon' => '⭐'];
 
             return "\n═══ ข้อมูลผู้ใช้ที่กำลังคุย ═══"
                 . "\nชื่อ: " . ($user->nickname ?? $user->name) . " | ระดับ: {$starLevel['icon']} {$starLevel['name']}"

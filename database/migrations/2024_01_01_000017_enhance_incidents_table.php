@@ -10,6 +10,13 @@ return new class extends Migration
     {
         $cols = Schema::getColumnListing('incidents');
 
+        // Convert category from enum to varchar to support new categories
+        try {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE incidents MODIFY category VARCHAR(50) NOT NULL DEFAULT 'other'");
+        } catch (\Exception $e) {
+            // Already varchar or doesn't exist — skip
+        }
+
         Schema::table('incidents', function (Blueprint $table) use ($cols) {
             if (!in_array('severity', $cols)) $table->string('severity', 20)->default('medium')->after('description');
             if (!in_array('status', $cols)) $table->string('status', 20)->default('active')->after('description');

@@ -16,17 +16,10 @@ Route::post('/incidents', [IncidentController::class, 'apiStore'])
 Route::post('/incidents/{incident}/vote', [IncidentController::class, 'vote'])
     ->middleware('throttle:10,1');
 
-Route::put('/incidents/{incident}', [IncidentController::class, 'apiUpdate'])
-    ->middleware(['auth', 'throttle:10,1']);
-
-Route::delete('/incidents/{incident}', [IncidentController::class, 'apiDestroy'])
-    ->middleware(['auth', 'throttle:5,1']);
+// Note: PUT/DELETE /incidents defined in auth group below (line ~173)
 
 Route::post('/incidents/{incident}/resolve', [IncidentController::class, 'resolve'])
     ->middleware(['auth', 'throttle:10,1']);
-
-Route::get('/my-incidents', [IncidentController::class, 'myIncidents'])
-    ->middleware(['auth', 'throttle:20,1']);
 
 // External Data (แผ่นดินไหว, อากาศ, AQI, น้ำท่วม, จราจร)
 Route::get('/external-data', function (\Illuminate\Http\Request $request) {
@@ -223,4 +216,5 @@ Route::post('/heartbeat', function (\Illuminate\Http\Request $request) {
 })->middleware(['auth', 'throttle:10,1']);
 
 // Discord Bot Interactions
-Route::post('/discord/interactions', [\App\Http\Controllers\DiscordInteractionController::class, 'handle']);
+Route::post('/discord/interactions', [\App\Http\Controllers\DiscordInteractionController::class, 'handle'])
+    ->middleware('throttle:60,1');

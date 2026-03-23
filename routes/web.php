@@ -8,10 +8,10 @@ use App\Http\Controllers\SetupController;
 use App\Http\Controllers\StationController;
 use Illuminate\Support\Facades\Route;
 
-// First-time setup (no middleware)
+// First-time setup (rate limited for security)
 Route::get('/setup', [SetupController::class, 'index'])->name('setup');
-Route::post('/setup/migrate', [SetupController::class, 'migrate'])->name('setup.migrate');
-Route::post('/setup/configure', [SetupController::class, 'configure'])->name('setup.configure');
+Route::post('/setup/migrate', [SetupController::class, 'migrate'])->name('setup.migrate')->middleware('throttle:3,10');
+Route::post('/setup/configure', [SetupController::class, 'configure'])->name('setup.configure')->middleware('throttle:3,10');
 
 // Home
 Route::get('/', [HomeController::class, 'index'])->name('home');

@@ -100,7 +100,7 @@ class TripPlannerController extends Controller
      */
     private function getRoute(float $oLat, float $oLng, float $dLat, float $dLng): array
     {
-        $apiKey = config('services.google.maps_key');
+        $apiKey = config('services.google_maps.api_key');
         if (!$apiKey) {
             return $this->fallbackRoute($oLat, $oLng, $dLat, $dLng);
         }
