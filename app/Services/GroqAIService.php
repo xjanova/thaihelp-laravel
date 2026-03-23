@@ -221,16 +221,40 @@ PROMPT;
         $totalMsgLen = array_sum(array_map(fn($m) => mb_strlen($m['content'] ?? ''), $allMessages));
         Log::debug('Groq request', ['prompt_chars' => $promptLen, 'total_chars' => $totalMsgLen, 'messages' => count($allMessages), 'model' => $this->model]);
 
-        // Try up to 3 keys from the pool
-        $maxRetries = 3;
+        // Get all unique keys upfront (pool keys + fallback key)
+        $usedKeys = [];
+        $keysToTry = [];
+
+        // Collect keys from pool first
+        $pool = ApiKeyPool::getPool('groq');
+        foreach ($pool as $entry) {
+            if (($entry['enabled'] ?? true) && !empty($entry['key'])) {
+                $keysToTry[] = $entry['key'];
+            }
+        }
+
+        // Add fallback key if not already in pool
+        $fallbackKey = SiteSetting::get('groq_api_key') ?: config('services.groq.api_key');
+        if (!empty($fallbackKey) && !in_array($fallbackKey, $keysToTry)) {
+            $keysToTry[] = $fallbackKey;
+        }
+
+        if (empty($keysToTry)) {
+            Log::error('Groq: No API key available anywhere');
+            return 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาตั้งค่าในหลังบ้านก่อนนะคะ';
+        }
+
+        Log::debug('Groq: keys available', ['count' => count($keysToTry)]);
+
         $lastError = null;
 
-        for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
-            $apiKey = $this->getApiKey();
-
-            if (empty($apiKey)) {
-                Log::error('Groq: No API key available');
-                return 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาตั้งค่าในหลังบ้านก่อนนะคะ';
+        // Try each unique key once (no point retrying same key)
+        foreach ($keysToTry as $i => $apiKey) {
+            // Skip keys already marked rate-limited from recent requests
+            if (ApiKeyPool::isRateLimited('groq', $apiKey)) {
+                Log::debug('Groq: skipping rate-limited key', ['index' => $i]);
+                $lastError = 'rate_limited';
+                continue;
             }
 
             try {
@@ -247,18 +271,18 @@ PROMPT;
                 if ($response->status() === 429) {
                     ApiKeyPool::markRateLimited('groq', $apiKey, 60);
                     Log::warning('Groq API rate limited', [
-                        'attempt' => $attempt + 1,
+                        'key_index' => $i,
                         'body' => substr($response->body(), 0, 300),
                     ]);
                     $lastError = 'rate_limited';
                     continue;
                 }
 
-                // Auth error — mark key failed
+                // Auth error — mark key failed, try next
                 if ($response->status() === 401 || $response->status() === 403) {
                     ApiKeyPool::markFailed('groq', $apiKey);
                     Log::error('Groq API auth failed', [
-                        'attempt' => $attempt + 1,
+                        'key_index' => $i,
                         'status' => $response->status(),
                         'body' => substr($response->body(), 0, 300),
                     ]);
@@ -266,26 +290,29 @@ PROMPT;
                     continue;
                 }
 
+                // Other HTTP errors
                 if ($response->failed()) {
                     Log::error('Groq API request failed', [
+                        'key_index' => $i,
                         'status' => $response->status(),
                         'body' => substr($response->body(), 0, 300),
                     ]);
                     $lastError = 'http_' . $response->status();
-                    continue; // try next key instead of giving up immediately
+                    continue;
                 }
 
+                // Success!
                 $data = $response->json();
                 return $data['choices'][0]['message']['content'] ?? 'ขอโทษค่ะ ไม่สามารถตอบได้ในตอนนี้';
 
             } catch (\Exception $e) {
-                Log::error('Groq API exception', ['message' => $e->getMessage(), 'attempt' => $attempt + 1]);
+                Log::error('Groq API exception', ['message' => $e->getMessage(), 'key_index' => $i]);
                 ApiKeyPool::markFailed('groq', $apiKey);
                 $lastError = $e->getMessage();
             }
         }
 
-        Log::error('Groq: All retries exhausted', ['last_error' => $lastError, 'retries' => $maxRetries]);
+        Log::error('Groq: All keys exhausted', ['last_error' => $lastError, 'keys_tried' => count($keysToTry)]);
 
         if ($lastError === 'rate_limited') {
             return 'ขอโทษค่ะ ตอนนี้มีคนใช้เยอะมากเลยค่ะ ลองใหม่อีกสักครู่นะคะ 🙏';
