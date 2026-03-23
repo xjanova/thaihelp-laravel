@@ -160,14 +160,22 @@
 
         const u = new SpeechSynthesisUtterance(clean);
         u.lang = 'th-TH';
-        u.rate = 1.05;
-        u.pitch = 1.3;
+        u.rate = 1.1;
+        u.pitch = 1.4; // เสียงสูงขึ้น = เด็กสาว
 
+        // หา Thai voice — ลองหลายชื่อ
         const voices = window.speechSynthesis.getVoices();
-        const thaiVoice = voices.find(v => v.lang.startsWith('th') && v.name.toLowerCase().includes('female'))
+        const thaiVoice = voices.find(v => v.lang === 'th-TH' && /female|premwadee|สาว/i.test(v.name))
+            || voices.find(v => v.lang === 'th-TH')
             || voices.find(v => v.lang.startsWith('th'))
             || null;
-        if (thaiVoice) u.voice = thaiVoice;
+
+        if (thaiVoice) {
+            u.voice = thaiVoice;
+            console.log('Web Speech using voice:', thaiVoice.name);
+        } else {
+            console.warn('No Thai voice found! Available:', voices.map(v => v.lang + ':' + v.name).join(', '));
+        }
 
         window.speechSynthesis.speak(u);
     };

@@ -69,41 +69,79 @@ class TtsController extends Controller
 
     /**
      * Microsoft Edge TTS — เสียงสาวไทยสมจริง ฟรีไม่จำกัด!
-     * Voice: th-TH-PremwadeeNeural (หญิงไทย Neural)
-     * Pitch: +15% (เสียงสูงขึ้น = เด็กสาว)
-     * Rate: +5% (เร็วขึ้นเล็กน้อย = ร่าเริง)
+     * Uses Symfony Process (works even when exec() is disabled)
      */
     private function edgeTts(string $text): ?string
     {
         $tempFile = storage_path('app/tts_' . md5($text) . '.mp3');
 
         try {
-            // Use edge-tts CLI (Python package)
-            $escapedText = escapeshellarg($text);
             $voice = 'th-TH-PremwadeeNeural';
-            $pitch = '+15Hz';  // สูงขึ้น = เด็กสาว
-            $rate = '+5%';     // เร็วขึ้นเล็กน้อย = ร่าเริง
+            $pitch = '+15Hz';
+            $rate = '+5%';
 
-            $cmd = "edge-tts --voice {$voice} --pitch {$pitch} --rate {$rate} --text {$escapedText} --write-media {$tempFile} 2>&1";
+            $process = new \Symfony\Component\Process\Process([
+                'edge-tts',
+                '--voice', $voice,
+                '--pitch', $pitch,
+                '--rate', $rate,
+                '--text', $text,
+                '--write-media', $tempFile,
+            ]);
+            $process->setTimeout(15);
+            $process->run();
 
-            $output = [];
-            $returnCode = 0;
-            exec($cmd, $output, $returnCode);
-
-            if ($returnCode !== 0 || !file_exists($tempFile)) {
-                Log::warning('Edge TTS failed', [
-                    'code' => $returnCode,
-                    'output' => implode("\n", $output),
+            if (!$process->isSuccessful() || !file_exists($tempFile)) {
+                Log::warning('Edge TTS process failed', [
+                    'exit' => $process->getExitCode(),
+                    'err' => $process->getErrorOutput(),
                 ]);
-                return null;
+
+                // Fallback: try Python inline
+                return $this->edgeTtsPython($text, $tempFile, $voice, $pitch, $rate);
             }
 
             $audio = file_get_contents($tempFile);
-            @unlink($tempFile); // Clean up
-
+            @unlink($tempFile);
             return $audio ?: null;
         } catch (\Exception $e) {
             Log::warning('Edge TTS error', ['error' => $e->getMessage()]);
+            @unlink($tempFile);
+
+            // Fallback: try Python inline
+            return $this->edgeTtsPython($text, $tempFile, 'th-TH-PremwadeeNeural', '+15Hz', '+5%');
+        }
+    }
+
+    /**
+     * Fallback: run edge-tts via Python subprocess
+     */
+    private function edgeTtsPython(string $text, string $tempFile, string $voice, string $pitch, string $rate): ?string
+    {
+        try {
+            $escapedText = str_replace("'", "\\'", $text);
+            $pyScript = <<<PYTHON
+import asyncio, edge_tts
+async def main():
+    c = edge_tts.Communicate('{$escapedText}', '{$voice}', pitch='{$pitch}', rate='{$rate}')
+    await c.save('{$tempFile}')
+asyncio.run(main())
+PYTHON;
+
+            $process = new \Symfony\Component\Process\Process(['python3', '-c', $pyScript]);
+            $process->setTimeout(15);
+            $process->run();
+
+            if (file_exists($tempFile)) {
+                $audio = file_get_contents($tempFile);
+                @unlink($tempFile);
+                return $audio ?: null;
+            }
+
+            Log::warning('Edge TTS Python fallback failed', ['err' => $process->getErrorOutput()]);
+            return null;
+        } catch (\Exception $e) {
+            Log::warning('Edge TTS Python error', ['error' => $e->getMessage()]);
             @unlink($tempFile);
             return null;
         }
