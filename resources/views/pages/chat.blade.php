@@ -135,11 +135,7 @@
         // Try Edge TTS first (เสียงสมจริง th-TH-PremwadeeNeural)
         try {
             const encoded = btoa(unescape(encodeURIComponent(clean)));
-            const res = await fetch('/api/tts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: encoded, encoding: 'base64' }),
-            });
+            const res = await fetch('/api/tts?text=' + encodeURIComponent(encoded) + '&encoding=base64');
 
             if (res.ok) {
                 const contentType = res.headers.get('content-type');
