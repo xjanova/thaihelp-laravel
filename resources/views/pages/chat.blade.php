@@ -85,6 +85,13 @@
                        :disabled="isTyping">
             </div>
 
+            {{-- TTS Toggle (default OFF) --}}
+            <button id="chat-tts-toggle" onclick="toggleChatTTS()"
+                    class="w-10 h-10 rounded-full metal-btn flex items-center justify-center flex-shrink-0 text-sm"
+                    title="เปิด/ปิดเสียงน้องหญิงในแชท">
+                🔇
+            </button>
+
             {{-- Send Button --}}
             <button @click="send()" :disabled="!input.trim() || isTyping"
                     :class="input.trim() && !isTyping ? 'metal-btn-accent' : 'metal-btn opacity-50'"
@@ -100,6 +107,54 @@
 
 @push('scripts')
 <script>
+    // ─── Chat TTS (default OFF ประหยัดโควต้า) ───
+    const CHAT_TTS_KEY = 'ying_chat_tts';
+
+    function isChatTTSEnabled() {
+        return localStorage.getItem(CHAT_TTS_KEY) === '1';
+    }
+
+    function toggleChatTTS() {
+        const on = !isChatTTSEnabled();
+        localStorage.setItem(CHAT_TTS_KEY, on ? '1' : '0');
+        const btn = document.getElementById('chat-tts-toggle');
+        if (btn) btn.textContent = on ? '🔊' : '🔇';
+        if (on) window.sayText('เปิดเสียงในแชทแล้วค่ะ~');
+    }
+
+    // TTS function for chat — respects toggle
+    window.sayText = function(text) {
+        if (!isChatTTSEnabled()) return;
+        if (!window.speechSynthesis) return;
+
+        // Strip action tags
+        const clean = text.replace(/\[.*?\]/g, '').trim();
+        if (!clean) return;
+
+        // Cancel any current speech
+        window.speechSynthesis.cancel();
+
+        const u = new SpeechSynthesisUtterance(clean);
+        u.lang = 'th-TH';
+        u.rate = 1.05;
+        u.pitch = 1.3; // เสียงสูงเหมือนเด็กสาว
+
+        // Try to find Thai female voice
+        const voices = window.speechSynthesis.getVoices();
+        const thaiVoice = voices.find(v => v.lang.startsWith('th') && v.name.toLowerCase().includes('female'))
+            || voices.find(v => v.lang.startsWith('th'))
+            || null;
+        if (thaiVoice) u.voice = thaiVoice;
+
+        window.speechSynthesis.speak(u);
+    };
+
+    // Preload voices
+    if (window.speechSynthesis) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+
     function chatApp() {
         const MEMORY_KEY = 'ying_chat_history';
         const MEMORY_TTL = 8 * 60 * 60 * 1000; // 8 ชั่วโมง (ตลอดการเดินทาง)
