@@ -12,6 +12,7 @@
         "laravel/socialite": "^5.12",
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^3.4",
+        "predis/predis": "^2.2",
         "socialiteproviders/line": "^4.1"
     },
     "require-dev": {

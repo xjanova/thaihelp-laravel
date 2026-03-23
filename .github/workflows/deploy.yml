@@ -78,12 +78,40 @@ jobs:
               exit 0
             fi
 
-            # Normal deploy
+            # Ensure Redis env vars are set
             cd "$APP_DIR"
+            grep -q "^REDIS_CLIENT=" .env 2>/dev/null || cat >> .env << 'REDIS'
+
+# Redis
+REDIS_CLIENT=predis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+SESSION_DRIVER=redis
+CACHE_STORE=redis
+QUEUE_CONNECTION=redis
+REDIS
+
+            # Ensure Discord env vars are set
+            grep -q "^DISCORD_BOT_TOKEN=" .env 2>/dev/null || cat >> .env << 'DISCORD'
+
+# Discord Bot
+DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+DISCORD_APPLICATION_ID=${{ secrets.DISCORD_APPLICATION_ID }}
+DISCORD_PUBLIC_KEY=${{ secrets.DISCORD_PUBLIC_KEY }}
+DISCORD_GUILD_ID=${{ secrets.DISCORD_GUILD_ID }}
+DISCORD
+
+            # Normal deploy
             bash deploy.sh main
 
             # Write version file
             echo '${{ steps.version.outputs.version }}' > "$APP_DIR/version.txt"
+
+            # Discord setup (skip if already done)
+            if [ -n "${{ secrets.DISCORD_BOT_TOKEN }}" ]; then
+              php artisan discord:setup --skip-endpoint 2>&1 || true
+            fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
