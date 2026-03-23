@@ -223,58 +223,48 @@
                 }
             },
 
-            // Wake word detection - listens for "น้องหญิง"
-            startWakeWordListener() {
-                if (!window.startListening) return;
+            // Wake word - uses speech.js global wake word listener
+            enableWakeWord() {
                 this.wakeWordActive = true;
 
-                window.startListening({
-                    continuous: true,
-                    onResult: (transcript) => {
-                        if (transcript.includes('น้องหญิง') || transcript.includes('หญิง')) {
-                            if (window.sayText) {
-                                window.sayText('ว่าไงคะ หญิงพร้อมช่วยแล้วค่ะ');
+                // Set callback: when wake word detected, start recording
+                window.onWakeWordDetected = () => {
+                    this.isRecording = true;
+
+                    // Listen for the actual command after wake word
+                    setTimeout(() => {
+                        window.startListening({
+                            onResult: async (command) => {
+                                this.isRecording = false;
+                                this.input = command;
+                                await this.send();
+                            },
+                            onInterim: (text) => {
+                                this.input = text + '...';
+                            },
+                            onError: () => {
+                                this.isRecording = false;
                             }
-                            this.isRecording = true;
-                            // Now listen for actual command
-                            setTimeout(() => {
-                                window.startListening({
-                                    onResult: async (command) => {
-                                        this.isRecording = false;
-                                        this.input = command;
-                                        await this.send();
-                                        // Restart wake word listener after command processed
-                                        if (this.wakeWordActive) {
-                                            this.startWakeWordListener();
-                                        }
-                                    },
-                                    onError: (err) => {
-                                        console.error('Wake word command error:', err);
-                                        this.isRecording = false;
-                                        if (this.wakeWordActive) {
-                                            this.startWakeWordListener();
-                                        }
-                                    }
-                                });
-                            }, 2000);
-                        }
-                    },
-                    onInterim: (text) => {
-                        // Show interim text as visual feedback
-                    }
-                });
+                        });
+                    }, 1500);
+                };
+
+                if (window.startWakeWordListener) {
+                    window.startWakeWordListener();
+                }
             },
 
-            stopWakeWordListener() {
+            disableWakeWord() {
                 this.wakeWordActive = false;
-                if (window.stopListening) {
-                    window.stopListening();
+                window.onWakeWordDetected = null;
+                if (window.stopWakeWordListener) {
+                    window.stopWakeWordListener();
                 }
             },
 
             init() {
-                // Auto-start wake word listener
-                this.startWakeWordListener();
+                // Auto-enable wake word on chat page
+                this.enableWakeWord();
             }
         };
     }

@@ -65,6 +65,10 @@ Route::post('/chat', [ChatController::class, 'apiChat'])
 Route::post('/voice-command', [VoiceCommandController::class, 'process'])
     ->middleware('throttle:15,1');
 
+// Text-to-Speech (server-side Thai female voice)
+Route::post('/tts', [\App\Http\Controllers\TtsController::class, 'synthesize'])
+    ->middleware('throttle:30,1');
+
 // My reports (auth required)
 Route::middleware('auth')->group(function () {
     Route::get('/my-reports', function (\Illuminate\Http\Request $request) {
