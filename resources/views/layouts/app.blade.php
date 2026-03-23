@@ -30,6 +30,88 @@
     @stack('styles')
 </head>
 <body class="antialiased font-thai">
+    {{-- ═══ Intro Video (first visit only) ═══ --}}
+    <div id="intro-overlay" style="display:none;"
+         class="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
+        <video id="intro-video" class="max-h-screen max-w-screen object-contain opacity-0 transition-opacity duration-1000"
+               playsinline muted preload="auto"
+               src="/media/open1.mp4">
+        </video>
+        <button id="intro-skip" onclick="closeIntro()"
+                class="absolute bottom-8 right-6 text-white/40 hover:text-white text-xs px-4 py-2 rounded-full border border-white/20 hover:border-white/50 transition-all opacity-0"
+                style="transition: opacity 1s;">
+            ข้ามไป →
+        </button>
+        <div id="intro-ying" class="absolute bottom-8 left-6 flex items-center gap-2 opacity-0" style="transition: opacity 1s;">
+            <img src="/images/ying.png" class="w-8 h-8 rounded-full border border-orange-400" alt="น้องหญิง" onerror="this.style.display='none'">
+            <span class="text-white/60 text-[11px]">สวัสดีค่ะ! ยินดีต้อนรับสู่ ThaiHelp</span>
+        </div>
+    </div>
+    <script>
+        (function() {
+            const INTRO_KEY = 'thaihelp_intro_seen';
+            const INTRO_VIDEO_COUNT_KEY = 'ying_video_play_count';
+
+            if (localStorage.getItem(INTRO_KEY)) return; // Already seen
+
+            const overlay = document.getElementById('intro-overlay');
+            const video = document.getElementById('intro-video');
+            const skipBtn = document.getElementById('intro-skip');
+            const yingMsg = document.getElementById('intro-ying');
+
+            overlay.style.display = 'flex';
+
+            // Fade in video after small delay
+            setTimeout(() => {
+                video.style.opacity = '1';
+                video.play().catch(() => {});
+            }, 500);
+
+            // Show skip button after 3 seconds
+            setTimeout(() => { skipBtn.style.opacity = '1'; }, 3000);
+
+            // Show ying message after 2 seconds
+            setTimeout(() => { yingMsg.style.opacity = '1'; }, 2000);
+
+            // Auto close when video ends
+            video.addEventListener('ended', () => {
+                setTimeout(closeIntro, 800);
+            });
+
+            // Mark as seen
+            window.closeIntro = function() {
+                localStorage.setItem(INTRO_KEY, Date.now());
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.8s';
+                setTimeout(() => { overlay.remove(); }, 900);
+            };
+
+            // Expose replay function for chat bot
+            window.replayIntroVideo = function() {
+                const count = parseInt(localStorage.getItem(INTRO_VIDEO_COUNT_KEY) || '0');
+                if (count >= 3) return false; // Too many times
+                localStorage.setItem(INTRO_VIDEO_COUNT_KEY, count + 1);
+
+                // Create temporary overlay
+                const div = document.createElement('div');
+                div.className = 'fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center';
+                div.style.animation = 'fadeIn 0.5s ease-out';
+                div.innerHTML = `
+                    <video class="max-h-screen max-w-screen object-contain" playsinline autoplay src="/media/open1.mp4"
+                           onended="this.parentElement.style.opacity='0';this.parentElement.style.transition='opacity 0.8s';setTimeout(()=>this.parentElement.remove(),900)"></video>
+                    <button onclick="this.parentElement.style.opacity='0';this.parentElement.style.transition='opacity 0.8s';setTimeout(()=>this.parentElement.remove(),900)"
+                            class="absolute top-4 right-4 text-white/50 hover:text-white text-xl">&times;</button>
+                `;
+                document.body.appendChild(div);
+                return true;
+            };
+
+            window.getVideoPlayCount = function() {
+                return parseInt(localStorage.getItem(INTRO_VIDEO_COUNT_KEY) || '0');
+            };
+        })();
+    </script>
+
     {{-- Header --}}
     @include('components.header')
 

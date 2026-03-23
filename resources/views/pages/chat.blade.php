@@ -165,6 +165,24 @@
                         window.sayText(reply);
                     }
 
+                    // Check for video replay command from AI
+                    if (reply.includes('[PLAY_VIDEO]')) {
+                        if (window.replayIntroVideo) {
+                            const played = window.replayIntroVideo();
+                            if (!played) {
+                                // Already played too many times
+                                this.messages.push({
+                                    role: 'assistant',
+                                    content: 'อายนะคะ 😳 พอแล้วๆ ดูหลายรอบแล้วนะ ไว้วันหลังนะคะ~',
+                                    time: this.formatTime(),
+                                });
+                            }
+                        }
+                        // Remove the command tag from displayed message
+                        this.messages[this.messages.length - 1].content =
+                            this.messages[this.messages.length - 1].content.replace('[PLAY_VIDEO]', '').trim();
+                    }
+
                     // Check for fuel report in AI response
                     const reportMatch = reply.match(/\[FUEL_REPORT:(.*?)\]/);
                     if (reportMatch) {
