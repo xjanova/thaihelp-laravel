@@ -177,6 +177,21 @@ class StationController extends Controller
                 $request->user()->incrementReports();
             }
 
+            // Remove demo data for this station (real report replaces demo)
+            if (!empty($validated['latitude']) && !empty($validated['longitude'])) {
+                try {
+                    $removed = DemoDataService::replaceDemoWithReal(
+                        (float) $validated['latitude'],
+                        (float) $validated['longitude']
+                    );
+                    if ($removed > 0) {
+                        Log::info('Demo data replaced by real report', ['removed' => $removed]);
+                    }
+                } catch (\Exception $e) {
+                    // Silent fail
+                }
+            }
+
             // Send Discord notification
             try {
                 app(DiscordService::class)->notifyNewStationReport($stationReport);

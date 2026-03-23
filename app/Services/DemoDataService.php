@@ -4,23 +4,10 @@ namespace App\Services;
 
 use App\Models\FuelReport;
 use App\Models\StationReport;
+use Illuminate\Support\Facades\Log;
 
 class DemoDataService
 {
-    /**
-     * Thai gas station brand templates for generating demo data.
-     */
-    private const BRANDS = [
-        'PTT Station', 'Shell', 'Bangchak', 'Esso', 'Caltex',
-        'Susco', 'PT', 'Cosmo', 'พีที',
-    ];
-
-    private const ROAD_NAMES = [
-        'ถนนหลัก', 'ซอย 5', 'ถนนมิตรภาพ', 'ถนนพหลโยธิน', 'ถนนสุขุมวิท',
-        'ถนนเพชรเกษม', 'ถนนรามอินทรา', 'ถนนลาดพร้าว', 'ถนนวิภาวดี',
-        'ถนนรัชดาภิเษก', 'ซอยรามคำแหง', 'ถนนศรีนครินทร์', 'ถนนบางนา-ตราด',
-    ];
-
     private const REPORTER_NAMES = [
         'คุณสมชาย', 'คุณนภา', 'คุณวิภา', 'คุณธนา', 'คุณกิตติ',
         'คุณแอน', 'คุณเอก', 'คุณพิม', 'คุณโจ้', 'คุณมาลี',
@@ -38,14 +25,10 @@ class DemoDataService
         'เพิ่งเติมถังมาใหม่เมื่อเช้า',
         'คิวยาวมาก 20+ คัน',
         'ปั๊มเงียบ เติมได้ทันที',
-        'ที่เติมลมเสีย ซ่อมอยู่',
-        'มีที่ล้างรถด้วย เปิดถึง 2 ทุ่ม',
-        'WiFi ฟรี นั่งพักได้',
-        'ราคาถูกกว่าที่อื่น 50 สตางค์',
     ];
 
     /**
-     * Today's base fuel prices (updated concept — in production, fetch from API).
+     * Base fuel prices (in production, fetch from API).
      */
     private function basePrices(): array
     {
@@ -63,8 +46,14 @@ class DemoDataService
     }
 
     /**
+     * Proximity threshold in km — if two coordinates are within this,
+     * they are considered the same station.
+     */
+    private const SAME_STATION_RADIUS_KM = 0.15; // 150 meters
+
+    /**
      * Check if demo data is needed near user's location.
-     * If no real reports exist within radius, generate demo stations.
+     * Uses Google Places to find REAL stations nearby.
      */
     public function ensureDemoNearby(float $lat, float $lng, int $radiusKm = 10): void
     {
@@ -77,10 +66,10 @@ class DemoDataService
             ->count();
 
         if ($realCount > 0) {
-            return; // Real data exists, no need for demo
+            return; // Real data exists, no demo needed
         }
 
-        // Check if demo data already exists nearby
+        // Check if demo data already exists nearby (within 4 hours)
         $demoCount = StationReport::where('is_demo', true)
             ->where('created_at', '>=', now()->subHours(4))
             ->whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) < ?', [
@@ -89,87 +78,142 @@ class DemoDataService
             ->count();
 
         if ($demoCount >= 3) {
-            return; // Enough demo data already
+            return; // Enough demo data
         }
 
-        // Generate demo stations around this location
-        $this->generateDemoStations($lat, $lng);
+        // Generate demo from REAL Google Places stations
+        $this->generateFromRealStations($lat, $lng);
     }
 
     /**
-     * Generate 5-8 demo gas stations around a GPS location.
+     * Generate demo data using REAL gas station locations from Google Places API.
+     * This ensures demo pins match actual station positions on the map.
      */
-    public function generateDemoStations(float $centerLat, float $centerLng): void
+    public function generateFromRealStations(float $lat, float $lng): void
     {
-        $count = rand(5, 8);
-        $basePrices = $this->basePrices();
+        try {
+            $placesService = app(GooglePlacesService::class);
+            $stations = $placesService->searchNearby($lat, $lng, 5000); // 5km radius
 
-        for ($i = 0; $i < $count; $i++) {
-            // Random offset within ~5km radius
-            $latOffset = (rand(-5000, 5000) / 100000);
-            $lngOffset = (rand(-5000, 5000) / 100000);
-            $stationLat = $centerLat + $latOffset;
-            $stationLng = $centerLng + $lngOffset;
+            if (empty($stations)) {
+                // Fallback: try wider radius
+                $stations = $placesService->searchNearby($lat, $lng, 15000);
+            }
 
-            $brand = self::BRANDS[array_rand(self::BRANDS)];
-            $road = self::ROAD_NAMES[array_rand(self::ROAD_NAMES)];
-            $name = "{$brand} {$road}";
+            if (empty($stations)) {
+                Log::info('DemoData: No Google Places stations found', compact('lat', 'lng'));
+                return;
+            }
 
-            $report = StationReport::create([
-                'place_id'           => 'demo_' . md5($name . $stationLat . now()->timestamp . $i),
-                'station_name'       => $name,
-                'reporter_name'      => self::REPORTER_NAMES[array_rand(self::REPORTER_NAMES)],
-                'note'               => self::NOTES[array_rand(self::NOTES)],
-                'latitude'           => $stationLat,
-                'longitude'          => $stationLng,
-                'is_demo'            => true,
-                'is_verified'        => true,
-                'confirmation_count' => rand(2, 12),
-                'confirmed_ips'      => ['demo-auto'],
-                'created_at'         => now()->subMinutes(rand(5, 180)),
-            ]);
+            // Take up to 8 stations
+            $stations = array_slice($stations, 0, 8);
+            $basePrices = $this->basePrices();
 
-            // Generate fuel reports with regional price variation
-            $priceVariation = (rand(-100, 100) / 100); // ±1.00 baht variation
-            $fuelTypes = $this->randomFuelTypes();
+            foreach ($stations as $station) {
+                $stationLat = $station['lat'] ?? $station['latitude'] ?? null;
+                $stationLng = $station['lng'] ?? $station['longitude'] ?? null;
 
-            foreach ($fuelTypes as $fuelType) {
-                $basePrice = $basePrices[$fuelType] ?? 30.00;
-                $status = $this->randomStatus();
+                if (!$stationLat || !$stationLng) continue;
 
-                FuelReport::create([
-                    'report_id' => $report->id,
-                    'fuel_type' => $fuelType,
-                    'status'    => $status,
-                    'price'     => $status !== 'empty' ? round($basePrice + $priceVariation, 2) : null,
+                $stationLat = (float) $stationLat;
+                $stationLng = (float) $stationLng;
+                $stationName = $station['name'] ?? 'ปั๊มน้ำมัน';
+                $placeId = $station['place_id'] ?? ('demo_' . md5($stationName . $stationLat));
+                $vicinity = $station['vicinity'] ?? '';
+
+                // Check if demo for this exact station already exists
+                $exists = StationReport::where('is_demo', true)
+                    ->where('created_at', '>=', now()->subHours(4))
+                    ->whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) < ?', [
+                        $stationLat, $stationLng, $stationLat, self::SAME_STATION_RADIUS_KM,
+                    ])
+                    ->exists();
+
+                if ($exists) continue;
+
+                // Detect brand from name
+                $brand = $this->detectBrand($stationName);
+
+                $report = StationReport::create([
+                    'place_id'           => 'demo_' . $placeId,
+                    'station_name'       => $stationName,
+                    'brand'              => $brand,
+                    'reporter_name'      => self::REPORTER_NAMES[array_rand(self::REPORTER_NAMES)],
+                    'note'               => self::NOTES[array_rand(self::NOTES)],
+                    'latitude'           => $stationLat,  // EXACT coords from Google Places
+                    'longitude'          => $stationLng,  // EXACT coords from Google Places
+                    'is_demo'            => true,
+                    'is_verified'        => true,
+                    'confirmation_count' => rand(2, 12),
+                    'confirmed_ips'      => ['demo-auto'],
+                    'created_at'         => now()->subMinutes(rand(5, 180)),
                 ]);
+
+                // Generate fuel reports with brand-appropriate types
+                $priceVariation = (rand(-100, 100) / 100);
+                $fuelTypes = $this->fuelTypesForBrand($brand);
+
+                foreach ($fuelTypes as $fuelType) {
+                    $basePrice = $basePrices[$fuelType] ?? 30.00;
+                    $status = $this->randomStatus();
+
+                    FuelReport::create([
+                        'report_id' => $report->id,
+                        'fuel_type' => $fuelType,
+                        'status'    => $status,
+                        'price'     => $status !== 'empty' ? round($basePrice + $priceVariation, 2) : null,
+                    ]);
+                }
+            }
+
+            Log::info('DemoData: Generated from real stations', [
+                'lat' => $lat, 'lng' => $lng, 'count' => count($stations),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('DemoData: Failed to generate', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Detect brand from station name.
+     */
+    private function detectBrand(string $name): string
+    {
+        $name = mb_strtolower($name);
+        $brands = [
+            'ptt' => 'PTT', 'ปตท' => 'PTT',
+            'shell' => 'Shell', 'เชลล์' => 'Shell',
+            'bangchak' => 'Bangchak', 'บางจาก' => 'Bangchak',
+            'esso' => 'Esso', 'เอสโซ่' => 'Esso',
+            'caltex' => 'Caltex', 'คาลเท็กซ์' => 'Caltex',
+            'susco' => 'Susco', 'ซัสโก้' => 'Susco',
+            'pt ' => 'PT', 'พีที' => 'PT',
+        ];
+
+        foreach ($brands as $keyword => $brand) {
+            if (str_contains($name, $keyword)) {
+                return $brand;
             }
         }
+
+        return 'อื่นๆ';
     }
 
     /**
-     * Pick random fuel types for a station (3-6 types).
+     * Fuel types appropriate for each brand.
      */
-    private function randomFuelTypes(): array
+    private function fuelTypesForBrand(string $brand): array
     {
-        $allTypes = ['gasohol95', 'gasohol91', 'e20', 'diesel', 'diesel_b7'];
-        $extraTypes = ['e85', 'premium_diesel', 'ngv', 'lpg'];
+        $base = ['gasohol95', 'gasohol91', 'diesel'];
 
-        // Always include gasohol95 and diesel
-        $types = ['gasohol95', 'diesel'];
-
-        // Add 1-3 more from common types
-        $remaining = array_diff($allTypes, $types);
-        shuffle($remaining);
-        $addCount = rand(1, min(3, count($remaining)));
-        $types = array_merge($types, array_slice($remaining, 0, $addCount));
-
-        // 30% chance to add an extra type
-        if (rand(1, 100) <= 30) {
-            $types[] = $extraTypes[array_rand($extraTypes)];
-        }
-
-        return array_unique($types);
+        return match ($brand) {
+            'PTT' => array_merge($base, ['e20', 'diesel_b7', 'premium_diesel']),
+            'Shell' => array_merge($base, ['e20', 'diesel_b7']),
+            'Bangchak' => array_merge($base, ['e20', 'e85']),
+            'Esso' => array_merge($base, ['diesel_b7']),
+            'Caltex' => array_merge($base, ['diesel_b7']),
+            default => $base,
+        };
     }
 
     /**
@@ -178,10 +222,41 @@ class DemoDataService
     private function randomStatus(): string
     {
         $roll = rand(1, 100);
-        if ($roll <= 65) return 'available';    // 65% available
-        if ($roll <= 80) return 'low';          // 15% low
-        if ($roll <= 95) return 'empty';        // 15% empty
-        return 'unknown';                        // 5% unknown
+        if ($roll <= 65) return 'available';
+        if ($roll <= 80) return 'low';
+        if ($roll <= 95) return 'empty';
+        return 'unknown';
+    }
+
+    /**
+     * Check if coordinates match an existing station (within 150m).
+     */
+    public static function isSameStation(float $lat1, float $lng1, float $lat2, float $lng2): bool
+    {
+        $distance = 6371 * acos(
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            cos(deg2rad($lng2) - deg2rad($lng1)) +
+            sin(deg2rad($lat1)) * sin(deg2rad($lat2))
+        );
+
+        return $distance < self::SAME_STATION_RADIUS_KM;
+    }
+
+    /**
+     * When a real report comes in, remove demo data for the same station.
+     */
+    public static function replaceDemoWithReal(float $lat, float $lng): int
+    {
+        $demoIds = StationReport::where('is_demo', true)
+            ->whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) < ?', [
+                $lat, $lng, $lat, self::SAME_STATION_RADIUS_KM,
+            ])
+            ->pluck('id');
+
+        if ($demoIds->isEmpty()) return 0;
+
+        FuelReport::whereIn('report_id', $demoIds)->delete();
+        return StationReport::whereIn('id', $demoIds)->delete();
     }
 
     /**

@@ -14,6 +14,7 @@ class StationReport extends Model
     protected $fillable = [
         'place_id',
         'station_name',
+        'brand',
         'user_id',
         'reporter_name',
         'reporter_email',
@@ -21,6 +22,7 @@ class StationReport extends Model
         'latitude',
         'longitude',
         'confirmation_count',
+        'confirmed_ips',
         'is_verified',
         'is_demo',
         'facilities',
