@@ -49,9 +49,7 @@ class ChatController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'reply' => $reply,
-                ],
+                'reply' => $reply,
             ]);
         } catch (\Exception $e) {
             Log::error('Chat API failed', ['error' => $e->getMessage()]);
