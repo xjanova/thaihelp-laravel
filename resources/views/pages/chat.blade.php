@@ -102,9 +102,9 @@
 <script>
     function chatApp() {
         const MEMORY_KEY = 'ying_chat_history';
-        const MEMORY_TTL = 30 * 60 * 1000; // 30 นาที
-        const MEMORY_WARN_AT = 25 * 60 * 1000; // เตือนที่ 25 นาที
-        const MAX_MEMORY_MSGS = 40; // จำได้สูงสุด 40 ข้อความ
+        const MEMORY_TTL = 8 * 60 * 60 * 1000; // 8 ชั่วโมง (ตลอดการเดินทาง)
+        const MEMORY_WARN_AT = 7.5 * 60 * 60 * 1000; // เตือนที่ 7.5 ชม.
+        const MAX_MEMORY_MSGS = 100; // จำได้สูงสุด 100 ข้อความ
 
         // Load saved conversation
         function loadMemory() {
@@ -241,7 +241,9 @@
                         },
                         body: JSON.stringify({
                             message: text,
-                            history: this.messages.slice(-10),
+                            history: this.messages.filter(m => m.role && m.content).slice(-20).map(m => ({
+                                role: m.role, content: m.content
+                            })),
                             latitude: window._userLat || null,
                             longitude: window._userLng || null,
                         }),
