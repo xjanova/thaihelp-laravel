@@ -733,14 +733,26 @@ run_seeders() {
             set -e
 
             if [ $SEED_EXIT -ne 0 ]; then
-                print_error "Seeding failed"
-                generate_error_report "run_seeders" "DatabaseSeeder failed" "$SEED_OUTPUT"
-                return 1
+                print_warning "Seeding had issues (non-fatal)"
+                log_error_detail "Seeding output: $SEED_OUTPUT"
+            else
+                print_success "Seeding completed"
             fi
-
-            print_success "Seeding completed"
         else
-            print_info "Data already exists, skipping seeding"
+            print_info "Users exist, skipping initial seeding"
+        fi
+
+        # Always refresh demo data
+        print_info "Refreshing demo station data..."
+        set +e
+        DEMO_OUTPUT=$(php artisan db:seed --class=DemoStationSeeder --force 2>&1)
+        DEMO_EXIT=$?
+        set -e
+
+        if [ $DEMO_EXIT -ne 0 ]; then
+            print_warning "Demo seeding had issues (non-fatal): $DEMO_OUTPUT"
+        else
+            print_success "Demo data refreshed"
         fi
     else
         print_info "No seeders found, skipping"

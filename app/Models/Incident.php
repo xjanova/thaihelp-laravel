@@ -49,6 +49,7 @@ class Incident extends Model
         'image_url',
         'upvotes',
         'is_active',
+        'is_demo',
         'expires_at',
     ];
 
@@ -56,6 +57,7 @@ class Incident extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_demo' => 'boolean',
             'expires_at' => 'datetime',
             'latitude' => 'double',
             'longitude' => 'double',

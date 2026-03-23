@@ -23,6 +23,7 @@ class StationReport extends Model
         'confirmation_count',
         'is_verified',
         'confirmed_ips',
+        'is_demo',
     ];
 
     protected function casts(): array
@@ -32,7 +33,20 @@ class StationReport extends Model
             'longitude' => 'double',
             'confirmed_ips' => 'array',
             'is_verified' => 'boolean',
+            'is_demo' => 'boolean',
         ];
+    }
+
+    /**
+     * Remove demo reports for a place_id when a real report comes in.
+     */
+    public static function replaceDemoWithReal(string $placeId): void
+    {
+        $demoReports = static::where('place_id', $placeId)->where('is_demo', true)->get();
+        foreach ($demoReports as $demo) {
+            $demo->fuelReports()->delete();
+            $demo->delete();
+        }
     }
 
     /**

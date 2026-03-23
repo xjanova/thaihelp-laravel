@@ -55,6 +55,11 @@ class StationController extends Controller
                 ->get()
                 ->keyBy('place_id');
 
+            // Also get demo reports (not limited to placeIds from Google)
+            $demoReports = StationReport::where('is_demo', true)
+                ->with('fuelReports')
+                ->get();
+
             // Merge Google data with our fuel reports
             $merged = collect($stations)->map(function ($station) use ($recentReports) {
                 $placeId = $station['place_id'] ?? null;
@@ -65,8 +70,29 @@ class StationController extends Controller
                     'fuel_reports' => $report?->fuelReports?->toArray() ?? [],
                     'last_report_at' => $report?->created_at?->toISOString(),
                     'reporter_name' => $report?->reporter_name,
+                    'is_demo' => $report?->is_demo ?? false,
+                    'is_verified' => $report?->is_verified ?? false,
                 ];
             });
+
+            // Add demo stations that aren't already in Google results
+            $existingPlaceIds = $merged->pluck('place_id')->filter()->toArray();
+            $demoStations = $demoReports->filter(fn($r) => !in_array($r->place_id, $existingPlaceIds))
+                ->map(fn($r) => [
+                    'place_id' => $r->place_id,
+                    'name' => $r->station_name,
+                    'vicinity' => $r->note,
+                    'lat' => $r->latitude,
+                    'lng' => $r->longitude,
+                    'fuel_reports' => $r->fuelReports->toArray(),
+                    'last_report_at' => $r->created_at->toISOString(),
+                    'reporter_name' => $r->reporter_name,
+                    'is_demo' => true,
+                    'is_verified' => $r->is_verified,
+                    'confirmation_count' => $r->confirmation_count,
+                ]);
+
+            $merged = $merged->concat($demoStations);
 
             return response()->json([
                 'success' => true,
@@ -101,6 +127,9 @@ class StationController extends Controller
         ]);
 
         try {
+            // Auto-remove demo data for this station when real report comes in
+            StationReport::replaceDemoWithReal($validated['placeId']);
+
             $stationReport = StationReport::create([
                 'place_id' => $validated['placeId'],
                 'station_name' => $validated['stationName'],
@@ -109,6 +138,7 @@ class StationController extends Controller
                 'note' => $validated['note'] ?? null,
                 'latitude' => $validated['latitude'] ?? null,
                 'longitude' => $validated['longitude'] ?? null,
+                'is_demo' => false,
             ]);
 
             foreach ($validated['fuelReports'] as $fuel) {
