@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\FuelReport;
 use App\Models\Incident;
-use App\Models\SiteSetting;
 use App\Models\StationReport;
 use App\Services\GooglePlacesService;
 use App\Services\GroqAIService;
@@ -44,7 +43,7 @@ class DiscordInteractionController extends Controller
      */
     private function verifySignature(Request $request): bool
     {
-        $publicKey = SiteSetting::get('discord_public_key');
+        $publicKey = config('services.discord.public_key', '');
 
         if (empty($publicKey)) {
             Log::warning('Discord public key not configured');
@@ -389,7 +388,7 @@ class DiscordInteractionController extends Controller
         bool $ephemeral = false,
     ): JsonResponse {
         $siteUrl = config('app.url', 'https://thaihelp.app');
-        $iconUrl = SiteSetting::get('site_icon_url', "{$siteUrl}/images/icon.png");
+        $iconUrl = "{$siteUrl}/icons/icon-192x192.png";
 
         $embed = [
             'title' => $title,
@@ -409,7 +408,7 @@ class DiscordInteractionController extends Controller
             $embed['fields'] = $fields;
         }
 
-        $thumbnailUrl = SiteSetting::get('site_thumbnail_url', $iconUrl);
+        $thumbnailUrl = $iconUrl;
         if ($thumbnailUrl) {
             $embed['thumbnail'] = ['url' => $thumbnailUrl];
         }

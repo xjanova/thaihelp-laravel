@@ -52,4 +52,14 @@ return [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    'discord' => [
+        'bot_token' => env('DISCORD_BOT_TOKEN'),
+        'application_id' => env('DISCORD_APPLICATION_ID'),
+        'public_key' => env('DISCORD_PUBLIC_KEY'),
+        'guild_id' => env('DISCORD_GUILD_ID'),
+        'notification_channel_id' => env('DISCORD_NOTIFICATION_CHANNEL_ID'),
+        'admin_channel_id' => env('DISCORD_ADMIN_CHANNEL_ID'),
+        'webhook_url' => env('DISCORD_WEBHOOK_URL'),
+    ],
+
 ];
