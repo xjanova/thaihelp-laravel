@@ -161,7 +161,7 @@
                 this.success = false;
 
                 try {
-                    const response = await fetch('/api/reports', {
+                    const response = await fetch('/api/incidents', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

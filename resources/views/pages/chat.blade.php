@@ -144,11 +144,17 @@
 
                     const data = await response.json();
 
+                    const reply = data.reply || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่นะคะ';
                     this.messages.push({
                         role: 'assistant',
-                        content: data.reply || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่นะคะ',
+                        content: reply,
                         time: this.formatTime(),
                     });
+
+                    // Auto-play AI response with TTS
+                    if (window.sayText) {
+                        window.sayText(reply);
+                    }
                 } catch (err) {
                     this.messages.push({
                         role: 'assistant',
@@ -162,13 +168,26 @@
             },
 
             toggleMic() {
-                this.isRecording = !this.isRecording;
-                if (this.isRecording) {
-                    // TODO: Start speech recognition
-                    console.log('Start recording...');
+                if (!this.isRecording) {
+                    this.isRecording = true;
+                    if (window.startListening) {
+                        window.startListening({
+                            onResult: (transcript) => {
+                                this.input = transcript;
+                                this.isRecording = false;
+                                this.send();
+                            },
+                            onError: (err) => {
+                                console.error('Speech error:', err);
+                                this.isRecording = false;
+                            }
+                        });
+                    }
                 } else {
-                    // TODO: Stop speech recognition
-                    console.log('Stop recording...');
+                    this.isRecording = false;
+                    if (window.stopListening) {
+                        window.stopListening();
+                    }
                 }
             }
         };

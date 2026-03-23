@@ -1,5 +1,6 @@
 import Alpine from 'alpinejs';
 import axios from 'axios';
+import './speech.js';
 
 // Setup CSRF token for all axios requests
 const token = document.querySelector('meta[name="csrf-token"]');

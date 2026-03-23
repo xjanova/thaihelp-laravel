@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen">
+<div class="min-h-screen" x-data="stationsPage">
     {{-- Hero Section --}}
     <div class="relative overflow-hidden px-4 py-6" style="background: linear-gradient(135deg, rgba(37,99,235,0.15) 0%, rgba(249,115,22,0.1) 100%);">
         <div class="relative z-10">
@@ -121,21 +121,172 @@
 
 @push('scripts')
 <script>
-    // Radius slider
-    const radiusSlider = document.getElementById('radius-slider');
-    const radiusValue = document.getElementById('radius-value');
-    radiusSlider.addEventListener('input', (e) => {
-        radiusValue.textContent = e.target.value + ' กม.';
-    });
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('stationsPage', () => ({
+            stations: [],
+            loading: true,
+            radius: 10,
+            searchQuery: '',
+            selectedFuel: 'all',
+            userLat: 13.7563,
+            userLng: 100.5018,
 
-    // Fuel type filter buttons
-    document.querySelectorAll('[data-fuel]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('[data-fuel]').forEach(b => {
-                b.className = 'metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap';
-            });
-            btn.className = 'metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white whitespace-nowrap';
-        });
+            async init() {
+                await this.getUserLocation();
+                await this.searchStations();
+
+                // Radius slider
+                const radiusSlider = document.getElementById('radius-slider');
+                const radiusValue = document.getElementById('radius-value');
+                radiusSlider.addEventListener('input', (e) => {
+                    radiusValue.textContent = e.target.value + ' กม.';
+                    this.radius = parseInt(e.target.value);
+                });
+                radiusSlider.addEventListener('change', () => {
+                    this.searchStations();
+                });
+
+                // Search input
+                const searchInput = document.getElementById('station-search');
+                searchInput.addEventListener('input', (e) => {
+                    this.searchQuery = e.target.value;
+                    this.renderStations();
+                });
+
+                // Fuel filter buttons
+                document.querySelectorAll('[data-fuel]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('[data-fuel]').forEach(b => {
+                            b.className = 'metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap';
+                        });
+                        btn.className = 'metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white whitespace-nowrap';
+                        this.selectedFuel = btn.dataset.fuel;
+                        this.renderStations();
+                    });
+                });
+            },
+
+            async getUserLocation() {
+                return new Promise((resolve) => {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                this.userLat = pos.coords.latitude;
+                                this.userLng = pos.coords.longitude;
+                                resolve();
+                            },
+                            () => resolve()
+                        );
+                    } else {
+                        resolve();
+                    }
+                });
+            },
+
+            async searchStations() {
+                this.loading = true;
+                this.showLoading(true);
+                try {
+                    const res = await axios.get('/api/stations', {
+                        params: { lat: this.userLat, lng: this.userLng, radius: this.radius * 1000 }
+                    });
+                    if (res.data.success) {
+                        this.stations = res.data.data || [];
+                    } else {
+                        this.stations = res.data.data || res.data || [];
+                    }
+                } catch (err) {
+                    console.error('Failed to load stations:', err);
+                    this.stations = [];
+                } finally {
+                    this.loading = false;
+                    this.renderStations();
+                }
+            },
+
+            get filteredStations() {
+                return this.stations.filter(s => {
+                    if (this.searchQuery && !s.name.toLowerCase().includes(this.searchQuery.toLowerCase())) return false;
+                    if (this.selectedFuel !== 'all' && s.fuels) {
+                        const hasFuel = s.fuels.some(f => f.type === this.selectedFuel);
+                        if (!hasFuel) return false;
+                    }
+                    return true;
+                });
+            },
+
+            showLoading(show) {
+                const loadingEl = document.getElementById('station-loading');
+                const emptyEl = document.getElementById('station-empty');
+                if (loadingEl) loadingEl.classList.toggle('hidden', !show);
+                if (emptyEl) emptyEl.classList.add('hidden');
+            },
+
+            renderStations() {
+                const list = document.getElementById('station-list');
+                const loadingEl = document.getElementById('station-loading');
+                const emptyEl = document.getElementById('station-empty');
+                const template = document.getElementById('station-card-template');
+
+                // Remove old cards
+                list.querySelectorAll('.station-card').forEach(el => el.remove());
+
+                const filtered = this.filteredStations;
+
+                // Update counts
+                document.getElementById('station-count').textContent = this.stations.length;
+                document.getElementById('nearby-count').textContent = filtered.length;
+
+                if (loadingEl) loadingEl.classList.add('hidden');
+
+                if (filtered.length === 0) {
+                    if (emptyEl) emptyEl.classList.remove('hidden');
+                    return;
+                }
+                if (emptyEl) emptyEl.classList.add('hidden');
+
+                filtered.forEach(station => {
+                    const card = template.content.cloneNode(true);
+                    const wrapper = card.querySelector('.metal-panel');
+                    wrapper.classList.add('station-card');
+
+                    card.querySelector('.station-name').textContent = station.name || 'ปั๊มน้ำมัน';
+                    card.querySelector('.station-brand').textContent = station.brand || '';
+
+                    const dist = station.distance;
+                    if (dist !== undefined && dist !== null) {
+                        const distKm = dist >= 1000 ? (dist / 1000).toFixed(1) + ' กม.' : Math.round(dist) + ' ม.';
+                        card.querySelector('.station-distance').textContent = distKm;
+                    }
+
+                    // Fuel prices
+                    const fuelsGrid = card.querySelector('.station-fuels');
+                    if (station.fuels && station.fuels.length > 0) {
+                        station.fuels.forEach(fuel => {
+                            const fuelEl = document.createElement('div');
+                            fuelEl.className = 'metal-panel rounded-lg p-2 text-center';
+                            fuelEl.innerHTML = `
+                                <div class="text-[10px] text-slate-400">${fuel.name || fuel.type || ''}</div>
+                                <div class="text-sm font-semibold text-orange-500">${fuel.price ? fuel.price.toFixed(2) : '-'}</div>
+                            `;
+                            fuelsGrid.appendChild(fuelEl);
+                        });
+                    }
+
+                    // Navigate button
+                    const navBtn = card.querySelector('.btn-navigate');
+                    navBtn.addEventListener('click', () => {
+                        const lat = station.latitude || station.lat;
+                        const lng = station.longitude || station.lng;
+                        if (lat && lng) {
+                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+                        }
+                    });
+
+                    list.appendChild(card);
+                });
+            }
+        }));
     });
 </script>
 @endpush

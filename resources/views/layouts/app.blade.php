@@ -38,6 +38,42 @@
         @yield('content')
     </main>
 
+    {{-- Floating Ying Character --}}
+    @unless(request()->is('chat'))
+    <div id="ying-float" class="fixed z-40" style="bottom: 5rem; right: 0.75rem;">
+        <a href="/chat" class="block relative">
+            {{-- Speech bubble --}}
+            <div id="ying-bubble" class="absolute -top-12 -left-32 w-36 bg-white text-gray-800 text-xs rounded-xl px-3 py-2 shadow-lg opacity-0 transition-opacity duration-500" style="pointer-events:none;">
+                สวัสดีค่ะ! ถามหญิงได้นะ
+                <div class="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-3 h-3 bg-white"></div>
+            </div>
+            <img src="/images/ying.png" alt="น้องหญิง" class="w-14 h-14 rounded-full shadow-lg border-2 border-orange-400 ying-float-anim"
+                 onerror="this.parentElement.parentElement.style.display='none'">
+        </a>
+    </div>
+    <style>
+        @keyframes yingFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .ying-float-anim {
+            animation: yingFloat 3s ease-in-out infinite;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!sessionStorage.getItem('ying_greeted')) {
+                const bubble = document.getElementById('ying-bubble');
+                if (bubble) {
+                    setTimeout(() => { bubble.style.opacity = '1'; }, 1500);
+                    setTimeout(() => { bubble.style.opacity = '0'; }, 5500);
+                    sessionStorage.setItem('ying_greeted', '1');
+                }
+            }
+        });
+    </script>
+    @endunless
+
     {{-- Bottom Navigation --}}
     @include('components.bottom-nav')
 

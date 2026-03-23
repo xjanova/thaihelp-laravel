@@ -76,6 +76,9 @@
 <script>
     let map;
     let currentFilter = 'all';
+    let stationMarkers = [];
+    let incidentMarkers = [];
+    let userPos = { lat: 13.7563, lng: 100.5018 };
 
     function closeWelcome() {
         const overlay = document.getElementById('welcome-overlay');
@@ -96,7 +99,75 @@
                 btn.className = 'metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300';
             }
         });
-        // TODO: Filter map markers based on selection
+        // Apply filter to markers
+        stationMarkers.forEach(m => m.setVisible(filter === 'all' || filter === 'stations'));
+        incidentMarkers.forEach(m => m.setVisible(filter === 'all' || filter === 'incidents'));
+    }
+
+    async function loadMapData() {
+        try {
+            // Load stations
+            const stationsRes = await fetch(`/api/stations?lat=${userPos.lat}&lng=${userPos.lng}&radius=10000`);
+            const stationsData = await stationsRes.json();
+            const stations = stationsData.success ? (stationsData.data || []) : (stationsData.data || []);
+            stations.forEach(station => {
+                const lat = station.latitude || station.lat;
+                const lng = station.longitude || station.lng;
+                if (!lat || !lng) return;
+                const marker = new google.maps.Marker({
+                    position: { lat: parseFloat(lat), lng: parseFloat(lng) },
+                    map: map,
+                    title: station.name || 'Gas Station',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 7,
+                        fillColor: '#f97316',
+                        fillOpacity: 0.9,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 1.5,
+                    },
+                });
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div style="color:#000;font-size:13px"><strong>${station.name || 'ปั๊มน้ำมัน'}</strong><br>${station.brand || ''}</div>`
+                });
+                marker.addListener('click', () => infoWindow.open(map, marker));
+                stationMarkers.push(marker);
+            });
+        } catch (err) {
+            console.error('Failed to load stations:', err);
+        }
+
+        try {
+            // Load incidents
+            const incidentsRes = await fetch(`/api/incidents?lat=${userPos.lat}&lng=${userPos.lng}&radius=10000`);
+            const incidentsData = await incidentsRes.json();
+            const incidents = incidentsData.success ? (incidentsData.data || []) : (incidentsData.data || []);
+            incidents.forEach(incident => {
+                const lat = incident.latitude || incident.lat;
+                const lng = incident.longitude || incident.lng;
+                if (!lat || !lng) return;
+                const marker = new google.maps.Marker({
+                    position: { lat: parseFloat(lat), lng: parseFloat(lng) },
+                    map: map,
+                    title: incident.title || 'Incident',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 7,
+                        fillColor: '#ef4444',
+                        fillOpacity: 0.9,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 1.5,
+                    },
+                });
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div style="color:#000;font-size:13px"><strong>${incident.title || 'เหตุการณ์'}</strong><br>${incident.category || ''}</div>`
+                });
+                marker.addListener('click', () => infoWindow.open(map, marker));
+                incidentMarkers.push(marker);
+            });
+        } catch (err) {
+            console.error('Failed to load incidents:', err);
+        }
     }
 
     function initMap() {
@@ -126,13 +197,13 @@
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const pos = {
+                    userPos = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude,
                     };
-                    map.setCenter(pos);
+                    map.setCenter(userPos);
                     new google.maps.Marker({
-                        position: pos,
+                        position: userPos,
                         map: map,
                         icon: {
                             path: google.maps.SymbolPath.CIRCLE,
@@ -144,11 +215,15 @@
                         },
                         title: 'ตำแหน่งของคุณ',
                     });
+                    loadMapData();
                 },
                 () => {
                     console.log('Geolocation permission denied, using default location');
+                    loadMapData();
                 }
             );
+        } else {
+            loadMapData();
         }
     }
 
