@@ -80,10 +80,17 @@ class TtsController extends Controller
             $pitch = '+15Hz';
             $rate = '+5%';
 
-            // Find edge-tts binary (might be in ~/.local/bin)
+            // Find edge-tts binary
             $edgeTtsBin = 'edge-tts';
-            $localBin = getenv('HOME') . '/.local/bin/edge-tts';
-            if (file_exists($localBin)) $edgeTtsBin = $localBin;
+            $searchPaths = [
+                '/usr/local/bin/edge-tts',
+                '/usr/bin/edge-tts',
+                (getenv('HOME') ?: '/home/admin') . '/.local/bin/edge-tts',
+                '/root/.local/bin/edge-tts',
+            ];
+            foreach ($searchPaths as $path) {
+                if (file_exists($path)) { $edgeTtsBin = $path; break; }
+            }
 
             $process = new \Symfony\Component\Process\Process([
                 $edgeTtsBin,
