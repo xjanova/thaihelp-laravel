@@ -151,35 +151,8 @@
         @yield('content')
     </main>
 
-    {{-- Floating Ying Character --}}
+    {{-- Ying Sound & Greeting System (rendered in bottom nav center) --}}
     @unless(request()->is('chat'))
-    <div id="ying-float" class="fixed z-40" style="bottom: 5rem; right: 0.75rem;">
-        {{-- Sound toggle --}}
-        <button id="ying-sound-toggle" onclick="toggleYingSound()"
-                class="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-[10px] z-50 shadow-md hover:bg-slate-700 transition-colors"
-                title="เปิด/ปิดเสียงน้องหญิง">
-            <span id="ying-sound-icon">🔇</span>
-        </button>
-
-        <a href="/chat" class="block relative">
-            {{-- Speech bubble --}}
-            <div id="ying-bubble" class="absolute -top-14 -left-40 w-44 bg-white text-gray-800 text-xs rounded-xl px-3 py-2 shadow-lg opacity-0 transition-opacity duration-500" style="pointer-events:none;">
-                <span id="ying-bubble-text">สวัสดีค่ะ! ถามหญิงได้นะ</span>
-                <div class="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-3 h-3 bg-white"></div>
-            </div>
-            <img src="/images/ying.webp" alt="น้องหญิง" class="w-14 h-14 rounded-full shadow-lg border-2 border-orange-400 ying-float-anim"
-                 onerror="this.parentElement.parentElement.style.display='none'">
-        </a>
-    </div>
-    <style>
-        @keyframes yingFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
-        .ying-float-anim {
-            animation: yingFloat 3s ease-in-out infinite;
-        }
-    </style>
     <script>
         // ─── Ying Sound System ───
         const YING_SOUND_KEY = 'ying_sound_enabled';
@@ -263,15 +236,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             updateSoundIcon();
 
-            const bubble = document.getElementById('ying-bubble');
-            const bubbleText = document.getElementById('ying-bubble-text');
+            const bubble = document.getElementById('ying-nav-bubble');
+            const bubbleText = document.getElementById('ying-nav-bubble-text');
 
             if (shouldGreetToday()) {
                 const greeting = getDailyGreeting();
 
                 if (bubbleText) bubbleText.textContent = greeting;
 
-                // Show bubble
+                // Show bubble above bottom nav center
                 if (bubble) {
                     setTimeout(() => { bubble.style.opacity = '1'; }, 1500);
                     setTimeout(() => { bubble.style.opacity = '0'; }, 7000);
@@ -282,8 +255,9 @@
 
                 markGreetedToday();
             } else {
-                // Already greeted today — just show brief bubble
+                // Already greeted today — show brief bubble
                 if (bubble) {
+                    if (bubbleText) bubbleText.textContent = 'ถามหญิงได้นะคะ 😊';
                     setTimeout(() => { bubble.style.opacity = '1'; }, 2000);
                     setTimeout(() => { bubble.style.opacity = '0'; }, 4500);
                 }

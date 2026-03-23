@@ -1,6 +1,5 @@
 {{-- Fixed Bottom Navigation - 5 tabs with น้องหญิง center --}}
 <nav class="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
-    {{-- Background bar --}}
     <div class="chrome-bar-bottom h-16 relative">
         <div class="flex items-end justify-around h-16 px-1">
 
@@ -26,25 +25,37 @@
                 @endif
             </a>
 
-            {{-- 3. น้องหญิง (CENTER - larger avatar) --}}
-            <a href="/chat" class="relative flex flex-col items-center -mt-6 w-16">
-                {{-- Glow ring --}}
-                <div class="relative">
-                    <div class="absolute inset-0 rounded-full {{ Request::is('chat*') ? 'bg-orange-500/30 animate-pulse' : 'bg-slate-600/20' }}" style="margin: -3px;"></div>
-                    {{-- Avatar container --}}
-                    <div class="relative w-12 h-12 rounded-full border-2 {{ Request::is('chat*') ? 'border-orange-500 shadow-lg shadow-orange-500/30' : 'border-slate-600' }} overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800">
-                        <img src="/images/ying-avatar.webp"
-                             alt="น้องหญิง"
-                             class="w-full h-full object-cover"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        {{-- Fallback emoji avatar --}}
-                        <div class="w-full h-full items-center justify-center text-xl" style="display:none;">👧</div>
-                    </div>
-                    {{-- Online indicator --}}
-                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></span>
+            {{-- 3. น้องหญิง (CENTER - avatar with speech bubble) --}}
+            <div class="relative flex flex-col items-center -mt-5 w-16">
+                {{-- Speech bubble (greeting) --}}
+                <div id="ying-nav-bubble" class="absolute -top-12 left-1/2 -translate-x-1/2 w-44 bg-white text-gray-800 text-[11px] rounded-xl px-3 py-1.5 shadow-lg opacity-0 transition-opacity duration-500 z-50" style="pointer-events:none;">
+                    <span id="ying-nav-bubble-text">สวัสดีค่ะ! ถามหญิงได้นะ</span>
+                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white"></div>
                 </div>
+
+                {{-- Sound toggle --}}
+                <button id="ying-sound-toggle" onclick="event.preventDefault(); event.stopPropagation(); toggleYingSound();"
+                        class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-[8px] z-50 shadow-md hover:bg-slate-700 transition-colors"
+                        title="เปิด/ปิดเสียงน้องหญิง">
+                    <span id="ying-sound-icon">🔇</span>
+                </button>
+
+                {{-- Avatar link --}}
+                <a href="/chat" class="relative block">
+                    <div class="relative">
+                        <div class="absolute inset-0 rounded-full {{ Request::is('chat*') ? 'bg-orange-500/30 animate-pulse' : 'bg-slate-600/20' }}" style="margin: -3px;"></div>
+                        <div class="relative w-12 h-12 rounded-full border-2 {{ Request::is('chat*') ? 'border-orange-500 shadow-lg shadow-orange-500/30' : 'border-slate-600' }} overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800">
+                            <img src="/images/ying.webp"
+                                 alt="น้องหญิง"
+                                 class="w-full h-full object-cover"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="w-full h-full items-center justify-center text-xl" style="display:none;">👧</div>
+                        </div>
+                        <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></span>
+                    </div>
+                </a>
                 <span class="text-[10px] font-medium leading-tight mt-0.5 {{ Request::is('chat*') ? 'text-orange-500' : 'text-slate-400' }}">น้องหญิง</span>
-            </a>
+            </div>
 
             {{-- 4. ปั๊มน้ำมัน --}}
             <a href="/stations" class="relative flex flex-col items-center justify-center gap-0.5 w-14 pb-1 pt-2 {{ Request::is('stations*') ? 'text-orange-500' : 'text-slate-400 hover:text-slate-300' }}">
