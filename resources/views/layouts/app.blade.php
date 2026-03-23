@@ -399,11 +399,44 @@
                 _deferredPrompt.userChoice.then((choice) => {
                     if (choice.outcome === 'accepted') {
                         document.getElementById('pwa-install-banner').style.display = 'none';
+                        // Track PWA install
+                        trackPWAInstall('android');
                     }
                     _deferredPrompt = null;
                 });
             }
         }
+
+        function trackPWAInstall(device) {
+            fetch('/api/pwa/installed', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({ device_type: device }),
+            }).catch(() => {});
+        }
+
+        // Detect if running as PWA
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+            const ua = navigator.userAgent.toLowerCase();
+            const device = /iphone|ipad/.test(ua) ? 'ios' : /android/.test(ua) ? 'android' : 'desktop';
+            trackPWAInstall(device);
+        }
+
+        // Heartbeat — track active users
+        @auth
+        setInterval(() => {
+            fetch('/api/heartbeat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+            }).catch(() => {});
+        }, 300000); // Every 5 minutes
+        @endauth
 
         function dismissPWA() {
             document.getElementById('pwa-install-banner').style.display = 'none';

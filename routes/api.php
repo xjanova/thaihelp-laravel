@@ -117,5 +117,30 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+// PWA installation tracking
+Route::post('/pwa/installed', function (\Illuminate\Http\Request $request) {
+    $validated = $request->validate([
+        'device_type' => ['nullable', 'string', 'in:ios,android,desktop'],
+    ]);
+
+    if ($request->user()) {
+        $request->user()->update([
+            'pwa_installed' => true,
+            'pwa_installed_at' => now(),
+            'device_type' => $validated['device_type'] ?? 'desktop',
+        ]);
+    }
+
+    return response()->json(['success' => true]);
+})->middleware('throttle:5,1');
+
+// Track user activity (heartbeat)
+Route::post('/heartbeat', function (\Illuminate\Http\Request $request) {
+    if ($request->user()) {
+        $request->user()->update(['last_active_at' => now()]);
+    }
+    return response()->json(['ok' => true]);
+})->middleware(['auth', 'throttle:10,1']);
+
 // Discord Bot Interactions
 Route::post('/discord/interactions', [\App\Http\Controllers\DiscordInteractionController::class, 'handle']);

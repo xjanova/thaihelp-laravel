@@ -25,6 +25,10 @@ class User extends Authenticatable implements FilamentUser
         'reputation_score',
         'total_reports',
         'total_confirmations',
+        'pwa_installed',
+        'pwa_installed_at',
+        'device_type',
+        'last_active_at',
     ];
 
     protected $hidden = [
@@ -38,9 +42,12 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'pwa_installed' => 'boolean',
             'reputation_score' => 'integer',
             'total_reports' => 'integer',
             'total_confirmations' => 'integer',
+            'pwa_installed_at' => 'datetime',
+            'last_active_at' => 'datetime',
         ];
     }
 

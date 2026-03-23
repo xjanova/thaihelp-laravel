@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Models\SiteSetting;
 use App\Services\GooglePlacesService;
 use App\Services\GroqAIService;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register LINE socialite provider
+        Event::listen(SocialiteWasCalled::class, function (SocialiteWasCalled $socialiteWasCalled) {
+            $socialiteWasCalled->extendSocialite('line', \SocialiteProviders\Line\Provider::class);
+        });
+
         // Override config with DB settings for OAuth providers
         $this->overrideConfigFromDatabase();
     }

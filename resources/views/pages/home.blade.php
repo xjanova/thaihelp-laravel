@@ -28,6 +28,9 @@
             <button onclick="toggleLabels()" id="btn-labels" class="metal-btn-accent px-2.5 py-1 rounded-full text-[10px] text-white">
                 📌 ป้าย
             </button>
+            <button onclick="togglePOI()" id="btn-poi" class="metal-btn px-2.5 py-1 rounded-full text-[10px] text-slate-400">
+                🏫 สถานที่
+            </button>
         </div>
     </div>
 
@@ -180,6 +183,47 @@
     let stationMarkers = [];
     let incidentMarkers = [];
     let userPos = { lat: 13.7563, lng: 100.5018 };
+    let showPOI = false;
+
+    // ─── Map Styles ───
+    const mapStyleBase = [
+        { elementType: 'geometry', stylers: [{ color: '#0a0e17' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0e17' }] },
+        { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+        { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#334155' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
+        { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+    ];
+
+    // Clean: hide ALL POIs (schools, hotels, shops, parks, etc.)
+    const mapStylesClean = [
+        ...mapStyleBase,
+        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.government', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.school', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.medical', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.place_of_worship', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.sports_complex', stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    ];
+
+    // With POI: show everything
+    const mapStylesWithPOI = [
+        ...mapStyleBase,
+        { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#111827' }] },
+        { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#64748b' }] },
+    ];
+
+    function togglePOI() {
+        showPOI = !showPOI;
+        map.setOptions({ styles: showPOI ? mapStylesWithPOI : mapStylesClean });
+        const btn = document.getElementById('btn-poi');
+        btn.className = showPOI
+            ? 'metal-btn-accent px-2.5 py-1 rounded-full text-[10px] text-white'
+            : 'metal-btn px-2.5 py-1 rounded-full text-[10px] text-slate-400';
+    }
 
     function closeWelcome() {
         const overlay = document.getElementById('welcome-overlay');
@@ -359,16 +403,7 @@
         map = new google.maps.Map(document.getElementById('map'), {
             center: defaultCenter,
             zoom: 13,
-            styles: [
-                { elementType: 'geometry', stylers: [{ color: '#0a0e17' }] },
-                { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0e17' }] },
-                { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
-                { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-                { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#334155' }] },
-                { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
-                { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#111827' }] },
-                { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-            ],
+            styles: mapStylesClean,
             disableDefaultUI: true,
             zoomControl: true,
             zoomControlOptions: {
