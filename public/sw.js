@@ -1,8 +1,11 @@
-const CACHE_NAME = 'thaihelp-v1';
+const CACHE_NAME = 'thaihelp-v2';
 
 const PRECACHE_URLS = [
     '/',
-    '/offline',
+    '/offline.html',
+    '/images/logo.png',
+    '/images/ying.png',
+    '/manifest.json',
 ];
 
 // Install: cache essential assets
@@ -29,10 +32,8 @@ self.addEventListener('activate', (event) => {
 
 // Fetch: network first, fallback to cache
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
-    // Skip admin panel and API requests from caching
     const url = new URL(event.request.url);
     if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/')) {
         return;
@@ -41,7 +42,6 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // Cache successful responses
                 if (response.status === 200) {
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
@@ -51,21 +51,14 @@ self.addEventListener('fetch', (event) => {
                 return response;
             })
             .catch(() => {
-                // Network failed, try cache
                 return caches.match(event.request).then((cachedResponse) => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
+                    if (cachedResponse) return cachedResponse;
 
-                    // If it's a navigation request and not cached, show offline page
                     if (event.request.mode === 'navigate') {
-                        return caches.match('/offline');
+                        return caches.match('/offline.html');
                     }
 
-                    return new Response('Offline', {
-                        status: 503,
-                        statusText: 'Service Unavailable',
-                    });
+                    return new Response('Offline', { status: 503 });
                 });
             })
     );

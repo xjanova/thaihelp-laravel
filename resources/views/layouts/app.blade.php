@@ -13,7 +13,7 @@
 
     {{-- PWA --}}
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/images/logo.png">
     <meta name="theme-color" content="#f97316">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -249,6 +249,91 @@
                 { timeout: 5000 }
             );
         });
+    </script>
+
+    {{-- iOS/Android PWA Install Prompt + Permission Requests --}}
+    <div id="pwa-install-banner" style="display:none;"
+         class="fixed bottom-20 left-3 right-3 z-[998] metal-panel rounded-xl p-3 shadow-2xl border border-orange-500/30">
+        <div class="flex items-center gap-3">
+            <img src="/images/logo.png" class="w-10 h-10 rounded-xl" alt="ThaiHelp">
+            <div class="flex-1">
+                <p class="text-sm font-medium text-white">ติดตั้ง ThaiHelp</p>
+                <p class="text-[10px] text-slate-400">เพิ่มลงหน้าจอเพื่อใช้งานสะดวกขึ้น</p>
+            </div>
+            <button id="pwa-install-btn" onclick="installPWA()" class="metal-btn-accent px-3 py-1.5 rounded-lg text-xs font-bold text-white">ติดตั้ง</button>
+            <button onclick="dismissPWA()" class="text-slate-500 hover:text-white text-lg">&times;</button>
+        </div>
+        {{-- iOS Safari instructions --}}
+        <div id="ios-install-hint" style="display:none;" class="mt-2 text-[11px] text-slate-400 bg-slate-800 rounded-lg p-2">
+            📱 กด <strong class="text-white">แชร์</strong> (ปุ่ม ⬆️ ด้านล่าง) → แล้วกด <strong class="text-white">"เพิ่มไปยังหน้าจอโฮม"</strong>
+        </div>
+    </div>
+    <script>
+        let _deferredPrompt = null;
+
+        // Android/Chrome: capture beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            _deferredPrompt = e;
+            if (!localStorage.getItem('pwa_dismissed')) {
+                document.getElementById('pwa-install-banner').style.display = 'block';
+            }
+        });
+
+        function installPWA() {
+            if (_deferredPrompt) {
+                _deferredPrompt.prompt();
+                _deferredPrompt.userChoice.then((choice) => {
+                    if (choice.outcome === 'accepted') {
+                        document.getElementById('pwa-install-banner').style.display = 'none';
+                    }
+                    _deferredPrompt = null;
+                });
+            }
+        }
+
+        function dismissPWA() {
+            document.getElementById('pwa-install-banner').style.display = 'none';
+            localStorage.setItem('pwa_dismissed', Date.now());
+        }
+
+        // iOS Safari detection
+        document.addEventListener('DOMContentLoaded', () => {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+            if (isIOS && !isStandalone && isSafari && !localStorage.getItem('pwa_dismissed')) {
+                document.getElementById('pwa-install-banner').style.display = 'block';
+                document.getElementById('ios-install-hint').style.display = 'block';
+                document.getElementById('pwa-install-btn').style.display = 'none';
+            }
+
+            // iOS: request microphone + geolocation permissions proactively
+            if (isIOS) {
+                requestIOSPermissions();
+            }
+        });
+
+        async function requestIOSPermissions() {
+            if (localStorage.getItem('ios_permissions_asked')) return;
+
+            // Wait a bit after page load
+            setTimeout(async () => {
+                try {
+                    // Request microphone
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        stream.getTracks().forEach(t => t.stop()); // Release immediately
+                    }
+                } catch (e) {
+                    console.log('[iOS] Mic permission:', e.message);
+                }
+
+                // GPS is requested by the GPS enforcement script already
+                localStorage.setItem('ios_permissions_asked', '1');
+            }, 3000);
+        }
     </script>
 
     {{-- Vite JS --}}
