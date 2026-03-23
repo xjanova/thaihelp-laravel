@@ -146,6 +146,8 @@
                         body: JSON.stringify({
                             message: text,
                             history: this.messages.slice(-10),
+                            latitude: window._userLat || null,
+                            longitude: window._userLng || null,
                         }),
                     });
 

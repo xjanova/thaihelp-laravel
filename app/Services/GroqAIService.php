@@ -27,7 +27,7 @@ class GroqAIService
      * Send a chat request to the Groq API.
      * Uses API key pool for load balancing.
      */
-    public function chat(array $messages): string
+    public function chat(array $messages, string $locationContext = ''): string
     {
         $systemPrompt = <<<'PROMPT'
 คุณคือ "น้องหญิง" ผู้ช่วย AI ของแอป ThaiHelp — แอปชุมชนช่วยเหลือนักเดินทางไทย
@@ -148,6 +148,17 @@ class GroqAIService
 18. ถ้าผู้ใช้ถามเรื่องข่าวด่วนสร้างยังไง → อธิบาย:
    "เมื่อมีคน 3 คนขึ้นไปรายงานเหตุเดียวกันในพื้นที่ใกล้กัน หญิงจะเขียนข่าวด่วนให้อัตโนมัติเลยค่ะ! 🔴"
 PROMPT;
+
+        // Inject location context if available
+        if (!empty($locationContext)) {
+            $systemPrompt .= "\n\n═══ ข้อมูลตำแหน่งและปั๊มรอบตัวผู้ใช้ (LIVE DATA) ═══\n" . $locationContext
+                . "\n\n═══ กฎใช้ข้อมูลตำแหน่ง ═══"
+                . "\n- ถ้าผู้ใช้จะรายงานปั๊ม → เสนอปั๊มจากรายการด้านบนให้เลือก ไม่ต้องถามชื่อ"
+                . "\n- ถ้าผู้ใช้ถามหาปั๊ม → แนะนำจากรายการด้านบน พร้อมระยะทาง"
+                . "\n- ถ้าผู้ใช้พูดเลขหรือชื่อปั๊ม → จับคู่กับรายการด้านบน"
+                . "\n- ถ้ามีรายงานล่าสุดในพื้นที่ → บอกผู้ใช้ด้วย เช่น 'มีคนรายงานว่าปั๊ม X ดีเซลหมดเมื่อ 30 นาทีก่อนค่ะ'"
+                . "\n- ถ้ามีเหตุการณ์ในพื้นที่ → เตือนผู้ใช้ด้วย";
+        }
 
         $allMessages = array_merge(
             [['role' => 'system', 'content' => $systemPrompt]],
