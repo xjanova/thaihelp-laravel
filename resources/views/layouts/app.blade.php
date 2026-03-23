@@ -41,10 +41,17 @@
     {{-- Floating Ying Character --}}
     @unless(request()->is('chat'))
     <div id="ying-float" class="fixed z-40" style="bottom: 5rem; right: 0.75rem;">
+        {{-- Sound toggle --}}
+        <button id="ying-sound-toggle" onclick="toggleYingSound()"
+                class="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-[10px] z-50 shadow-md hover:bg-slate-700 transition-colors"
+                title="เปิด/ปิดเสียงน้องหญิง">
+            <span id="ying-sound-icon">🔇</span>
+        </button>
+
         <a href="/chat" class="block relative">
             {{-- Speech bubble --}}
-            <div id="ying-bubble" class="absolute -top-12 -left-32 w-36 bg-white text-gray-800 text-xs rounded-xl px-3 py-2 shadow-lg opacity-0 transition-opacity duration-500" style="pointer-events:none;">
-                สวัสดีค่ะ! ถามหญิงได้นะ
+            <div id="ying-bubble" class="absolute -top-14 -left-40 w-44 bg-white text-gray-800 text-xs rounded-xl px-3 py-2 shadow-lg opacity-0 transition-opacity duration-500" style="pointer-events:none;">
+                <span id="ying-bubble-text">สวัสดีค่ะ! ถามหญิงได้นะ</span>
                 <div class="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-3 h-3 bg-white"></div>
             </div>
             <img src="/images/ying.png" alt="น้องหญิง" class="w-14 h-14 rounded-full shadow-lg border-2 border-orange-400 ying-float-anim"
@@ -61,13 +68,111 @@
         }
     </style>
     <script>
+        // ─── Ying Sound System ───
+        const YING_SOUND_KEY = 'ying_sound_enabled';
+        const YING_GREETED_KEY = 'ying_greeted_date';
+
+        function isYingSoundEnabled() {
+            return localStorage.getItem(YING_SOUND_KEY) === '1';
+        }
+
+        function toggleYingSound() {
+            const enabled = !isYingSoundEnabled();
+            localStorage.setItem(YING_SOUND_KEY, enabled ? '1' : '0');
+            updateSoundIcon();
+
+            if (enabled) {
+                // First time enabling — greet immediately
+                yingSpeak('เปิดเสียงแล้วค่ะ หญิงพร้อมช่วยเลยนะคะ 😊');
+            }
+        }
+
+        function updateSoundIcon() {
+            const icon = document.getElementById('ying-sound-icon');
+            const btn = document.getElementById('ying-sound-toggle');
+            if (isYingSoundEnabled()) {
+                icon.textContent = '🔊';
+                btn.classList.add('ring-2', 'ring-orange-500/50');
+                btn.title = 'ปิดเสียงน้องหญิง';
+            } else {
+                icon.textContent = '🔇';
+                btn.classList.remove('ring-2', 'ring-orange-500/50');
+                btn.title = 'เปิดเสียงน้องหญิง';
+            }
+        }
+
+        // Speak with quota management
+        // force=true: always speak (daily greeting uses free browser TTS)
+        // force=false: only if sound enabled (uses server TTS with quota)
+        function yingSpeak(text, force = false) {
+            if (!force && !isYingSoundEnabled()) return;
+
+            if (force) {
+                // Daily greeting: use free browser TTS to save quota
+                if (window.sayTextBrowser) {
+                    window.sayTextBrowser(text);
+                } else if ('speechSynthesis' in window) {
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = 'th-TH';
+                    u.pitch = 1.4;
+                    u.rate = 1.05;
+                    window.speechSynthesis.speak(u);
+                }
+            } else if (window.sayText) {
+                window.sayText(text);
+            }
+        }
+
+        // ─── Daily Greeting ───
+        function shouldGreetToday() {
+            const today = new Date().toDateString();
+            const lastGreeted = localStorage.getItem(YING_GREETED_KEY);
+            return lastGreeted !== today;
+        }
+
+        function markGreetedToday() {
+            localStorage.setItem(YING_GREETED_KEY, new Date().toDateString());
+        }
+
+        // Greetings based on time of day
+        function getDailyGreeting() {
+            const hour = new Date().getHours();
+            const user = '{{ auth()->user()?->nickname ?? "" }}';
+            const name = user ? ` คุณ${user}` : '';
+
+            if (hour < 6) return `ยังไม่นอนเหรอคะ${name}? หญิงห่วงนะคะ 🌙`;
+            if (hour < 12) return `สวัสดีตอนเช้าค่ะ${name}! วันนี้เดินทางปลอดภัยนะคะ ☀️`;
+            if (hour < 17) return `สวัสดีตอนบ่ายค่ะ${name}! มีอะไรให้หญิงช่วยไหมคะ? 😊`;
+            if (hour < 21) return `สวัสดีตอนเย็นค่ะ${name}! ขับรถกลับบ้านระวังด้วยนะคะ 🌇`;
+            return `สวัสดีค่ะ${name}! ดึกแล้วขับรถระวังนะคะ 🌙`;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            if (!sessionStorage.getItem('ying_greeted')) {
-                const bubble = document.getElementById('ying-bubble');
+            updateSoundIcon();
+
+            const bubble = document.getElementById('ying-bubble');
+            const bubbleText = document.getElementById('ying-bubble-text');
+
+            if (shouldGreetToday()) {
+                const greeting = getDailyGreeting();
+
+                if (bubbleText) bubbleText.textContent = greeting;
+
+                // Show bubble
                 if (bubble) {
                     setTimeout(() => { bubble.style.opacity = '1'; }, 1500);
-                    setTimeout(() => { bubble.style.opacity = '0'; }, 5500);
-                    sessionStorage.setItem('ying_greeted', '1');
+                    setTimeout(() => { bubble.style.opacity = '0'; }, 7000);
+                }
+
+                // Always speak daily greeting (uses free browser TTS)
+                setTimeout(() => { yingSpeak(greeting, true); }, 2000);
+
+                markGreetedToday();
+            } else {
+                // Already greeted today — just show brief bubble
+                if (bubble) {
+                    setTimeout(() => { bubble.style.opacity = '1'; }, 2000);
+                    setTimeout(() => { bubble.style.opacity = '0'; }, 4500);
                 }
             }
         });
