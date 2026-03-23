@@ -173,6 +173,10 @@ class StationController extends Controller
 
             $stationReport->load('fuelReports');
 
+            if ($request->user()) {
+                $request->user()->incrementReports();
+            }
+
             // Send Discord notification
             try {
                 app(DiscordService::class)->notifyNewStationReport($stationReport);
@@ -203,6 +207,10 @@ class StationController extends Controller
         $ip = $request->ip();
 
         if ($report->confirm($ip)) {
+            if ($request->user()) {
+                $request->user()->incrementConfirmations();
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'ยืนยันรายงานสำเร็จ ขอบคุณค่ะ!',

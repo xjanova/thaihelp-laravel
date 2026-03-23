@@ -65,5 +65,38 @@ Route::post('/chat', [ChatController::class, 'apiChat'])
 Route::post('/voice-command', [VoiceCommandController::class, 'process'])
     ->middleware('throttle:15,1');
 
+// My reports (auth required)
+Route::middleware('auth')->group(function () {
+    Route::get('/my-reports', function (\Illuminate\Http\Request $request) {
+        $incidents = $request->user()->incidents()->with('votes')->latest()->get();
+        $stations = $request->user()->stationReports()->with('fuelReports')->latest()->get();
+        return response()->json([
+            'success' => true,
+            'incidents' => $incidents,
+            'stations' => $stations,
+        ]);
+    });
+
+    Route::put('/incidents/{incident}', [\App\Http\Controllers\IncidentController::class, 'apiUpdate']);
+    Route::delete('/incidents/{incident}', [\App\Http\Controllers\IncidentController::class, 'apiDestroy']);
+
+    Route::get('/user/profile', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $user->id,
+                'nickname' => $user->nickname,
+                'avatar_url' => $user->avatar_url,
+                'reputation_score' => $user->reputation_score ?? 0,
+                'total_reports' => $user->total_reports ?? 0,
+                'total_confirmations' => $user->total_confirmations ?? 0,
+                'star_level' => $user->getStarLevel(),
+                'member_since' => $user->created_at->toISOString(),
+            ],
+        ]);
+    });
+});
+
 // Discord Bot Interactions
 Route::post('/discord/interactions', [\App\Http\Controllers\DiscordInteractionController::class, 'handle']);

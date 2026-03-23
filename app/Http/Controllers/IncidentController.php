@@ -80,6 +80,10 @@ class IncidentController extends Controller
 
             $incident->load('user:id,nickname,avatar_url');
 
+            if ($request->user()) {
+                $request->user()->incrementReports();
+            }
+
             // Send Discord notification
             try {
                 app(DiscordService::class)->notifyNewIncident($incident);
@@ -137,6 +141,10 @@ class IncidentController extends Controller
 
             $incident->increment('upvotes');
 
+            if ($request->user()) {
+                $request->user()->addReputation(1);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'โหวตสำเร็จ!',
@@ -155,5 +163,38 @@ class IncidentController extends Controller
                 'message' => 'ไม่สามารถโหวตได้ กรุณาลองใหม่',
             ], 500);
         }
+    }
+
+    public function apiUpdate(Request $request, Incident $incident): JsonResponse
+    {
+        if (!$request->user() || $request->user()->id !== $incident->user_id) {
+            return response()->json(['success' => false, 'message' => 'ไม่มีสิทธิ์แก้ไข'], 403);
+        }
+
+        if ($incident->expires_at && $incident->expires_at->isPast()) {
+            return response()->json(['success' => false, 'message' => 'รายงานหมดอายุแล้ว'], 410);
+        }
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'string', 'max:200'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'category' => ['sometimes', 'string', 'in:' . implode(',', Incident::CATEGORIES)],
+        ]);
+
+        $incident->update($validated);
+
+        return response()->json(['success' => true, 'data' => $incident->fresh()]);
+    }
+
+    public function apiDestroy(Request $request, Incident $incident): JsonResponse
+    {
+        if (!$request->user() || $request->user()->id !== $incident->user_id) {
+            return response()->json(['success' => false, 'message' => 'ไม่มีสิทธิ์ลบ'], 403);
+        }
+
+        $incident->votes()->delete();
+        $incident->delete();
+
+        return response()->json(['success' => true, 'message' => 'ลบรายงานสำเร็จ']);
     }
 }

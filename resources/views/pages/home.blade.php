@@ -98,8 +98,8 @@
 
             {{-- Avatar Greeting --}}
             <div class="mb-4">
-                <div class="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl">
-                    👧
+                <div class="w-20 h-20 mx-auto mb-3 rounded-full overflow-hidden ring-4 ring-orange-500/50 shadow-lg shadow-orange-500/20">
+                    <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl\'>👧</div>'">
                 </div>
                 <p class="text-slate-300 text-sm">สวัสดีค่ะ! น้องหญิงยินดีต้อนรับสู่ ThaiHelp</p>
                 <p class="text-slate-400 text-xs mt-1">ผู้ช่วยอัจฉริยะสำหรับคนไทย</p>

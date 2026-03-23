@@ -35,6 +35,19 @@
             @endif
         </a>
 
+        {{-- My Reports Tab (auth only) --}}
+        @auth
+        <a href="/my-reports" class="flex flex-col items-center justify-center gap-1 w-16 py-1 {{ Request::is('my-reports*') ? 'text-orange-500' : 'text-slate-400 hover:text-slate-300' }}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-[10px] font-medium">ประวัติ</span>
+            @if(Request::is('my-reports*'))
+            <span class="absolute bottom-1 w-6 h-0.5 rounded-full bg-orange-500"></span>
+            @endif
+        </a>
+        @endauth
+
         {{-- Chat Tab --}}
         <a href="/chat" class="flex flex-col items-center justify-center gap-1 w-16 py-1 {{ Request::is('chat*') ? 'text-orange-500' : 'text-slate-400 hover:text-slate-300' }}">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

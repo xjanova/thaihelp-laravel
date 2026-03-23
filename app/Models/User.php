@@ -22,6 +22,9 @@ class User extends Authenticatable implements FilamentUser
         'provider',
         'provider_id',
         'is_admin',
+        'reputation_score',
+        'total_reports',
+        'total_confirmations',
     ];
 
     protected $hidden = [
@@ -56,5 +59,32 @@ class User extends Authenticatable implements FilamentUser
     public function adminLogs(): HasMany
     {
         return $this->hasMany(AdminLog::class);
+    }
+
+    public function addReputation(int $points): void
+    {
+        $this->increment('reputation_score', $points);
+    }
+
+    public function incrementReports(): void
+    {
+        $this->increment('total_reports');
+        $this->addReputation(5);
+    }
+
+    public function incrementConfirmations(): void
+    {
+        $this->increment('total_confirmations');
+        $this->addReputation(2);
+    }
+
+    public function getStarLevel(): array
+    {
+        $score = $this->reputation_score ?? 0;
+        if ($score >= 500) return ['level' => 5, 'stars' => '⭐⭐⭐⭐⭐', 'title' => 'ฮีโร่ชุมชน'];
+        if ($score >= 101) return ['level' => 4, 'stars' => '⭐⭐⭐⭐', 'title' => 'ผู้ช่วยเหลือดีเด่น'];
+        if ($score >= 51) return ['level' => 3, 'stars' => '⭐⭐⭐', 'title' => 'นักรายงานตัวยง'];
+        if ($score >= 11) return ['level' => 2, 'stars' => '⭐⭐', 'title' => 'สมาชิกกระตือรือร้น'];
+        return ['level' => 1, 'stars' => '⭐', 'title' => 'สมาชิกใหม่'];
     }
 }

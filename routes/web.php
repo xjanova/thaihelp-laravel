@@ -40,5 +40,10 @@ Route::get('/report', [IncidentController::class, 'create'])->middleware('auth')
 // Chat
 Route::get('/chat', [ChatController::class, 'index'])->name('chat');
 
+// My Reports - Auth required
+Route::get('/my-reports', function () {
+    return view('pages.my-reports');
+})->middleware('auth')->name('my-reports');
+
 // Offline
 Route::get('/offline', fn () => view('pages.offline'))->name('offline');
