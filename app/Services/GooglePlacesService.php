@@ -9,19 +9,22 @@ use Illuminate\Support\Facades\Log;
 
 class GooglePlacesService
 {
-    private string $apiKey;
-
-    public function __construct()
+    /**
+     * Get API key from pool or fallback.
+     */
+    private function getApiKey(): string
     {
-        $this->apiKey = SiteSetting::get('google_maps_api_key') ?: config('services.google_maps.api_key', '');
+        return ApiKeyPool::getKey('google_maps', 'google_maps.api_key')
+            ?: SiteSetting::get('google_maps_api_key')
+            ?: config('services.google_maps.api_key', '');
     }
 
     /**
-     * Get the API key (for passing to frontend).
+     * Get the API key (for passing to frontend — uses first available).
      */
-    public function getApiKey(): string
+    public function getFrontendApiKey(): string
     {
-        return $this->apiKey;
+        return $this->getApiKey();
     }
 
     /**
@@ -40,7 +43,7 @@ class GooglePlacesService
                     'radius' => $radius,
                     'type' => 'gas_station',
                     'language' => 'th',
-                    'key' => $this->apiKey,
+                    'key' => $this->getApiKey(),
                 ]);
 
                 if ($response->failed()) {

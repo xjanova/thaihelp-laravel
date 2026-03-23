@@ -22,7 +22,7 @@
     @vite(['resources/css/app.css'])
 
     {{-- Google Maps JS API --}}
-    @php $gmapsKey = \App\Models\SiteSetting::get('google_maps_api_key') ?: config('services.google_maps.api_key', ''); @endphp
+    @php $gmapsKey = \App\Services\ApiKeyPool::getKey('google_maps') ?: \App\Models\SiteSetting::get('google_maps_api_key') ?: config('services.google_maps.api_key', ''); @endphp
     @if($gmapsKey)
     <script src="https://maps.googleapis.com/maps/api/js?key={{ $gmapsKey }}&libraries=places&language=th" defer></script>
     @endif

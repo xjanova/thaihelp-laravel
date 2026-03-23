@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SiteSetting;
+use App\Services\ApiKeyPool;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -57,9 +58,10 @@ class TtsController extends Controller
      */
     private function googleTts(string $text): ?string
     {
-        $apiKey = SiteSetting::get('google_cloud_tts_key')
-            ?: config('services.google_tts.api_key')
-            ?: SiteSetting::get('google_maps_api_key'); // fallback: Maps key often has TTS enabled
+        $apiKey = ApiKeyPool::getKey('google_tts', 'google_tts.api_key')
+            ?: SiteSetting::get('google_cloud_tts_key')
+            ?: ApiKeyPool::getKey('google_maps', 'google_maps.api_key')
+            ?: SiteSetting::get('google_maps_api_key');
 
         if (!$apiKey) return null;
 
