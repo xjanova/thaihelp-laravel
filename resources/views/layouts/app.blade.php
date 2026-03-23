@@ -32,53 +32,75 @@
 <body class="antialiased font-thai">
     {{-- ═══ Intro Video (first visit only) ═══ --}}
     <div id="intro-overlay" style="display:none;"
-         class="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
-        <video id="intro-video" class="max-h-screen max-w-screen object-contain opacity-0 transition-opacity duration-1000"
-               playsinline muted preload="auto"
+         class="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center cursor-pointer">
+        {{-- App frame: logo + border --}}
+        <div class="absolute top-0 left-0 right-0 z-10 flex items-center justify-center gap-2 py-3 bg-gradient-to-b from-black/80 to-transparent">
+            <img src="/images/logo.png" class="w-7 h-7 rounded-lg" alt="ThaiHelp" onerror="this.style.display='none'">
+            <span class="text-white font-bold text-sm tracking-wide">ThaiHelp</span>
+            <span class="text-orange-400 text-[10px] ml-1 border border-orange-400/50 rounded px-1.5 py-0.5">WELCOME</span>
+        </div>
+        <div class="absolute inset-0 border-2 border-orange-500/30 rounded-lg pointer-events-none z-10"></div>
+
+        {{-- Tap to start prompt (shown first) --}}
+        <div id="intro-tap" class="text-center animate-pulse">
+            <img src="/images/ying.png" class="w-20 h-20 rounded-full border-2 border-orange-400 mx-auto mb-4 shadow-xl" alt="น้องหญิง" onerror="this.style.display='none'">
+            <p class="text-white text-lg font-medium">สวัสดีค่ะ! ยินดีต้อนรับสู่ ThaiHelp</p>
+            <p class="text-orange-400 text-sm mt-2">แตะเพื่อเริ่มต้น ▶</p>
+        </div>
+
+        {{-- Video (hidden until tap) --}}
+        <video id="intro-video" class="max-h-screen max-w-screen object-contain opacity-0 absolute inset-0 w-full h-full"
+               style="transition: opacity 1s;"
+               playsinline preload="auto"
                src="/media/open1.mp4">
         </video>
-        <button id="intro-skip" onclick="closeIntro()"
-                class="absolute bottom-8 right-6 text-white/40 hover:text-white text-xs px-4 py-2 rounded-full border border-white/20 hover:border-white/50 transition-all opacity-0"
-                style="transition: opacity 1s;">
+
+        <button id="intro-skip" onclick="closeIntro()" style="display:none;"
+                class="absolute bottom-8 right-6 text-white/40 hover:text-white text-xs px-4 py-2 rounded-full border border-white/20 hover:border-white/50 transition-all z-10">
             ข้ามไป →
         </button>
-        <div id="intro-ying" class="absolute bottom-8 left-6 flex items-center gap-2 opacity-0" style="transition: opacity 1s;">
-            <img src="/images/ying.png" class="w-8 h-8 rounded-full border border-orange-400" alt="น้องหญิง" onerror="this.style.display='none'">
-            <span class="text-white/60 text-[11px]">สวัสดีค่ะ! ยินดีต้อนรับสู่ ThaiHelp</span>
-        </div>
     </div>
     <script>
         (function() {
             const INTRO_KEY = 'thaihelp_intro_seen';
             const INTRO_VIDEO_COUNT_KEY = 'ying_video_play_count';
+            const MIN_VOLUME = 0.6;
 
-            if (localStorage.getItem(INTRO_KEY)) return; // Already seen
+            if (localStorage.getItem(INTRO_KEY)) return;
 
             const overlay = document.getElementById('intro-overlay');
             const video = document.getElementById('intro-video');
+            const tapPrompt = document.getElementById('intro-tap');
             const skipBtn = document.getElementById('intro-skip');
-            const yingMsg = document.getElementById('intro-ying');
 
             overlay.style.display = 'flex';
 
-            // Fade in video after small delay
-            setTimeout(() => {
+            // User taps → start video WITH sound
+            overlay.addEventListener('click', function startVideo(e) {
+                if (e.target === skipBtn || skipBtn.contains(e.target)) return;
+
+                overlay.removeEventListener('click', startVideo);
+                tapPrompt.style.display = 'none';
+
+                // Unmute + force volume ≥ 60%
+                video.muted = false;
+                video.volume = Math.max(MIN_VOLUME, video.volume);
                 video.style.opacity = '1';
-                video.play().catch(() => {});
-            }, 500);
+                video.play().catch(() => {
+                    // Fallback: play muted if browser still blocks
+                    video.muted = true;
+                    video.play().catch(() => {});
+                });
 
-            // Show skip button after 3 seconds
-            setTimeout(() => { skipBtn.style.opacity = '1'; }, 3000);
-
-            // Show ying message after 2 seconds
-            setTimeout(() => { yingMsg.style.opacity = '1'; }, 2000);
+                // Show skip after 3s
+                setTimeout(() => { skipBtn.style.display = 'block'; }, 3000);
+            }, { once: false });
 
             // Auto close when video ends
             video.addEventListener('ended', () => {
                 setTimeout(closeIntro, 800);
             });
 
-            // Mark as seen
             window.closeIntro = function() {
                 localStorage.setItem(INTRO_KEY, Date.now());
                 overlay.style.opacity = '0';
@@ -86,23 +108,32 @@
                 setTimeout(() => { overlay.remove(); }, 900);
             };
 
-            // Expose replay function for chat bot
+            // Replay for chat (with sound)
             window.replayIntroVideo = function() {
                 const count = parseInt(localStorage.getItem(INTRO_VIDEO_COUNT_KEY) || '0');
-                if (count >= 3) return false; // Too many times
+                if (count >= 3) return false;
                 localStorage.setItem(INTRO_VIDEO_COUNT_KEY, count + 1);
 
-                // Create temporary overlay
                 const div = document.createElement('div');
                 div.className = 'fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center';
                 div.style.animation = 'fadeIn 0.5s ease-out';
-                div.innerHTML = `
-                    <video class="max-h-screen max-w-screen object-contain" playsinline autoplay src="/media/open1.mp4"
-                           onended="this.parentElement.style.opacity='0';this.parentElement.style.transition='opacity 0.8s';setTimeout(()=>this.parentElement.remove(),900)"></video>
-                    <button onclick="this.parentElement.style.opacity='0';this.parentElement.style.transition='opacity 0.8s';setTimeout(()=>this.parentElement.remove(),900)"
-                            class="absolute top-4 right-4 text-white/50 hover:text-white text-xl">&times;</button>
-                `;
+                const vid = document.createElement('video');
+                vid.className = 'max-h-screen max-w-screen object-contain';
+                vid.setAttribute('playsinline', '');
+                vid.src = '/media/open1.mp4';
+                vid.volume = Math.max(MIN_VOLUME, 0.6);
+                vid.muted = false;
+
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'absolute top-4 right-4 text-white/50 hover:text-white text-xl z-10';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.onclick = () => { div.style.opacity='0'; div.style.transition='opacity 0.8s'; setTimeout(()=>div.remove(),900); };
+
+                vid.onended = closeBtn.onclick;
+                div.appendChild(vid);
+                div.appendChild(closeBtn);
                 document.body.appendChild(div);
+                vid.play().catch(() => { vid.muted = true; vid.play().catch(()=>{}); });
                 return true;
             };
 
