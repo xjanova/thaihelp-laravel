@@ -255,11 +255,35 @@
 
                 markGreetedToday();
             } else {
-                // Already greeted today — show brief bubble
+                // Already greeted today — rotate random phrases
                 if (bubble) {
-                    if (bubbleText) bubbleText.textContent = 'ถามหญิงได้นะคะ 😊';
+                    const phrases = [
+                        'ถามหญิงได้นะคะ 😊',
+                        'มีอะไรให้ช่วยไหมคะ? 💕',
+                        'หญิงอยู่ตรงนี้ค่ะ~',
+                        'เดินทางปลอดภัยนะคะ 🚗',
+                        'จะไปไหนบอกหญิงนะ 🗺️',
+                        'อยากรู้ปั๊มไหนมีน้ำมันไหมคะ? ⛽',
+                        'กดหญิงเลยค่ะ คุยกันนะ 💬',
+                        'หญิงช่วยนำทางได้นะคะ 📍',
+                        'วันนี้น้ำมันเป็นยังไงบ้างคะ?',
+                        'แจ้งเหตุพูดกับหญิงได้เลยนะ 🎤',
+                        'หญิงคอยช่วยอยู่ค่ะ ไม่ไปไหนเลย~',
+                        'คลิกหญิงมาคุยกันค่ะ 😄',
+                        'รู้มั้ยคะ หญิงนำทางได้ด้วยนะ!',
+                        'บอกหญิงได้เลยค่ะ ปั๊มไหนน้ำมันหมด 🔴',
+                        'หญิงพร้อมรับฟังเสมอค่ะ 💖',
+                    ];
+                    if (bubbleText) bubbleText.textContent = phrases[Math.floor(Math.random() * phrases.length)];
                     setTimeout(() => { bubble.style.opacity = '1'; }, 2000);
                     setTimeout(() => { bubble.style.opacity = '0'; }, 4500);
+
+                    // Rotate phrases every 15 seconds
+                    setInterval(() => {
+                        if (bubbleText) bubbleText.textContent = phrases[Math.floor(Math.random() * phrases.length)];
+                        bubble.style.opacity = '1';
+                        setTimeout(() => { bubble.style.opacity = '0'; }, 4000);
+                    }, 15000);
                 }
             }
         });
