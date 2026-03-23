@@ -30,6 +30,7 @@ class NewsScraperService
         $total += $this->scrapeGoogleNews();
         $total += $this->scrapeBingNews();
         $total += $this->scrapeThaiRSS();
+        $total += $this->scrapeTrends();
 
         Log::info("News scraper completed: {$total} new articles");
 
@@ -200,6 +201,127 @@ class NewsScraperService
         }
 
         return $count;
+    }
+
+    /**
+     * Emergency/disaster keywords for Google Trends filtering.
+     */
+    private const TREND_KEYWORDS = [
+        // Thai
+        'น้ำมัน', 'ปั๊ม', 'น้ำท่วม', 'แผ่นดินไหว', 'ไฟไหม้', 'อุบัติเหตุ',
+        'ถนน', 'จราจร', 'ภัยพิบัติ', 'พายุ', 'ฉุกเฉิน', 'กู้ภัย', 'ระเบิด', 'สึนามิ',
+        // English
+        'fuel', 'gas', 'flood', 'earthquake', 'fire', 'accident',
+        'disaster', 'storm', 'emergency', 'explosion', 'tsunami',
+    ];
+
+    /**
+     * Scrape Google Trends RSS for Thailand.
+     */
+    private function scrapeTrends(): int
+    {
+        $count = 0;
+
+        try {
+            $url = 'https://trends.google.com/trends/trendingsearches/daily/rss?geo=TH';
+            $response = Http::timeout(15)
+                ->withHeaders(['User-Agent' => 'Mozilla/5.0 ThaiHelp News Bot'])
+                ->get($url);
+
+            if (!$response->ok()) return 0;
+
+            $xml = @simplexml_load_string($response->body());
+            if (!$xml || !isset($xml->channel->item)) return 0;
+
+            $index = 0;
+
+            foreach ($xml->channel->item as $item) {
+                $title = strip_tags((string) $item->title);
+                $link = (string) ($item->link ?? '');
+                $pubDate = (string) ($item->pubDate ?? '');
+                $description = strip_tags((string) ($item->description ?? ''));
+
+                // Namespace for ht (Google Trends specific)
+                $ht = $item->children('ht', true);
+                $approxTraffic = (string) ($ht->approx_traffic ?? '');
+                $newsItems = $ht->news_item ?? null;
+
+                // Build a source URL from first news item if available
+                $sourceUrl = $link;
+                $sourceSummary = $description;
+                if ($newsItems) {
+                    foreach ($newsItems as $newsItem) {
+                        $newsTitle = (string) ($newsItem->news_item_title ?? '');
+                        $newsUrl = (string) ($newsItem->news_item_url ?? '');
+                        if ($newsUrl) {
+                            $sourceUrl = $newsUrl;
+                        }
+                        if ($newsTitle && !$sourceSummary) {
+                            $sourceSummary = $newsTitle;
+                        }
+                        break; // Only first news item
+                    }
+                }
+
+                $hash = md5('google_trends_' . $title);
+                if (News::where('hash', $hash)->exists()) {
+                    $index++;
+                    continue;
+                }
+
+                // Check if this trend matches emergency/disaster keywords
+                $isEmergency = $this->matchesTrendKeywords($title . ' ' . $description);
+
+                // Save emergency-matching trends as urgent
+                if ($isEmergency) {
+                    News::create([
+                        'title'        => Str::limit($title, 497),
+                        'summary'      => Str::limit($sourceSummary ?: "เทรนด์ Google: {$title}" . ($approxTraffic ? " ({$approxTraffic} searches)" : ''), 500),
+                        'source_url'   => $sourceUrl,
+                        'source_name'  => 'google_trends',
+                        'category'     => $this->detectCategory($title . ' ' . $description),
+                        'is_urgent'    => true,
+                        'hash'         => $hash,
+                        'published_at' => $pubDate ? \Carbon\Carbon::parse($pubDate) : now(),
+                    ]);
+                    $count++;
+                }
+                // Also save top 5 trending topics for general interest
+                elseif ($index < 5) {
+                    News::create([
+                        'title'        => Str::limit($title, 497),
+                        'summary'      => Str::limit($sourceSummary ?: "เทรนด์ Google: {$title}" . ($approxTraffic ? " ({$approxTraffic} searches)" : ''), 500),
+                        'source_url'   => $sourceUrl,
+                        'source_name'  => 'google_trends',
+                        'category'     => 'general',
+                        'is_urgent'    => false,
+                        'hash'         => $hash,
+                        'published_at' => $pubDate ? \Carbon\Carbon::parse($pubDate) : now(),
+                    ]);
+                    $count++;
+                }
+
+                $index++;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Google Trends scrape failed', ['error' => $e->getMessage()]);
+        }
+
+        return $count;
+    }
+
+    /**
+     * Check if text matches emergency/disaster trend keywords.
+     */
+    private function matchesTrendKeywords(string $text): bool
+    {
+        $text = mb_strtolower($text);
+        foreach (self::TREND_KEYWORDS as $keyword) {
+            if (mb_strpos($text, mb_strtolower($keyword)) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

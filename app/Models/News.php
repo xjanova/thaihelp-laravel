@@ -8,13 +8,14 @@ class News extends Model
 {
     protected $fillable = [
         'title', 'summary', 'source_url', 'source_name',
-        'image_url', 'category', 'hash', 'published_at',
+        'image_url', 'category', 'is_urgent', 'hash', 'published_at',
     ];
 
     protected function casts(): array
     {
         return [
             'published_at' => 'datetime',
+            'is_urgent' => 'boolean',
         ];
     }
 
