@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\SiteSetting;
-use App\Services\ApiKeyPool;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class TtsController extends Controller
@@ -38,9 +36,15 @@ class TtsController extends Controller
         // Limit length
         $text = mb_substr($text, 0, 300);
 
+        // Read voice settings (guard against empty strings from DB)
+        $voice = SiteSetting::get('tts_voice') ?: 'th-TH-PremwadeeNeural';
+        $pitch = SiteSetting::get('tts_pitch') ?: '+30Hz';
+        $rate  = SiteSetting::get('tts_rate')  ?: '+0%';
+
+        Log::debug('TTS settings', compact('voice', 'pitch', 'rate'));
+
         // Cache audio (same text + voice settings = same audio)
-        $voice = SiteSetting::get('tts_voice', 'th-TH-PremwadeeNeural');
-        $cacheKey = 'tts_edge_' . md5($text . $voice . SiteSetting::get('tts_pitch', '+30Hz') . SiteSetting::get('tts_rate', '+0%'));
+        $cacheKey = 'tts_v2_' . md5($text . $voice . $pitch . $rate);
         $cached = Cache::get($cacheKey);
         if ($cached) {
             return response($cached)
@@ -51,7 +55,7 @@ class TtsController extends Controller
         // Generate using Edge TTS
         $audio = null;
         try {
-            $audio = $this->edgeTts($text);
+            $audio = $this->edgeTts($text, $voice, $pitch, $rate);
         } catch (\Exception $e) {
             Log::error('TTS synthesize exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
@@ -77,15 +81,11 @@ class TtsController extends Controller
      * Microsoft Edge TTS — เสียงสาวไทยสมจริง ฟรีไม่จำกัด!
      * Uses Symfony Process (works even when exec() is disabled)
      */
-    private function edgeTts(string $text): ?string
+    private function edgeTts(string $text, string $voice, string $pitch, string $rate): ?string
     {
         $tempFile = '/tmp/thaihelp_tts_' . md5($text . time()) . '.mp3';
 
         try {
-            $voice = SiteSetting::get('tts_voice', 'th-TH-PremwadeeNeural');
-            $pitch = SiteSetting::get('tts_pitch', '+30Hz');
-            $rate  = SiteSetting::get('tts_rate', '+0%');
-
             // Find edge-tts binary
             $edgeTtsBin = 'edge-tts';
             $searchPaths = [
@@ -129,7 +129,7 @@ class TtsController extends Controller
             @unlink($tempFile);
 
             // Fallback: try Python inline
-            return $this->edgeTtsPython($text, $tempFile, $voice ?? 'th-TH-PremwadeeNeural', $pitch ?? '+30Hz', $rate ?? '+0%');
+            return $this->edgeTtsPython($text, $tempFile, $voice, $pitch, $rate);
         }
     }
 
