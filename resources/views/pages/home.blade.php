@@ -363,6 +363,31 @@
                     zIndex: sev === 'critical' ? 400 : sev === 'high' ? 300 : 200,
                 });
 
+                // 🔴 Danger Zone — วงกลมแดงห้ามเข้า
+                if (incident.is_danger_zone || (incident.severity === 'critical' && (incident.confirmation_count || 0) >= 5)) {
+                    const dangerRadius = (incident.danger_radius_km || 0.5) * 1000; // km → meters
+                    const dangerCircle = new google.maps.Circle({
+                        map: map,
+                        center: { lat: parseFloat(lat), lng: parseFloat(lng) },
+                        radius: dangerRadius,
+                        fillColor: '#dc2626',
+                        fillOpacity: 0.15,
+                        strokeColor: '#dc2626',
+                        strokeOpacity: 0.8,
+                        strokeWeight: 2,
+                        zIndex: 50,
+                        clickable: false,
+                    });
+                    // Pulse animation
+                    let growing = true;
+                    setInterval(() => {
+                        const current = dangerCircle.get('strokeOpacity');
+                        dangerCircle.setOptions({ strokeOpacity: growing ? 1 : 0.4 });
+                        growing = !growing;
+                    }, 1500);
+                    incidentMarkers.push(dangerCircle); // Track for cleanup
+                }
+
                 const photos = (incident.photos || []).slice(0, 3).map(url =>
                     `<img src="${url}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.remove()">`
                 ).join('');

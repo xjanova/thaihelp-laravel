@@ -36,6 +36,10 @@ return new class extends Migration
             // Confirmation system
             $table->unsignedInteger('confirmation_count')->default(0)->after('upvotes');
 
+            // Danger zone (ตีกรอบแดงห้ามเข้า)
+            $table->boolean('is_danger_zone')->default(false)->after('is_demo');
+            $table->double('danger_radius_km')->default(0.5)->after('is_danger_zone');
+
             // Resolution
             $table->timestamp('resolved_at')->nullable()->after('expires_at');
 

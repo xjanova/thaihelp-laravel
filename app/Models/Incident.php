@@ -102,6 +102,8 @@ class Incident extends Model
         'confirmation_count',
         'is_active',
         'is_demo',
+        'is_danger_zone',
+        'danger_radius_km',
         'expires_at',
         'resolved_at',
     ];
@@ -111,8 +113,10 @@ class Incident extends Model
         return [
             'is_active' => 'boolean',
             'is_demo' => 'boolean',
+            'is_danger_zone' => 'boolean',
             'has_injuries' => 'boolean',
             'emergency_notified' => 'boolean',
+            'danger_radius_km' => 'double',
             'photos' => 'array',
             'expires_at' => 'datetime',
             'incident_at' => 'datetime',
@@ -168,14 +172,42 @@ class Incident extends Model
     }
 
     /**
-     * Increment confirmation.
+     * Increment confirmation + evaluate emergency threshold.
      */
     public function addConfirmation(): void
     {
         $this->increment('confirmation_count');
-        if ($this->confirmation_count >= 3 && $this->status === 'active') {
+        $count = $this->fresh()->confirmation_count;
+
+        // Stage 1: 3+ confirmations → confirmed status
+        if ($count >= 3 && $this->status === 'active') {
             $this->update(['status' => 'confirmed']);
         }
+
+        // Stage 2: 5+ confirmations or critical severity → emergency report
+        // น้องหญิงแจ้งฉุกเฉินเมื่อมีคนยืนยันเยอะพอ
+        if ($count >= 5 || ($this->severity === 'critical' && $count >= 3) || $this->has_injuries) {
+            try {
+                app(\App\Services\EmergencyReportService::class)->evaluate($this->fresh());
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Emergency evaluate failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Stage 3: 10+ confirmations → danger zone (ตีกรอบแดงห้ามเข้า)
+        if ($count >= 10 && !$this->is_danger_zone) {
+            $this->update(['is_danger_zone' => true]);
+        }
+    }
+
+    /**
+     * Check if this incident is a danger zone.
+     */
+    public function isDangerZone(): bool
+    {
+        return $this->is_danger_zone
+            || ($this->severity === 'critical' && $this->confirmation_count >= 5)
+            || ($this->has_injuries && $this->confirmation_count >= 3);
     }
 
     /**
