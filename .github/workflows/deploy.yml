@@ -36,13 +36,15 @@ jobs:
           DISCORD_GUILD: ${{ secrets.DISCORD_GUILD_ID }}
           GOOGLE_CID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CSECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          LINE_CID: ${{ secrets.LINE_CHANNEL_ID }}
+          LINE_CSECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
           APP_VER: ${{ steps.version.outputs.version }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: DISCORD_TOKEN,DISCORD_APP_ID,DISCORD_PUBKEY,DISCORD_GUILD,GOOGLE_CID,GOOGLE_CSECRET,APP_VER
+          envs: DISCORD_TOKEN,DISCORD_APP_ID,DISCORD_PUBKEY,DISCORD_GUILD,GOOGLE_CID,GOOGLE_CSECRET,LINE_CID,LINE_CSECRET,APP_VER
           script_stop: true
           script: |
             set -e
@@ -105,6 +107,13 @@ jobs:
               grep -q "^GOOGLE_CLIENT_ID=" .env && sed -i "s|^GOOGLE_CLIENT_ID=.*|GOOGLE_CLIENT_ID=${GOOGLE_CID}|" .env || echo -e "\nGOOGLE_CLIENT_ID=${GOOGLE_CID}" >> .env
               grep -q "^GOOGLE_CLIENT_SECRET=" .env && sed -i "s|^GOOGLE_CLIENT_SECRET=.*|GOOGLE_CLIENT_SECRET=${GOOGLE_CSECRET}|" .env || echo -e "GOOGLE_CLIENT_SECRET=${GOOGLE_CSECRET}" >> .env
               grep -q "^GOOGLE_REDIRECT_URI=" .env || echo "GOOGLE_REDIRECT_URI=https://thaihelp.xman4289.com/auth/google/callback" >> .env
+            fi
+
+            # LINE OAuth env
+            if [ -n "$LINE_CID" ]; then
+              grep -q "^LINE_CHANNEL_ID=" .env && sed -i "s|^LINE_CHANNEL_ID=.*|LINE_CHANNEL_ID=${LINE_CID}|" .env || echo -e "\nLINE_CHANNEL_ID=${LINE_CID}" >> .env
+              grep -q "^LINE_CHANNEL_SECRET=" .env && sed -i "s|^LINE_CHANNEL_SECRET=.*|LINE_CHANNEL_SECRET=${LINE_CSECRET}|" .env || echo -e "LINE_CHANNEL_SECRET=${LINE_CSECRET}" >> .env
+              grep -q "^LINE_REDIRECT_URI=" .env || echo "LINE_REDIRECT_URI=https://thaihelp.xman4289.com/auth/line/callback" >> .env
             fi
 
             # Deploy
