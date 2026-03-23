@@ -119,6 +119,22 @@
             </p>
         </div>
 
+        {{-- GPS Warning --}}
+        <div x-show="!lat || !lng" class="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-3 flex items-center gap-2">
+            <span class="text-lg">📍</span>
+            <div>
+                <p class="text-xs text-red-400 font-medium">ต้องเปิด GPS เพื่อรายงาน</p>
+                <button @click="refreshLocation()" class="text-[10px] text-orange-400 underline">กดเพื่อขอสิทธิ์ GPS</button>
+            </div>
+        </div>
+
+        {{-- Star info for non-logged-in --}}
+        @guest
+        <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3 text-xs text-blue-300">
+            💡 <a href="/login" class="underline text-orange-400">เข้าสู่ระบบ</a> เพื่อรับ ⭐ คะแนนจากการรายงาน
+        </div>
+        @endguest
+
         {{-- Submit --}}
         <button @click="submitIncident()" :disabled="!canSubmitIncident() || incidentSubmitting"
                 :class="canSubmitIncident() && !incidentSubmitting ? 'metal-btn-accent glow-orange' : 'metal-btn opacity-50'"
@@ -209,6 +225,21 @@
             </div>
             <p class="text-sm text-slate-300" x-text="locationName || 'กำลังหาตำแหน่ง...'"></p>
         </div>
+
+        {{-- GPS Warning --}}
+        <div x-show="!lat || !lng" class="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-3 flex items-center gap-2">
+            <span class="text-lg">📍</span>
+            <div>
+                <p class="text-xs text-red-400 font-medium">ต้องเปิด GPS เพื่อรายงาน</p>
+                <button @click="refreshLocation()" class="text-[10px] text-orange-400 underline">กดเพื่อขอสิทธิ์ GPS</button>
+            </div>
+        </div>
+
+        @guest
+        <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3 text-xs text-blue-300">
+            💡 <a href="/login" class="underline text-orange-400">เข้าสู่ระบบ</a> เพื่อรับ ⭐ คะแนนจากการรายงาน
+        </div>
+        @endguest
 
         {{-- Submit --}}
         <button @click="submitFuel()" :disabled="!canSubmitFuel() || fuelSubmitting"
@@ -407,7 +438,7 @@ function reportPage() {
 
         canSubmitFuel() {
             const hasSelectedFuel = Object.values(this.fuel.selectedFuels).some(v => v);
-            return this.fuel.stationName.trim() && hasSelectedFuel;
+            return this.fuel.stationName.trim() && hasSelectedFuel && this.lat && this.lng;
         },
 
         // ─── Submit Incident ───

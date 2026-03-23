@@ -87,6 +87,65 @@
     @endphp
     <div class="fixed bottom-16 right-2 z-40 text-[9px] text-slate-600 opacity-50">{{ $version }}</div>
 
+    {{-- GPS Enforcement --}}
+    <div id="gps-banner" style="display:none;"
+         class="fixed top-0 left-0 right-0 z-[999] bg-red-600 text-white px-4 py-3 text-center shadow-xl">
+        <div class="flex items-center justify-center gap-2">
+            <span class="text-lg">📍</span>
+            <span class="text-sm font-medium">กรุณาเปิด GPS เพื่อใช้งาน ThaiHelp</span>
+            <button onclick="requestGPS()" class="ml-2 bg-white text-red-600 px-3 py-1 rounded-full text-xs font-bold">เปิด GPS</button>
+            <button onclick="this.parentElement.parentElement.style.display='none'" class="ml-1 text-white/70 hover:text-white text-lg">&times;</button>
+        </div>
+    </div>
+    <script>
+        let _gpsGranted = false;
+        function requestGPS() {
+            if (!navigator.geolocation) {
+                alert('เบราว์เซอร์ไม่รองรับ GPS');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    _gpsGranted = true;
+                    window._userLat = pos.coords.latitude;
+                    window._userLng = pos.coords.longitude;
+                    document.getElementById('gps-banner').style.display = 'none';
+                },
+                (err) => {
+                    if (err.code === 1) {
+                        alert('คุณปฏิเสธการเข้าถึง GPS\nกรุณาเปิดในตั้งค่าเบราว์เซอร์');
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // Check GPS on load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!navigator.geolocation) return;
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    _gpsGranted = true;
+                    window._userLat = pos.coords.latitude;
+                    window._userLng = pos.coords.longitude;
+                },
+                () => {
+                    // GPS denied or unavailable — show banner
+                    document.getElementById('gps-banner').style.display = 'block';
+
+                    // Remind every 2 minutes
+                    setInterval(() => {
+                        if (!_gpsGranted) {
+                            document.getElementById('gps-banner').style.display = 'block';
+                        }
+                    }, 120000);
+                },
+                { timeout: 5000 }
+            );
+        });
+    </script>
+
     {{-- Vite JS --}}
     @vite(['resources/js/app.js'])
 

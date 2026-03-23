@@ -34,8 +34,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Stations
 Route::get('/stations', [StationController::class, 'index'])->name('stations');
 
-// Report - Auth required
-Route::get('/report', [IncidentController::class, 'create'])->middleware('auth')->name('report');
+// Report - Anyone can report (GPS required, stars only for members)
+Route::get('/report', [IncidentController::class, 'create'])->name('report');
 
 // Chat
 Route::get('/chat', [ChatController::class, 'index'])->name('chat');
