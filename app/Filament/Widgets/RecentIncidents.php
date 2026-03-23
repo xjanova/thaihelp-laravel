@@ -11,7 +11,7 @@ class RecentIncidents extends BaseWidget
 {
     protected static ?int $sort = 2;
 
-    protected static ?string $heading = 'Recent Incidents';
+    protected static ?string $heading = 'เหตุการณ์ล่าสุด';
 
     protected int|string|array $columnSpan = 'full';
 
@@ -23,14 +23,15 @@ class RecentIncidents extends BaseWidget
             )
             ->columns([
                 Tables\Columns\TextColumn::make('category')
+                    ->label('ประเภท')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'accident' => '🚗 Accident',
-                        'flood' => '🌊 Flood',
-                        'roadblock' => '🚧 Roadblock',
-                        'checkpoint' => '👮 Checkpoint',
-                        'construction' => '🏗️ Construction',
-                        default => '📌 Other',
+                        'accident' => '🚗 อุบัติเหตุ',
+                        'flood' => '🌊 น้ำท่วม',
+                        'roadblock' => '🚧 ถนนปิด',
+                        'checkpoint' => '👮 ด่านตรวจ',
+                        'construction' => '🏗️ ก่อสร้าง',
+                        default => '📌 อื่นๆ',
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'accident' => 'danger',
@@ -42,13 +43,20 @@ class RecentIncidents extends BaseWidget
                     }),
 
                 Tables\Columns\TextColumn::make('title')
+                    ->label('หัวข้อ')
                     ->limit(40),
 
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('สถานะ')
+                    ->boolean(),
+
                 Tables\Columns\TextColumn::make('upvotes')
+                    ->label('โหวต')
                     ->numeric(),
 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('M j, Y H:i')
+                    ->label('เวลา')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
             ->paginated(false);

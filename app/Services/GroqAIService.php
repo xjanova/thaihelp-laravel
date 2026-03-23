@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SiteSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +13,7 @@ class GroqAIService
 
     public function __construct()
     {
-        $this->apiKey = config('services.groq.api_key', '');
+        $this->apiKey = SiteSetting::get('groq_api_key') ?: config('services.groq.api_key', '');
         $this->model = config('services.groq.model', 'llama-3.3-70b-versatile');
     }
 

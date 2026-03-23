@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SiteSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +13,15 @@ class GooglePlacesService
 
     public function __construct()
     {
-        $this->apiKey = config('services.google_maps.api_key', '');
+        $this->apiKey = SiteSetting::get('google_maps_api_key') ?: config('services.google_maps.api_key', '');
+    }
+
+    /**
+     * Get the API key (for passing to frontend).
+     */
+    public function getApiKey(): string
+    {
+        return $this->apiKey;
     }
 
     /**
@@ -86,7 +95,7 @@ class GooglePlacesService
             ];
         }
 
-        usort($stations, fn($a, $b) => $a['distance'] <=> $b['distance']);
+        usort($stations, fn ($a, $b) => $a['distance'] <=> $b['distance']);
 
         return $stations;
     }
