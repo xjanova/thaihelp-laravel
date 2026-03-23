@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Incident;
 use App\Models\IncidentVote;
+use App\Services\DiscordService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -77,6 +78,13 @@ class IncidentController extends Controller
             ]);
 
             $incident->load('user:id,nickname,avatar_url');
+
+            // Send Discord notification
+            try {
+                app(DiscordService::class)->notifyNewIncident($incident);
+            } catch (\Exception $e) {
+                Log::warning('Discord notification failed', ['error' => $e->getMessage()]);
+            }
 
             return response()->json([
                 'success' => true,

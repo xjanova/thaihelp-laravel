@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\FuelReport;
+use App\Models\SiteSetting;
 use App\Models\StationReport;
+use App\Services\DiscordService;
 use App\Services\GooglePlacesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,8 +18,10 @@ class StationController extends Controller
      */
     public function index()
     {
+        $googleMapsApiKey = SiteSetting::get('google_maps_api_key') ?: config('services.google_maps.api_key', '');
+
         return view('pages.stations', [
-            'googleMapsApiKey' => config('services.google.maps_api_key'),
+            'googleMapsApiKey' => $googleMapsApiKey,
         ]);
     }
 
@@ -39,7 +43,7 @@ class StationController extends Controller
 
             // Get stations from Google Places API
             $placesService = app(GooglePlacesService::class);
-            $stations = $placesService->nearbyStations($lat, $lng, $radius);
+            $stations = $placesService->searchNearby($lat, $lng, $radius);
 
             // Get fuel reports from DB (last 6 hours)
             $placeIds = collect($stations)->pluck('place_id')->filter()->toArray();
@@ -116,6 +120,13 @@ class StationController extends Controller
             }
 
             $stationReport->load('fuelReports');
+
+            // Send Discord notification
+            try {
+                app(DiscordService::class)->notifyNewStationReport($stationReport);
+            } catch (\Exception $e) {
+                Log::warning('Discord notification failed', ['error' => $e->getMessage()]);
+            }
 
             return response()->json([
                 'success' => true,

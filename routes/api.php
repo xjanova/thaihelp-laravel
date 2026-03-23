@@ -30,3 +30,6 @@ Route::post('/chat', [ChatController::class, 'apiChat'])
 // Voice Command
 Route::post('/voice-command', [VoiceCommandController::class, 'process'])
     ->middleware('throttle:15,1');
+
+// Discord Bot Interactions
+Route::post('/discord/interactions', [\App\Http\Controllers\DiscordInteractionController::class, 'handle']);

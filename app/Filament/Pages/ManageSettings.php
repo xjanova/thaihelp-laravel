@@ -63,6 +63,15 @@ class ManageSettings extends Page
             'line_channel_secret'    => ['default' => '', 'group' => 'line'],
             'line_redirect_uri'      => ['default' => '', 'group' => 'line'],
 
+            // Discord
+            'discord_bot_token'              => ['default' => '', 'group' => 'discord'],
+            'discord_application_id'         => ['default' => '', 'group' => 'discord'],
+            'discord_public_key'             => ['default' => '', 'group' => 'discord'],
+            'discord_webhook_url'            => ['default' => '', 'group' => 'discord'],
+            'discord_notification_channel_id'=> ['default' => '', 'group' => 'discord'],
+            'discord_admin_channel_id'       => ['default' => '', 'group' => 'discord'],
+            'enable_discord_notifications'   => ['default' => false, 'group' => 'discord'],
+
             // Feature Toggles
             'enable_voice_assistant'   => ['default' => true, 'group' => 'features'],
             'enable_incident_reports'  => ['default' => true, 'group' => 'features'],
@@ -101,6 +110,7 @@ class ManageSettings extends Page
                         $this->apiKeysTab(),
                         $this->googleOAuthTab(),
                         $this->lineLoginTab(),
+                        $this->discordBotTab(),
                         $this->featureTogglesTab(),
                     ])
                     ->columnSpanFull()
@@ -270,6 +280,54 @@ class ManageSettings extends Page
                             ->placeholder($lineCallbackUrl)
                             ->helperText("Callback URL สำหรับตั้งค่าใน LINE Developers Console: {$lineCallbackUrl}")
                             ->maxLength(500),
+                    ]),
+            ]);
+    }
+
+    protected function discordBotTab(): Tab
+    {
+        return Tab::make('Discord Bot')
+            ->label('Discord Bot')
+            ->icon('heroicon-o-chat-bubble-bottom-center-text')
+            ->schema([
+                Section::make('Discord Bot Settings')
+                    ->description('ตั้งค่า Discord Bot สำหรับแจ้งเตือนและคำสั่ง')
+                    ->icon('heroicon-o-signal')
+                    ->schema([
+                        TextInput::make('discord_bot_token')
+                            ->label('Bot Token')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(255),
+
+                        TextInput::make('discord_application_id')
+                            ->label('Application ID')
+                            ->maxLength(255),
+
+                        TextInput::make('discord_public_key')
+                            ->label('Public Key')
+                            ->maxLength(255)
+                            ->helperText('สำหรับ verify slash commands'),
+
+                        TextInput::make('discord_webhook_url')
+                            ->label('Webhook URL')
+                            ->maxLength(500)
+                            ->helperText('Webhook URL สำหรับแจ้งเตือน'),
+
+                        TextInput::make('discord_notification_channel_id')
+                            ->label('Notification Channel ID')
+                            ->maxLength(255)
+                            ->helperText('Channel ID สำหรับแจ้งเตือนเหตุการณ์'),
+
+                        TextInput::make('discord_admin_channel_id')
+                            ->label('Admin Channel ID')
+                            ->maxLength(255)
+                            ->helperText('Channel ID สำหรับแจ้งเตือน Admin'),
+
+                        Toggle::make('enable_discord_notifications')
+                            ->label('เปิดใช้งานแจ้งเตือน Discord')
+                            ->helperText('เปิด/ปิดการแจ้งเตือนผ่าน Discord')
+                            ->default(false),
                     ]),
             ]);
     }
