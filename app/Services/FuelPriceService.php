@@ -15,7 +15,11 @@ class FuelPriceService
     public function getTodayPrices(): array
     {
         return Cache::remember('fuel_prices_today', 60 * 60 * 6, function () {
-            return $this->fetchFromEppo() ?: $this->fallbackPrices();
+            // ลองดึงจากหลายแหล่ง
+            return $this->fetchFromEppo()
+                ?: $this->fetchFromBangchak()
+                ?: $this->fetchFromPttScrape()
+                ?: $this->fallbackPrices();
         });
     }
 
@@ -85,6 +89,59 @@ class FuelPriceService
         }
 
         return !empty($prices) ? $prices : null;
+    }
+
+    /**
+     * Bangchak Oil Price API — ราคาน้ำมัน Bangchak real-time
+     */
+    private function fetchFromBangchak(): ?array
+    {
+        try {
+            $response = Http::timeout(10)
+                ->get('https://oil-price.bangchak.co.th/ApiOilPrice2/en/GetOilPrice2');
+
+            if (!$response->ok()) return null;
+
+            $data = $response->json();
+            if (empty($data)) return null;
+
+            $prices = [];
+            $mapping = [
+                'gasohol95' => ['Gasohol 95', 'แก๊สโซฮอล์ 95', 'G95'],
+                'gasohol91' => ['Gasohol 91', 'แก๊สโซฮอล์ 91', 'G91'],
+                'e20' => ['E20', 'Gasohol E20'],
+                'e85' => ['E85', 'Gasohol E85'],
+                'diesel' => ['Diesel', 'Hi Diesel', 'ดีเซล'],
+                'diesel_b7' => ['Diesel B7', 'B7'],
+                'premium_diesel' => ['Premium Diesel', 'ดีเซลพรีเมียม'],
+            ];
+
+            foreach ($data as $item) {
+                $name = $item['ProductName'] ?? $item['Name'] ?? '';
+                $price = $item['Price'] ?? $item['Sell'] ?? null;
+                if (!$price || !$name) continue;
+
+                foreach ($mapping as $key => $aliases) {
+                    foreach ($aliases as $alias) {
+                        if (stripos($name, $alias) !== false) {
+                            $prices[$key] = [
+                                'price' => round((float) $price, 2),
+                                'name' => $name,
+                                'updated_at' => now()->toDateString(),
+                                'source' => 'bangchak',
+                            ];
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            Log::info('Bangchak prices fetched', ['count' => count($prices)]);
+            return !empty($prices) ? $prices : null;
+        } catch (\Exception $e) {
+            Log::warning('Bangchak API failed', ['error' => $e->getMessage()]);
+            return null;
+        }
     }
 
     /**
