@@ -422,6 +422,10 @@ pull_code() {
             return 1
         fi
 
+        # Reset local changes to avoid conflicts
+        git reset --hard HEAD 2>/dev/null || true
+        git clean -fd 2>/dev/null || true
+
         print_info "Pulling branch: $BRANCH"
 
         set +e
