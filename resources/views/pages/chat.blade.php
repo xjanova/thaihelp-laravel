@@ -410,9 +410,12 @@
                         }),
                     });
 
-                    if (!response.ok) throw new Error('Chat request failed');
+                    const data = await response.json().catch(() => null);
 
-                    const data = await response.json();
+                    if (!response.ok || !data) {
+                        const errMsg = data?.reply || data?.message || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่นะคะ';
+                        throw new Error(errMsg);
+                    }
 
                     const reply = data.reply || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่นะคะ';
                     this.messages.push({
@@ -541,9 +544,10 @@
                             .trim();
                     }
                 } catch (err) {
+                    console.error('[Chat] Error:', err.message);
                     this.messages.push({
                         role: 'assistant',
-                        content: 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่อีกครั้งนะคะ 😢',
+                        content: err.message || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่อีกครั้งนะคะ 😢',
                         time: this.formatTime(),
                     });
                 } finally {

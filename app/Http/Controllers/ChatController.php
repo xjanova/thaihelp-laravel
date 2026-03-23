@@ -50,22 +50,35 @@ class ChatController extends Controller
             $messages = $validated['messages'];
         }
 
-        try {
-            // Build location context if GPS available
-            $locationContext = '';
-            $lat = $validated['latitude'] ?? null;
-            $lng = $validated['longitude'] ?? null;
+        // Build location context if GPS available (won't throw — all try-catched inside)
+        $locationContext = '';
+        $lat = $validated['latitude'] ?? null;
+        $lng = $validated['longitude'] ?? null;
 
-            if ($lat && $lng) {
-                // ใช้ YingContextBuilder — cache 5 นาที ประหยัด token
+        if ($lat && $lng) {
+            try {
                 $cacheKey = "ying_ctx_" . round($lat, 2) . "_" . round($lng, 2);
                 $locationContext = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($lat, $lng, $request) {
                     return app(\App\Services\YingContextBuilder::class)
                         ->build((float) $lat, (float) $lng, $request->user()?->id);
                 });
+            } catch (\Exception $e) {
+                Log::warning('YingContextBuilder failed, continuing without context', ['error' => $e->getMessage()]);
+                // Continue without context — don't break chat
+            }
+        }
+
+        try {
+            $groqService = app(GroqAIService::class);
+
+            if (!$groqService->isAvailable()) {
+                Log::error('Chat: No Groq API key configured');
+                return response()->json([
+                    'success' => true,
+                    'reply' => 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาแจ้ง Admin ตั้งค่าในหลังบ้านก่อนนะคะ',
+                ]);
             }
 
-            $groqService = app(GroqAIService::class);
             $reply = $groqService->chat($messages, $locationContext);
 
             return response()->json([
@@ -73,12 +86,16 @@ class ChatController extends Controller
                 'reply' => $reply,
             ]);
         } catch (\Exception $e) {
-            Log::error('Chat API failed', ['error' => $e->getMessage()]);
+            Log::error('Chat API failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
+            // Return 200 with error message so frontend shows it in chat bubble
             return response()->json([
-                'success' => false,
-                'message' => 'ไม่สามารถเชื่อมต่อ AI ได้ กรุณาลองใหม่',
-            ], 500);
+                'success' => true,
+                'reply' => 'ขอโทษค่ะ ระบบขัดข้องชั่วคราวค่ะ ลองใหม่อีกทีนะคะ 🙏',
+            ]);
         }
     }
 
