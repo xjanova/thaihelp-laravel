@@ -317,33 +317,83 @@
         }
 
         try {
-            // Load incidents
-            const incidentsRes = await fetch(`/api/incidents?lat=${userPos.lat}&lng=${userPos.lng}&radius=10000`);
+            // Load incidents (radius-filtered)
+            const mapRadius = getMapRadius();
+            const incidentsRes = await fetch(`/api/incidents?lat=${userPos.lat}&lng=${userPos.lng}&radius=${mapRadius}`);
             const incidentsData = await incidentsRes.json();
             const incidents = incidentsData.success ? (incidentsData.data || []) : (incidentsData.data || []);
+
+            const severityColors = { critical: '#dc2626', high: '#f97316', medium: '#eab308', low: '#22c55e' };
+            const severityLabels = { critical: 'วิกฤต', high: 'รุนแรง', medium: 'ปานกลาง', low: 'เล็กน้อย' };
+            const categoryEmoji = { accident:'🚗', flood:'🌊', roadblock:'🚧', checkpoint:'👮', construction:'🏗️', fuel_shortage:'⛽', fire:'🔥', protest:'📢', crime:'🚨', other:'⚠️' };
+            const categoryLabels = { accident:'อุบัติเหตุ', flood:'น้ำท่วม', roadblock:'ถนนปิด', checkpoint:'จุดตรวจ', construction:'ก่อสร้าง', fuel_shortage:'น้ำมันหมด', fire:'ไฟไหม้', protest:'ชุมนุม', crime:'อาชญากรรม', other:'อื่นๆ' };
+            const statusLabels = { active:'กำลังเกิด', confirmed:'ยืนยันแล้ว', resolved:'คลี่คลาย' };
+
             incidents.forEach(incident => {
                 const lat = incident.latitude || incident.lat;
                 const lng = incident.longitude || incident.lng;
                 if (!lat || !lng) return;
+
+                const sev = incident.severity || 'medium';
+                const sevColor = severityColors[sev] || '#eab308';
+                const sevScale = sev === 'critical' ? 12 : sev === 'high' ? 10 : 8;
+                const emoji = categoryEmoji[incident.category] || '⚠️';
+                const catLabel = categoryLabels[incident.category] || incident.category;
+                const statusBadge = incident.status === 'confirmed'
+                    ? '<span style="background:#22c55e;color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;">✓ ยืนยันแล้ว</span>'
+                    : incident.status === 'resolved'
+                    ? '<span style="background:#6b7280;color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;">คลี่คลาย</span>'
+                    : '';
+                const demoBadge = incident.is_demo
+                    ? '<span style="background:#f59e0b;color:#000;padding:1px 5px;border-radius:8px;font-size:9px;">DEMO</span> '
+                    : '';
+
                 const marker = new google.maps.Marker({
                     position: { lat: parseFloat(lat), lng: parseFloat(lng) },
                     map: map,
-                    title: incident.title || 'Incident',
+                    title: incident.title || 'เหตุการณ์',
                     icon: {
                         path: google.maps.SymbolPath.CIRCLE,
-                        scale: 7,
-                        fillColor: '#ef4444',
+                        scale: sevScale,
+                        fillColor: sevColor,
                         fillOpacity: 0.9,
                         strokeColor: '#ffffff',
-                        strokeWeight: 1.5,
+                        strokeWeight: 2,
                     },
+                    zIndex: sev === 'critical' ? 400 : sev === 'high' ? 300 : 200,
                 });
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `<div style="color:#000;font-size:13px"><strong>${incident.title || 'เหตุการณ์'}</strong><br>${incident.category || ''}</div>`
-                });
+
+                const photos = (incident.photos || []).slice(0, 3).map(url =>
+                    `<img src="${url}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.remove()">`
+                ).join('');
+
+                const infoContent = `<div style="color:#000;font-size:12px;min-width:200px;max-width:280px;font-family:sans-serif;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                        <span style="font-size:16px">${emoji}</span>
+                        <strong style="flex:1;font-size:13px;">${incident.title || 'เหตุการณ์'}</strong>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+                        ${demoBadge}
+                        <span style="background:${sevColor};color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;">${severityLabels[sev] || sev}</span>
+                        <span style="background:#334155;color:#94a3b8;padding:1px 5px;border-radius:8px;font-size:9px;">${catLabel}</span>
+                        ${statusBadge}
+                    </div>
+                    ${incident.description ? '<p style="color:#555;font-size:11px;margin:4px 0;">' + incident.description.substring(0, 120) + '</p>' : ''}
+                    ${incident.road_name ? '<p style="color:#888;font-size:10px;">📍 ' + incident.road_name + '</p>' : ''}
+                    ${incident.location_name ? '<p style="color:#888;font-size:10px;">📌 ' + incident.location_name + '</p>' : ''}
+                    ${incident.has_injuries ? '<p style="color:#dc2626;font-size:10px;font-weight:bold;">🚑 มีผู้บาดเจ็บ</p>' : ''}
+                    ${photos ? '<div style="display:flex;gap:3px;margin-top:4px;">' + photos + '</div>' : ''}
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:4px;border-top:1px solid #e2e8f0;">
+                        <span style="color:#999;font-size:9px;">👥 ${incident.confirmation_count || 0} ยืนยัน · 👍 ${incident.upvotes || 0}</span>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank"
+                           style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;text-decoration:none;">🧭 นำทาง</a>
+                    </div>
+                </div>`;
+
+                const infoWindow = new google.maps.InfoWindow({ content: infoContent });
                 marker.addListener('click', () => {
                     infoWindow.open(map, marker);
-                    setTimeout(() => infoWindow.close(), 7000);
+                    setTimeout(() => infoWindow.close(), 10000);
                 });
                 incidentMarkers.push(marker);
             });
@@ -454,6 +504,19 @@
         } else {
             loadMapData();
         }
+    }
+
+    // ─── Map Radius (based on zoom level) ───
+    function getMapRadius() {
+        if (!map) return 50;
+        const zoom = map.getZoom();
+        // Approximate radius in km based on zoom
+        if (zoom >= 16) return 2;
+        if (zoom >= 14) return 5;
+        if (zoom >= 12) return 15;
+        if (zoom >= 10) return 50;
+        if (zoom >= 8) return 100;
+        return 200;
     }
 
     // ─── Balloon Labels for stations/incidents ───

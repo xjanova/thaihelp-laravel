@@ -16,6 +16,18 @@ Route::post('/incidents', [IncidentController::class, 'apiStore'])
 Route::post('/incidents/{incident}/vote', [IncidentController::class, 'vote'])
     ->middleware('throttle:10,1');
 
+Route::put('/incidents/{incident}', [IncidentController::class, 'apiUpdate'])
+    ->middleware(['auth:sanctum', 'throttle:10,1']);
+
+Route::delete('/incidents/{incident}', [IncidentController::class, 'apiDestroy'])
+    ->middleware(['auth:sanctum', 'throttle:5,1']);
+
+Route::post('/incidents/{incident}/resolve', [IncidentController::class, 'resolve'])
+    ->middleware(['auth:sanctum', 'throttle:10,1']);
+
+Route::get('/my-incidents', [IncidentController::class, 'myIncidents'])
+    ->middleware(['auth:sanctum', 'throttle:20,1']);
+
 // Stats
 Route::get('/stats', [App\Http\Controllers\StatsController::class, 'apiStats'])
     ->middleware('throttle:20,1');
