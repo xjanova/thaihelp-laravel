@@ -30,6 +30,33 @@ Route::post('/stations/report/{report}/confirm', [StationController::class, 'api
 Route::get('/fuel-prices', [StationController::class, 'apiFuelPrices'])
     ->middleware('throttle:30,1');
 
+// News feed
+Route::get('/news', function () {
+    $news = \App\Models\News::recent()
+        ->orderByDesc('published_at')
+        ->limit(15)
+        ->get();
+
+    // If no news yet, trigger first scrape
+    if ($news->isEmpty()) {
+        try {
+            app(\App\Services\NewsScraperService::class)->scrapeAll();
+            $news = \App\Models\News::recent()
+                ->orderByDesc('published_at')
+                ->limit(15)
+                ->get();
+        } catch (\Exception $e) {
+            // Silent fail
+        }
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => $news,
+        'count' => $news->count(),
+    ]);
+})->middleware('throttle:20,1');
+
 // Chat
 Route::post('/chat', [ChatController::class, 'apiChat'])
     ->middleware('throttle:10,1');

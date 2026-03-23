@@ -26,6 +26,64 @@
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gray-500 inline-block"></span> ไม่มีข้อมูล</div>
     </div>
 
+    {{-- News Ticker Panel --}}
+    <div id="news-panel" x-data="newsPanel()" x-show="show" x-transition
+         class="absolute top-14 right-3 z-10 w-80 max-h-[60vh] metal-panel rounded-xl overflow-hidden shadow-2xl border border-slate-700/50">
+        {{-- Header --}}
+        <div class="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-orange-600/80 to-red-600/80 backdrop-blur-sm">
+            <div class="flex items-center gap-2">
+                <span class="text-sm">📰</span>
+                <span class="text-xs font-bold text-white">ข่าวพลังงาน</span>
+                <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px] text-white" x-text="newsCount + ' ข่าว'"></span>
+            </div>
+            <div class="flex items-center gap-1">
+                <button @click="expanded = !expanded" class="text-white/70 hover:text-white p-0.5">
+                    <svg x-show="!expanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <svg x-show="expanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                </button>
+                <button @click="show = false" class="text-white/70 hover:text-white p-0.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+
+        {{-- News List --}}
+        <div x-show="expanded" x-transition class="overflow-y-auto max-h-[50vh] divide-y divide-slate-700/30">
+            <template x-for="(item, idx) in news" :key="idx">
+                <a :href="item.source_url" target="_blank" rel="noopener"
+                   class="block px-3 py-2.5 hover:bg-slate-700/30 transition-colors group">
+                    <div class="flex items-start gap-2">
+                        <span class="text-sm mt-0.5" x-text="item.category === 'crisis' ? '🔴' : item.category === 'fuel' ? '⛽' : '📰'"></span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium text-slate-200 group-hover:text-orange-400 transition-colors line-clamp-2" x-text="item.title"></p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-[10px] text-slate-500" x-text="item.source_name"></span>
+                                <span class="text-[10px] text-slate-600">•</span>
+                                <span class="text-[10px] text-slate-500" x-text="timeAgo(item.published_at)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </template>
+
+            <div x-show="news.length === 0" class="px-3 py-4 text-center">
+                <span class="text-xs text-slate-500">กำลังโหลดข่าว...</span>
+            </div>
+        </div>
+
+        {{-- Footer --}}
+        <div x-show="expanded" class="px-3 py-1.5 bg-slate-800/50 text-center">
+            <span class="text-[10px] text-slate-500">อัพเดททุก 5 ชม. • ลบอัตโนมัติทุกวัน</span>
+        </div>
+    </div>
+
+    {{-- News Reopen Button (when closed) --}}
+    <button id="news-reopen" x-data="{ hidden: false }" x-show="hidden"
+            @click="hidden = false; document.getElementById('news-panel').__x.$data.show = true"
+            class="absolute top-14 right-3 z-10 metal-btn p-2 rounded-full shadow-lg">
+        <span class="text-sm">📰</span>
+    </button>
+
     {{-- Welcome Overlay --}}
     <div id="welcome-overlay" x-data="{ show: !localStorage.getItem('thaihelp_welcomed') }" x-show="show" x-transition
          class="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -318,6 +376,41 @@
                 initMap();
             }
         });
+    }
+
+    // News Panel Alpine component
+    function newsPanel() {
+        return {
+            show: true,
+            expanded: true,
+            news: [],
+            newsCount: 0,
+            init() {
+                this.loadNews();
+                // Refresh every 30 min
+                setInterval(() => this.loadNews(), 30 * 60 * 1000);
+            },
+            async loadNews() {
+                try {
+                    const res = await fetch('/api/news');
+                    const data = await res.json();
+                    if (data.success) {
+                        this.news = data.data || [];
+                        this.newsCount = this.news.length;
+                    }
+                } catch (e) {
+                    console.error('Failed to load news:', e);
+                }
+            },
+            timeAgo(dateStr) {
+                if (!dateStr) return '';
+                const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+                if (diff < 60) return 'เมื่อสักครู่';
+                if (diff < 3600) return Math.floor(diff / 60) + ' นาทีที่แล้ว';
+                if (diff < 86400) return Math.floor(diff / 3600) + ' ชม.ที่แล้ว';
+                return Math.floor(diff / 86400) + ' วันที่แล้ว';
+            },
+        };
     }
 </script>
 @endpush
