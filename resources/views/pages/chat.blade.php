@@ -101,12 +101,107 @@
 @push('scripts')
 <script>
     function chatApp() {
+        const MEMORY_KEY = 'ying_chat_history';
+        const MEMORY_TTL = 30 * 60 * 1000; // 30 นาที
+        const MEMORY_WARN_AT = 25 * 60 * 1000; // เตือนที่ 25 นาที
+        const MAX_MEMORY_MSGS = 40; // จำได้สูงสุด 40 ข้อความ
+
+        // Load saved conversation
+        function loadMemory() {
+            try {
+                const saved = localStorage.getItem(MEMORY_KEY);
+                if (!saved) return { messages: [], startedAt: Date.now(), warned: false };
+                const data = JSON.parse(saved);
+                const age = Date.now() - data.startedAt;
+
+                // หมดอายุ → ลืมหมด
+                if (age > MEMORY_TTL) {
+                    localStorage.removeItem(MEMORY_KEY);
+                    return { messages: [], startedAt: Date.now(), warned: false };
+                }
+                return data;
+            } catch {
+                return { messages: [], startedAt: Date.now(), warned: false };
+            }
+        }
+
+        function saveMemory(messages, startedAt, warned) {
+            try {
+                // เก็บแค่ MAX_MEMORY_MSGS ล่าสุด
+                const trimmed = messages.slice(-MAX_MEMORY_MSGS);
+                localStorage.setItem(MEMORY_KEY, JSON.stringify({
+                    messages: trimmed,
+                    startedAt: startedAt,
+                    warned: warned,
+                }));
+            } catch { /* localStorage full */ }
+        }
+
+        const memory = loadMemory();
+
         return {
-            messages: [],
+            messages: memory.messages,
             input: '',
             isTyping: false,
             isRecording: false,
             wakeWordActive: false,
+            memoryStartedAt: memory.startedAt,
+            memoryWarned: memory.warned,
+            memoryTimer: null,
+
+            init() {
+                this.scrollToBottom();
+
+                // ถ้าเป็นครั้งแรก (ไม่มีข้อความเก่า) → ทักทาย
+                if (this.messages.length === 0) {
+                    this.messages.push({
+                        role: 'assistant',
+                        content: 'สวัสดีค่ะ! หญิงเองค่ะ 😊 มีอะไรให้ช่วยไหมคะ?',
+                        time: this.formatTime(),
+                    });
+                    this.saveChat();
+                }
+
+                // Memory expiry checker - ทุก 30 วินาที
+                this.memoryTimer = setInterval(() => {
+                    const age = Date.now() - this.memoryStartedAt;
+
+                    // เตือนก่อนลืม (25 นาที)
+                    if (age > MEMORY_WARN_AT && !this.memoryWarned && this.messages.length > 2) {
+                        this.memoryWarned = true;
+                        this.messages.push({
+                            role: 'assistant',
+                            content: '💭 หญิงกำลังจะลืมบทสนทนาแล้วนะคะ อีกสักครู่หญิงจะเริ่มใหม่ค่ะ ถ้ามีอะไรสำคัญบอกหญิงตอนนี้เลยนะคะ~',
+                            time: this.formatTime(),
+                        });
+                        this.saveChat();
+                        this.scrollToBottom();
+                    }
+
+                    // หมดเวลา → รีเซ็ต
+                    if (age > MEMORY_TTL && this.messages.length > 0) {
+                        this.messages = [];
+                        this.memoryStartedAt = Date.now();
+                        this.memoryWarned = false;
+                        localStorage.removeItem(MEMORY_KEY);
+                        this.messages.push({
+                            role: 'assistant',
+                            content: 'สวัสดีค่ะ! หญิงพร้อมช่วยใหม่แล้วนะคะ 😊 มีอะไรถามได้เลยค่ะ~',
+                            time: this.formatTime(),
+                        });
+                        this.saveChat();
+                        this.scrollToBottom();
+                    }
+                }, 30000);
+            },
+
+            destroy() {
+                if (this.memoryTimer) clearInterval(this.memoryTimer);
+            },
+
+            saveChat() {
+                saveMemory(this.messages, this.memoryStartedAt, this.memoryWarned);
+            },
 
             formatTime() {
                 return new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
@@ -130,6 +225,7 @@
                     time: this.formatTime(),
                 });
                 this.input = '';
+                this.saveChat();
                 this.scrollToBottom();
 
                 // Show typing indicator
@@ -289,6 +385,7 @@
                     });
                 } finally {
                     this.isTyping = false;
+                    this.saveChat();
                     this.scrollToBottom();
                 }
             },
