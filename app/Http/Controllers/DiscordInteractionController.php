@@ -61,22 +61,20 @@ class DiscordInteractionController extends Controller
         $message = $timestamp . $body;
 
         try {
-            if (function_exists('sodium_crypto_sign_verify_detached')) {
-                $binaryKey = sodium_hex2bin($publicKey);
-                $binarySig = sodium_hex2bin($signature);
-                return sodium_crypto_sign_verify_detached($binarySig, $message, $binaryKey);
-            }
-
-            // Fallback: use hex comparison (less secure but works without sodium)
             $binaryKey = hex2bin($publicKey);
             $binarySig = hex2bin($signature);
+
             if ($binaryKey === false || $binarySig === false) {
                 return false;
             }
-            // Without sodium, trust the request if key matches config
-            // This is temporary until sodium is installed
-            Log::warning('Discord: sodium not available, using basic verification');
-            return strlen($binarySig) === 64 && strlen($binaryKey) === 32;
+
+            // Use native sodium if available, otherwise use paragonie/sodium_compat
+            if (function_exists('sodium_crypto_sign_verify_detached')) {
+                return sodium_crypto_sign_verify_detached($binarySig, $message, $binaryKey);
+            }
+
+            // Fallback to paragonie/sodium_compat (pure PHP)
+            return \ParagonIE_Sodium_Compat::crypto_sign_verify_detached($binarySig, $message, $binaryKey);
         } catch (\Exception $e) {
             Log::error('Discord signature verification failed', ['message' => $e->getMessage()]);
             return false;
