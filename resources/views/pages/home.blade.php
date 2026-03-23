@@ -306,7 +306,10 @@
                         ${station.last_report_at ? '<div style="color:#999;font-size:10px;margin-top:4px">อัพเดท: ' + new Date(station.last_report_at).toLocaleString('th-TH') + '</div>' : ''}
                     </div>`
                 });
-                marker.addListener('click', () => infoWindow.open(map, marker));
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                    setTimeout(() => infoWindow.close(), 7000);
+                });
                 stationMarkers.push(marker);
             });
         } catch (err) {
@@ -338,7 +341,10 @@
                 const infoWindow = new google.maps.InfoWindow({
                     content: `<div style="color:#000;font-size:13px"><strong>${incident.title || 'เหตุการณ์'}</strong><br>${incident.category || ''}</div>`
                 });
-                marker.addListener('click', () => infoWindow.open(map, marker));
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                    setTimeout(() => infoWindow.close(), 7000);
+                });
                 incidentMarkers.push(marker);
             });
         } catch (err) {
