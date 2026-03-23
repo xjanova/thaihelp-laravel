@@ -85,11 +85,11 @@
                        :disabled="isTyping">
             </div>
 
-            {{-- TTS Toggle (default OFF) --}}
+            {{-- TTS Toggle (default ON) --}}
             <button id="chat-tts-toggle" onclick="toggleChatTTS()"
                     class="w-10 h-10 rounded-full metal-btn flex items-center justify-center flex-shrink-0 text-sm"
                     title="เปิด/ปิดเสียงน้องหญิงในแชท">
-                🔇
+                🔊
             </button>
 
             {{-- Send Button --}}
@@ -111,7 +111,9 @@
     const CHAT_TTS_KEY = 'ying_chat_tts';
 
     function isChatTTSEnabled() {
-        return localStorage.getItem(CHAT_TTS_KEY) === '1';
+        // Default ON — ผู้ใช้ปิดเองได้
+        const val = localStorage.getItem(CHAT_TTS_KEY);
+        return val === null || val === '1';
     }
 
     function toggleChatTTS() {
