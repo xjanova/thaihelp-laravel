@@ -51,6 +51,11 @@ Route::get('/fuel-prices', function () {
     return view('pages.fuel-prices');
 })->name('fuel-prices');
 
+// Legal & Info pages
+Route::get('/credits', fn() => view('pages.credits'))->name('credits');
+Route::get('/privacy', fn() => view('pages.privacy'))->name('privacy');
+Route::get('/terms', fn() => view('pages.terms'))->name('terms');
+
 // Chat
 Route::get('/chat', [ChatController::class, 'index'])->name('chat');
 

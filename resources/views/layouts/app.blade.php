@@ -446,6 +446,13 @@
     @endphp
     <div class="fixed bottom-16 right-2 z-40 text-[9px] text-slate-600 opacity-50">{{ $version }}</div>
 
+    {{-- Footer Links --}}
+    <div class="text-center py-2 text-[9px] text-slate-600 space-x-3" style="margin-bottom: 3.5rem;">
+        <a href="/credits" class="hover:text-slate-400">เกี่ยวกับ</a>
+        <a href="/privacy" class="hover:text-slate-400">นโยบายความเป็นส่วนตัว</a>
+        <a href="/terms" class="hover:text-slate-400">ข้อตกลงการใช้งาน</a>
+    </div>
+
     {{-- GPS Enforcement --}}
     <div id="gps-banner" style="display:none;"
          class="fixed top-0 left-0 right-0 z-[999] bg-red-600 text-white px-4 py-3 text-center shadow-xl">
@@ -621,6 +628,28 @@
                 localStorage.setItem('ios_permissions_asked', '1');
             }, 3000);
         }
+    </script>
+
+    {{-- Cookie Consent Banner --}}
+    <div id="cookie-banner" style="display:none" class="fixed bottom-20 left-3 right-3 z-[999] metal-panel rounded-xl p-3 shadow-2xl border border-slate-600">
+        <p class="text-xs text-slate-300">เว็บไซต์นี้ใช้คุกกี้เพื่อประสบการณ์การใช้งานที่ดี <a href="/privacy" class="text-blue-400 underline">นโยบายความเป็นส่วนตัว</a></p>
+        <div class="flex gap-2 mt-2">
+            <button onclick="acceptCookies()" class="metal-btn-accent px-3 py-1 rounded-lg text-xs">ยอมรับ</button>
+            <button onclick="rejectCookies()" class="metal-btn px-3 py-1 rounded-lg text-xs text-slate-400">ปฏิเสธ</button>
+        </div>
+    </div>
+    <script>
+    if (!localStorage.getItem('cookie_consent')) {
+        document.getElementById('cookie-banner').style.display = 'block';
+    }
+    function acceptCookies() {
+        localStorage.setItem('cookie_consent', 'accepted');
+        document.getElementById('cookie-banner').style.display = 'none';
+    }
+    function rejectCookies() {
+        localStorage.setItem('cookie_consent', 'rejected');
+        document.getElementById('cookie-banner').style.display = 'none';
+    }
     </script>
 
     {{-- Vite JS --}}
