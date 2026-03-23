@@ -80,11 +80,25 @@
             </label>
             <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                 <input type="checkbox" id="layer-traffic" checked onchange="toggleLayer('traffic')" class="rounded accent-red-500">
-                🚗 จราจร
+                🚗 จราจร (รายงาน)
             </label>
             <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                 <input type="checkbox" id="layer-danger" checked onchange="toggleLayer('danger')" class="rounded accent-red-600">
                 🔴 พื้นที่อันตราย
+            </label>
+            <hr class="border-slate-700">
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">Google Maps Layers</p>
+            <label class="flex items-center gap-2 text-xs text-green-400 cursor-pointer">
+                <input type="checkbox" id="layer-gtraffic" checked onchange="toggleGoogleLayer('traffic')" class="rounded accent-green-500">
+                🟢 จราจร Real-time
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-gtransit" onchange="toggleGoogleLayer('transit')" class="rounded accent-purple-500">
+                🚇 ขนส่งสาธารณะ
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-gbike" onchange="toggleGoogleLayer('bike')" class="rounded accent-teal-500">
+                🚲 เส้นทางจักรยาน
             </label>
             <hr class="border-slate-700">
             <button onclick="refreshExternalData()" class="w-full text-center text-[10px] text-blue-400 hover:text-blue-300">🔄 รีเฟรชข้อมูล</button>
@@ -540,6 +554,14 @@
             },
         });
 
+        // ─── Google Traffic Layer (real-time, free) ───
+        window.trafficLayer = new google.maps.TrafficLayer();
+        window.transitLayer = new google.maps.TransitLayer();
+        window.bicycleLayer = new google.maps.BicyclingLayer();
+
+        // Default: traffic ON
+        window.trafficLayer.setMap(map);
+
         // Try to get user's location
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -576,6 +598,20 @@
             );
         } else {
             loadMapData();
+        }
+    }
+
+    // ─── Google Maps Built-in Layers ───
+    function toggleGoogleLayer(type) {
+        if (type === 'traffic') {
+            const on = window.trafficLayer.getMap();
+            window.trafficLayer.setMap(on ? null : map);
+        } else if (type === 'transit') {
+            const on = window.transitLayer.getMap();
+            window.transitLayer.setMap(on ? null : map);
+        } else if (type === 'bike') {
+            const on = window.bicycleLayer.getMap();
+            window.bicycleLayer.setMap(on ? null : map);
         }
     }
 
