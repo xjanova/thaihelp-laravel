@@ -66,8 +66,21 @@ jobs:
             done
             # Install edge-tts for น้องหญิง voice (PremwadeeNeural)
             if ! command -v edge-tts >/dev/null 2>&1; then
-              echo ">>> Installing edge-tts..."
-              pip3 install edge-tts 2>/dev/null || sudo pip3 install edge-tts 2>/dev/null || true
+              echo ">>> Installing edge-tts (Thai Neural TTS)..."
+              # Ensure pip3 is available
+              if ! command -v pip3 >/dev/null 2>&1; then
+                sudo apt-get install -y -qq python3-pip 2>/dev/null || true
+              fi
+              pip3 install --user edge-tts 2>/dev/null || pip3 install edge-tts 2>/dev/null || sudo pip3 install edge-tts 2>/dev/null || true
+              # Add user bin to PATH
+              export PATH="$HOME/.local/bin:$PATH"
+              echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc 2>/dev/null || true
+            fi
+            # Verify edge-tts works
+            if command -v edge-tts >/dev/null 2>&1; then
+              echo ">>> edge-tts OK: $(edge-tts --version 2>&1 || echo 'installed')"
+            else
+              echo ">>> WARNING: edge-tts not available — TTS will fallback to Web Speech"
             fi
 
             if ! command -v redis-server >/dev/null 2>&1; then

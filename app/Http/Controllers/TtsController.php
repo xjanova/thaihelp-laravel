@@ -80,8 +80,13 @@ class TtsController extends Controller
             $pitch = '+15Hz';
             $rate = '+5%';
 
+            // Find edge-tts binary (might be in ~/.local/bin)
+            $edgeTtsBin = 'edge-tts';
+            $localBin = getenv('HOME') . '/.local/bin/edge-tts';
+            if (file_exists($localBin)) $edgeTtsBin = $localBin;
+
             $process = new \Symfony\Component\Process\Process([
-                'edge-tts',
+                $edgeTtsBin,
                 '--voice', $voice,
                 '--pitch', $pitch,
                 '--rate', $rate,
@@ -89,6 +94,10 @@ class TtsController extends Controller
                 '--write-media', $tempFile,
             ]);
             $process->setTimeout(15);
+            // Add ~/.local/bin to PATH
+            $env = $process->getEnv();
+            $env['PATH'] = (getenv('HOME') ?: '/home/admin') . '/.local/bin:' . (getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin');
+            $process->setEnv($env);
             $process->run();
 
             if (!$process->isSuccessful() || !file_exists($tempFile)) {
