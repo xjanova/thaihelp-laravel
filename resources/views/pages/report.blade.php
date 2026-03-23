@@ -12,36 +12,13 @@
     <div class="mb-5">
         <label class="block text-xs text-slate-400 mb-2">ประเภทเหตุการณ์</label>
         <div class="grid grid-cols-3 gap-2">
-            <button @click="category = 'accident'" :class="category === 'accident' ? 'ring-2 ring-orange-500 glow-orange' : ''"
-                    class="metal-panel rounded-xl p-3 text-center transition-all">
-                <div class="text-2xl mb-1">🚗</div>
-                <div class="text-[10px] text-slate-300">อุบัติเหตุ</div>
-            </button>
-            <button @click="category = 'flood'" :class="category === 'flood' ? 'ring-2 ring-orange-500 glow-orange' : ''"
-                    class="metal-panel rounded-xl p-3 text-center transition-all">
-                <div class="text-2xl mb-1">🌊</div>
-                <div class="text-[10px] text-slate-300">น้ำท่วม</div>
-            </button>
-            <button @click="category = 'fire'" :class="category === 'fire' ? 'ring-2 ring-orange-500 glow-orange' : ''"
-                    class="metal-panel rounded-xl p-3 text-center transition-all">
-                <div class="text-2xl mb-1">🔥</div>
-                <div class="text-[10px] text-slate-300">ไฟไหม้</div>
-            </button>
-            <button @click="category = 'road'" :class="category === 'road' ? 'ring-2 ring-orange-500 glow-orange' : ''"
-                    class="metal-panel rounded-xl p-3 text-center transition-all">
-                <div class="text-2xl mb-1">🚧</div>
-                <div class="text-[10px] text-slate-300">ถนนชำรุด</div>
-            </button>
-            <button @click="category = 'crime'" :class="category === 'crime' ? 'ring-2 ring-orange-500 glow-orange' : ''"
-                    class="metal-panel rounded-xl p-3 text-center transition-all">
-                <div class="text-2xl mb-1">🚨</div>
-                <div class="text-[10px] text-slate-300">อาชญากรรม</div>
-            </button>
-            <button @click="category = 'other'" :class="category === 'other' ? 'ring-2 ring-orange-500 glow-orange' : ''"
-                    class="metal-panel rounded-xl p-3 text-center transition-all">
-                <div class="text-2xl mb-1">📢</div>
-                <div class="text-[10px] text-slate-300">อื่นๆ</div>
-            </button>
+            @foreach($categories as $cat)
+                <button @click="category = '{{ $cat }}'" :class="category === '{{ $cat }}' ? 'ring-2 ring-orange-500 glow-orange' : ''"
+                        class="metal-panel rounded-xl p-3 text-center transition-all">
+                    <div class="text-2xl mb-1">{{ $categoryEmoji[$cat] ?? '⚠️' }}</div>
+                    <div class="text-[10px] text-slate-300">{{ $categoryLabels[$cat] ?? $cat }}</div>
+                </button>
+            @endforeach
         </div>
     </div>
 

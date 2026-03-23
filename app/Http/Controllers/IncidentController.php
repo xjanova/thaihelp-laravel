@@ -7,6 +7,7 @@ use App\Models\IncidentVote;
 use App\Services\DiscordService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
 class IncidentController extends Controller
@@ -121,10 +122,18 @@ class IncidentController extends Controller
                 ], 409);
             }
 
-            IncidentVote::create([
-                'incident_id' => $incident->id,
-                'user_ip' => $userIp,
-            ]);
+            try {
+                IncidentVote::create([
+                    'incident_id' => $incident->id,
+                    'user_ip' => $userIp,
+                ]);
+            } catch (QueryException $e) {
+                // Duplicate key - race condition, another request already voted
+                return response()->json([
+                    'success' => false,
+                    'message' => 'คุณโหวตรายงานนี้ไปแล้ว',
+                ], 409);
+            }
 
             $incident->increment('upvotes');
 

@@ -57,7 +57,7 @@ class DiscordInteractionController extends Controller
             return false;
         }
 
-        $body = file_get_contents('php://input');
+        $body = $request->getContent();
         $message = $timestamp . $body;
 
         Log::debug('Discord verify attempt', [
@@ -133,10 +133,12 @@ class DiscordInteractionController extends Controller
     private function handleIncident(array $options, string $username): JsonResponse
     {
         $category = $options['category'] ?? 'other';
+        $validCategories = ['accident', 'flood', 'roadblock', 'checkpoint', 'construction', 'other'];
+        $category = in_array($category, $validCategories) ? $category : 'other';
         $title = $options['title'] ?? 'ไม่ระบุ';
         $description = $options['description'] ?? null;
-        $latitude = $options['latitude'] ?? null;
-        $longitude = $options['longitude'] ?? null;
+        $latitude = $options['latitude'] ?? 13.7563;
+        $longitude = $options['longitude'] ?? 100.5018;
 
         try {
             $incident = Incident::create([

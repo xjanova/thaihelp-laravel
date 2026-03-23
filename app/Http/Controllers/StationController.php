@@ -11,6 +11,7 @@ use App\Services\FuelPriceService;
 use App\Services\GooglePlacesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class StationController extends Controller
@@ -43,11 +44,13 @@ class StationController extends Controller
             $lng = $validated['lng'];
             $radius = $validated['radius'] ?? 5000;
 
-            // Auto-generate demo data if nothing nearby
-            app(DemoDataService::class)->ensureDemoNearby($lat, $lng);
-
-            // Cleanup old demo data
-            DemoDataService::cleanupOldDemo();
+            // Auto-generate demo data if nothing nearby (check once per location per 10 min)
+            $demoKey = 'demo_check_' . round($lat, 2) . '_' . round($lng, 2);
+            if (!Cache::has($demoKey)) {
+                app(DemoDataService::class)->ensureDemoNearby($lat, $lng);
+                DemoDataService::cleanupOldDemo();
+                Cache::put($demoKey, true, 600); // 10 minutes
+            }
 
             // Get stations from Google Places API
             $placesService = app(GooglePlacesService::class);

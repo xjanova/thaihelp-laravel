@@ -25,22 +25,31 @@ class SiteSetting extends Model
         });
     }
 
+    protected static ?array $cache = null;
+
     public static function get(string $key, mixed $default = null): mixed
     {
-        $setting = static::where('setting_key', $key)->first();
-
-        return $setting ? $setting->setting_value : $default;
+        if (static::$cache === null) {
+            try {
+                static::$cache = static::pluck('setting_value', 'setting_key')->toArray();
+            } catch (\Exception $e) {
+                static::$cache = [];
+            }
+        }
+        return static::$cache[$key] ?? $default;
     }
 
-    public static function set(string $key, mixed $value, string $group = 'general'): static
+    public static function set(string $key, mixed $value, string $group = 'general'): void
     {
-        return static::updateOrCreate(
+        static::updateOrCreate(
             ['setting_key' => $key],
-            [
-                'setting_value' => $value,
-                'setting_group' => $group,
-                'updated_at' => now(),
-            ],
+            ['setting_value' => $value, 'setting_group' => $group]
         );
+        static::$cache = null; // bust cache
+    }
+
+    public static function clearCache(): void
+    {
+        static::$cache = null;
     }
 }

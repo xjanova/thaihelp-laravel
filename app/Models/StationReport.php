@@ -22,7 +22,6 @@ class StationReport extends Model
         'longitude',
         'confirmation_count',
         'is_verified',
-        'confirmed_ips',
         'is_demo',
         'facilities',
     ];
@@ -55,11 +54,13 @@ class StationReport extends Model
      */
     public static function replaceDemoWithReal(string $placeId): void
     {
-        $demoReports = static::where('place_id', $placeId)->where('is_demo', true)->get();
-        foreach ($demoReports as $demo) {
-            $demo->fuelReports()->delete();
-            $demo->delete();
-        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($placeId) {
+            $demoIds = static::where('place_id', $placeId)->where('is_demo', true)->pluck('id');
+            if ($demoIds->isNotEmpty()) {
+                \App\Models\FuelReport::whereIn('report_id', $demoIds)->delete();
+                static::whereIn('id', $demoIds)->delete();
+            }
+        });
     }
 
     /**

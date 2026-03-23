@@ -22,12 +22,10 @@ class AuthController extends Controller
 
         try {
             $user = User::firstOrCreate(
-                [
-                    'nickname' => $validated['nickname'],
-                    'email' => $validated['email'] ?? null,
-                ],
+                ['nickname' => $validated['nickname']],
                 [
                     'name' => $validated['nickname'],
+                    'email' => $validated['email'] ?? null,
                     'provider' => 'nickname',
                 ]
             );

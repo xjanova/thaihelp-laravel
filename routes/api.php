@@ -11,7 +11,7 @@ Route::get('/incidents', [IncidentController::class, 'apiIndex'])
     ->middleware('throttle:30,1');
 
 Route::post('/incidents', [IncidentController::class, 'apiStore'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:3,1');
 
 Route::post('/incidents/{incident}/vote', [IncidentController::class, 'vote'])
     ->middleware('throttle:10,1');
@@ -21,7 +21,7 @@ Route::get('/stations', [StationController::class, 'apiSearch'])
     ->middleware('throttle:20,1');
 
 Route::post('/stations/report', [StationController::class, 'apiReport'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:3,1');
 
 Route::post('/stations/report/{report}/confirm', [StationController::class, 'apiConfirm'])
     ->middleware('throttle:10,1');

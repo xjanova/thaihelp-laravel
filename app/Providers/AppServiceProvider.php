@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Models\SiteSetting;
 use App\Services\GooglePlacesService;
 use App\Services\GroqAIService;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -40,10 +39,6 @@ class AppServiceProvider extends ServiceProvider
     private function overrideConfigFromDatabase(): void
     {
         try {
-            if (! Schema::hasTable('site_settings')) {
-                return;
-            }
-
             // Google OAuth
             $googleClientId = SiteSetting::get('google_client_id');
             $googleClientSecret = SiteSetting::get('google_client_secret');

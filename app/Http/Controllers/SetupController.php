@@ -34,6 +34,10 @@ class SetupController extends Controller
      */
     public function migrate(Request $request)
     {
+        if (SiteSetting::get('setup_completed') === '1' || SiteSetting::get('setup_completed') === 'true') {
+            return response()->json(['success' => false, 'error' => 'Setup already completed'], 403);
+        }
+
         try {
             Artisan::call('migrate', ['--force' => true]);
             $output = Artisan::output();
@@ -59,6 +63,10 @@ class SetupController extends Controller
      */
     public function configure(Request $request)
     {
+        if (SiteSetting::get('setup_completed') === '1' || SiteSetting::get('setup_completed') === 'true') {
+            return response()->json(['success' => false, 'error' => 'Setup already completed'], 403);
+        }
+
         $request->validate([
             'site_name' => 'required|string|max:100',
             'site_description' => 'string|max:255',

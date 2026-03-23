@@ -31,7 +31,7 @@ class GooglePlacesService
     {
         $radius = max(500, min(100000, $radius));
 
-        $cacheKey = "places_nearby_{$lat}_{$lng}_{$radius}";
+        $cacheKey = "places_nearby_" . round($lat, 4) . "_" . round($lng, 4) . "_{$radius}";
 
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($lat, $lng, $radius) {
             try {

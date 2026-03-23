@@ -125,7 +125,7 @@ class DemoDataService
                 'is_demo'            => true,
                 'is_verified'        => true,
                 'confirmation_count' => rand(2, 12),
-                'confirmed_ips'      => json_encode(['demo-auto']),
+                'confirmed_ips'      => ['demo-auto'],
                 'created_at'         => now()->subMinutes(rand(5, 180)),
             ]);
 
@@ -189,16 +189,13 @@ class DemoDataService
      */
     public static function cleanupOldDemo(): int
     {
-        $old = StationReport::where('is_demo', true)
+        $oldIds = StationReport::where('is_demo', true)
             ->where('created_at', '<', now()->subHours(4))
-            ->get();
+            ->pluck('id');
 
-        $count = $old->count();
-        foreach ($old as $report) {
-            $report->fuelReports()->delete();
-            $report->delete();
-        }
+        if ($oldIds->isEmpty()) return 0;
 
-        return $count;
+        FuelReport::whereIn('report_id', $oldIds)->delete();
+        return StationReport::whereIn('id', $oldIds)->delete();
     }
 }

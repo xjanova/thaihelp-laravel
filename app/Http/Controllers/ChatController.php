@@ -23,14 +23,29 @@ class ChatController extends Controller
     public function apiChat(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'messages' => ['required', 'array', 'min:1', 'max:50'],
-            'messages.*.role' => ['required', 'string', 'in:user,assistant,system'],
-            'messages.*.content' => ['required', 'string', 'max:2000'],
+            'message' => ['required_without:messages', 'string', 'max:1000'],
+            'messages' => ['required_without:message', 'array'],
+            'messages.*.role' => ['required_with:messages', 'string'],
+            'messages.*.content' => ['required_with:messages', 'string'],
+            'history' => ['nullable', 'array'],
         ]);
+
+        // Build messages array from either format
+        if (isset($validated['message'])) {
+            $messages = [];
+            if (!empty($validated['history'])) {
+                foreach ($validated['history'] as $h) {
+                    $messages[] = ['role' => $h['role'] ?? 'user', 'content' => $h['content'] ?? ''];
+                }
+            }
+            $messages[] = ['role' => 'user', 'content' => $validated['message']];
+        } else {
+            $messages = $validated['messages'];
+        }
 
         try {
             $groqService = app(GroqAIService::class);
-            $reply = $groqService->chat($validated['messages']);
+            $reply = $groqService->chat($messages);
 
             return response()->json([
                 'success' => true,

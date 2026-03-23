@@ -35,7 +35,7 @@ class DemoStationSeeder extends Seeder
                 'is_demo'            => true,
                 'is_verified'        => true,
                 'confirmation_count' => rand(2, 8),
-                'confirmed_ips'      => json_encode(['demo-1', 'demo-2']),
+                'confirmed_ips'      => ['demo-1', 'demo-2'],
                 'created_at'         => now()->subMinutes(rand(5, 120)),
             ]);
 

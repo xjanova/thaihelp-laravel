@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\SiteSetting;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckSetup
@@ -26,17 +26,15 @@ class CheckSetup
             return $next($request);
         }
 
-        try {
-            if (!Schema::hasTable('site_settings')) {
-                return redirect('/setup');
+        $isSetup = Cache::remember('setup_completed', 300, function () {
+            try {
+                return SiteSetting::get('setup_completed') === '1' || SiteSetting::get('setup_completed') === 'true';
+            } catch (\Exception $e) {
+                return false;
             }
+        });
 
-            $setupCompleted = SiteSetting::get('setup_completed');
-            if ($setupCompleted !== 'true') {
-                return redirect('/setup');
-            }
-        } catch (\Exception $e) {
-            // DB not connected — redirect to setup
+        if (!$isSetup) {
             return redirect('/setup');
         }
 
