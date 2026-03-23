@@ -90,6 +90,10 @@ Route::get('/fuel-prices/history', function (\Illuminate\Http\Request $request) 
     return response()->json(['success' => true, 'data' => $history]);
 })->middleware('throttle:10,1');
 
+// Hospitals
+Route::get('/hospitals', [App\Http\Controllers\HospitalController::class, 'apiIndex'])->middleware('throttle:30,1');
+Route::post('/hospitals', [App\Http\Controllers\HospitalController::class, 'apiStore'])->middleware('throttle:5,1');
+
 // Stats
 Route::get('/stats', [App\Http\Controllers\StatsController::class, 'apiStats'])
     ->middleware('throttle:20,1');

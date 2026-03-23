@@ -90,6 +90,10 @@
                 <input type="checkbox" id="layer-ev" onchange="toggleLayer('ev')" class="rounded accent-emerald-500">
                 🔌 สถานีชาร์จ EV
             </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-hospital" onchange="toggleLayer('hospital')" class="rounded accent-pink-500">
+                🏥 สถานพยาบาล
+            </label>
             <hr class="border-slate-700">
             <p class="text-[10px] text-slate-500 uppercase tracking-wider">Google Maps Layers</p>
             <label class="flex items-center gap-2 text-xs text-green-400 cursor-pointer">

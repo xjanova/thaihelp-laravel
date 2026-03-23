@@ -43,6 +43,9 @@ Route::get('/stats', [App\Http\Controllers\StatsController::class, 'index'])->na
 // Trip Planner
 Route::get('/trip', [App\Http\Controllers\TripPlannerController::class, 'index'])->name('trip');
 
+// Hospitals
+Route::get('/hospitals', [App\Http\Controllers\HospitalController::class, 'index'])->name('hospitals');
+
 // Fuel Prices
 Route::get('/fuel-prices', function () {
     return view('pages.fuel-prices');
