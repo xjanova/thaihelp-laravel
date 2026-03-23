@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\FuelReport;
 use App\Models\SiteSetting;
 use App\Models\StationReport;
+use App\Services\DemoDataService;
 use App\Services\DiscordService;
+use App\Services\FuelPriceService;
 use App\Services\GooglePlacesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,6 +42,12 @@ class StationController extends Controller
             $lat = $validated['lat'];
             $lng = $validated['lng'];
             $radius = $validated['radius'] ?? 5000;
+
+            // Auto-generate demo data if nothing nearby
+            app(DemoDataService::class)->ensureDemoNearby($lat, $lng);
+
+            // Cleanup old demo data
+            DemoDataService::cleanupOldDemo();
 
             // Get stations from Google Places API
             $placesService = app(GooglePlacesService::class);
@@ -124,11 +132,21 @@ class StationController extends Controller
             'fuelReports.*.fuel_type' => ['required', 'string', 'in:' . implode(',', FuelReport::FUEL_TYPES)],
             'fuelReports.*.status' => ['required', 'string', 'in:' . implode(',', FuelReport::STATUSES)],
             'fuelReports.*.price' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
+            'facilities' => ['nullable', 'array'],
+            'facilities.*' => ['string', 'in:' . implode(',', array_keys(StationReport::FACILITY_TYPES))],
         ]);
 
         try {
             // Auto-remove demo data for this station when real report comes in
             StationReport::replaceDemoWithReal($validated['placeId']);
+
+            // Build facilities with status
+            $facilities = [];
+            if (!empty($validated['facilities'])) {
+                foreach ($validated['facilities'] as $facility) {
+                    $facilities[$facility] = ['status' => 'working'];
+                }
+            }
 
             $stationReport = StationReport::create([
                 'place_id' => $validated['placeId'],
@@ -139,6 +157,7 @@ class StationController extends Controller
                 'latitude' => $validated['latitude'] ?? null,
                 'longitude' => $validated['longitude'] ?? null,
                 'is_demo' => false,
+                'facilities' => !empty($facilities) ? $facilities : null,
             ]);
 
             foreach ($validated['fuelReports'] as $fuel) {
@@ -195,5 +214,28 @@ class StationController extends Controller
             'success' => false,
             'message' => 'คุณได้ยืนยันรายงานนี้แล้ว',
         ], 409);
+    }
+
+    /**
+     * API: Get today's official fuel prices.
+     */
+    public function apiFuelPrices(): JsonResponse
+    {
+        try {
+            $prices = app(FuelPriceService::class)->getTodayPrices();
+
+            return response()->json([
+                'success' => true,
+                'data' => $prices,
+                'facility_types' => StationReport::FACILITY_TYPES,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Fuel prices fetch failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'ไม่สามารถดึงราคาน้ำมันได้',
+            ], 500);
+        }
     }
 }

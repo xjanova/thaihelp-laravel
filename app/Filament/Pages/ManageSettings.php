@@ -81,12 +81,45 @@ class ManageSettings extends Page
         ];
     }
 
+    /**
+     * Map setting keys to their .env variable names.
+     */
+    protected function envMapping(): array
+    {
+        return [
+            'google_maps_api_key'            => 'GOOGLE_MAPS_API_KEY',
+            'groq_api_key'                   => 'GROQ_API_KEY',
+            'google_client_id'               => 'GOOGLE_CLIENT_ID',
+            'google_client_secret'           => 'GOOGLE_CLIENT_SECRET',
+            'google_redirect_uri'            => 'GOOGLE_REDIRECT_URI',
+            'line_channel_id'                => 'LINE_CHANNEL_ID',
+            'line_channel_secret'            => 'LINE_CHANNEL_SECRET',
+            'line_redirect_uri'              => 'LINE_REDIRECT_URI',
+            'discord_bot_token'              => 'DISCORD_BOT_TOKEN',
+            'discord_application_id'         => 'DISCORD_APPLICATION_ID',
+            'discord_public_key'             => 'DISCORD_PUBLIC_KEY',
+            'discord_webhook_url'            => 'DISCORD_WEBHOOK_URL',
+            'discord_notification_channel_id'=> 'DISCORD_NOTIFICATION_CHANNEL_ID',
+            'discord_admin_channel_id'       => 'DISCORD_ADMIN_CHANNEL_ID',
+        ];
+    }
+
     public function mount(): void
     {
         $values = [];
+        $envMap = $this->envMapping();
 
         foreach ($this->settingDefinitions() as $key => $meta) {
-            $raw = SiteSetting::get($key, $meta['default']);
+            $dbValue = SiteSetting::get($key);
+
+            // If DB has a value, use it. Otherwise fall back to .env, then default.
+            if ($dbValue !== null && $dbValue !== '') {
+                $raw = $dbValue;
+            } elseif (isset($envMap[$key]) && env($envMap[$key])) {
+                $raw = env($envMap[$key]);
+            } else {
+                $raw = $meta['default'];
+            }
 
             // Cast booleans for toggles
             if (is_bool($meta['default'])) {
@@ -207,7 +240,7 @@ class ManageSettings extends Page
                             ->password()
                             ->revealable()
                             ->maxLength(255)
-                            ->helperText('ใช้สำหรับแสดงแผนที่และค้นหาสถานที่'),
+                            ->helperText($this->envHint('GOOGLE_MAPS_API_KEY', 'ใช้สำหรับแสดงแผนที่และค้นหาสถานที่')),
 
                         TextInput::make('groq_api_key')
                             ->label('Groq AI API Key')
@@ -215,7 +248,7 @@ class ManageSettings extends Page
                             ->password()
                             ->revealable()
                             ->maxLength(255)
-                            ->helperText('ใช้สำหรับระบบผู้ช่วยเสียง AI (น้องหญิง)'),
+                            ->helperText($this->envHint('GROQ_API_KEY', 'ใช้สำหรับระบบผู้ช่วยเสียง AI (น้องหญิง)')),
                     ]),
             ]);
     }
@@ -298,16 +331,18 @@ class ManageSettings extends Page
                             ->label('Bot Token')
                             ->password()
                             ->revealable()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->helperText($this->envHint('DISCORD_BOT_TOKEN')),
 
                         TextInput::make('discord_application_id')
                             ->label('Application ID')
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->helperText($this->envHint('DISCORD_APPLICATION_ID')),
 
                         TextInput::make('discord_public_key')
                             ->label('Public Key')
                             ->maxLength(255)
-                            ->helperText('สำหรับ verify slash commands'),
+                            ->helperText($this->envHint('DISCORD_PUBLIC_KEY', 'สำหรับ verify slash commands')),
 
                         TextInput::make('discord_webhook_url')
                             ->label('Webhook URL')
@@ -383,6 +418,22 @@ class ManageSettings extends Page
                             ->helperText('ขนาดไฟล์สูงสุดที่อนุญาตให้อัปโหลด'),
                     ]),
             ]);
+    }
+
+    /**
+     * Show .env status hint on a field.
+     */
+    protected function envHint(string $envKey, string $description = ''): string
+    {
+        $envValue = env($envKey);
+        $prefix = $description ? "{$description} | " : '';
+
+        if ($envValue) {
+            $masked = substr($envValue, 0, 8) . '...';
+            return "{$prefix}✅ .env ({$envKey}): {$masked}";
+        }
+
+        return "{$prefix}⚠️ .env ({$envKey}): ยังไม่ได้ตั้งค่า";
     }
 
     // ──────────────────────────────────────────────

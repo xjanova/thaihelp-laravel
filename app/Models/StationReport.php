@@ -24,6 +24,18 @@ class StationReport extends Model
         'is_verified',
         'confirmed_ips',
         'is_demo',
+        'facilities',
+    ];
+
+    public const FACILITY_TYPES = [
+        'air_pump'      => ['label' => 'ที่เติมลม', 'icon' => '🌀'],
+        'restroom'      => ['label' => 'ห้องน้ำ', 'icon' => '🚻'],
+        'convenience'   => ['label' => 'ร้านสะดวกซื้อ', 'icon' => '🏪'],
+        'car_wash'      => ['label' => 'ล้างรถ', 'icon' => '🚿'],
+        'coffee'        => ['label' => 'ร้านกาแฟ', 'icon' => '☕'],
+        'atm'           => ['label' => 'ATM', 'icon' => '🏧'],
+        'wifi'          => ['label' => 'WiFi ฟรี', 'icon' => '📶'],
+        'ev_charger'    => ['label' => 'ชาร์จ EV', 'icon' => '⚡'],
     ];
 
     protected function casts(): array
@@ -34,6 +46,7 @@ class StationReport extends Model
             'confirmed_ips' => 'array',
             'is_verified' => 'boolean',
             'is_demo' => 'boolean',
+            'facilities' => 'array',
         ];
     }
 

@@ -26,6 +26,10 @@ Route::post('/stations/report', [StationController::class, 'apiReport'])
 Route::post('/stations/report/{report}/confirm', [StationController::class, 'apiConfirm'])
     ->middleware('throttle:10,1');
 
+// Fuel Prices (official daily prices)
+Route::get('/fuel-prices', [StationController::class, 'apiFuelPrices'])
+    ->middleware('throttle:30,1');
+
 // Chat
 Route::post('/chat', [ChatController::class, 'apiChat'])
     ->middleware('throttle:10,1');
