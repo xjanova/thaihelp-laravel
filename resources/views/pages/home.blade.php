@@ -55,6 +55,49 @@
         <div id="breaking-news-list" class="divide-y divide-slate-700/30"></div>
     </div>
 
+    {{-- Data Layers Panel (เปิดปิดได้) --}}
+    <div id="data-layers-panel" class="absolute top-3 right-3 z-10" x-data="{ open: false }">
+        <button @click="open = !open" class="metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white shadow-lg">
+            📊 ข้อมูล <span x-text="open ? '▲' : '▼'" class="ml-1 text-[10px]"></span>
+        </button>
+        <div x-show="open" x-transition class="mt-2 metal-panel rounded-xl p-3 w-56 shadow-2xl space-y-2">
+            <p class="text-[10px] text-slate-500 uppercase tracking-wider">เลเยอร์ข้อมูล</p>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-weather" checked onchange="toggleLayer('weather')" class="rounded accent-blue-500">
+                🌤️ สภาพอากาศ
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-aqi" checked onchange="toggleLayer('aqi')" class="rounded accent-green-500">
+                💨 คุณภาพอากาศ
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-earthquake" checked onchange="toggleLayer('earthquake')" class="rounded accent-orange-500">
+                🫨 แผ่นดินไหว
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-flood" onchange="toggleLayer('flood')" class="rounded accent-cyan-500">
+                🌊 เตือนน้ำท่วม
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-traffic" checked onchange="toggleLayer('traffic')" class="rounded accent-red-500">
+                🚗 จราจร
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-danger" checked onchange="toggleLayer('danger')" class="rounded accent-red-600">
+                🔴 พื้นที่อันตราย
+            </label>
+            <hr class="border-slate-700">
+            <button onclick="refreshExternalData()" class="w-full text-center text-[10px] text-blue-400 hover:text-blue-300">🔄 รีเฟรชข้อมูล</button>
+        </div>
+    </div>
+
+    {{-- Weather + AQI Widget (ด้านขวาล่าง) --}}
+    <div id="weather-widget" class="absolute bottom-3 right-3 z-10 metal-panel rounded-xl px-3 py-2 text-xs max-w-[180px] shadow-lg">
+        <div id="weather-content" class="space-y-1">
+            <div class="text-slate-500 text-[10px]">กำลังโหลด...</div>
+        </div>
+    </div>
+
     {{-- Map Legend --}}
     <div class="absolute bottom-3 left-3 z-10 metal-panel rounded-lg px-3 py-2 text-xs space-y-1">
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span> มีน้ำมัน</div>
@@ -62,6 +105,8 @@
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> หมด</div>
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gray-500 inline-block"></span> ไม่มีข้อมูล</div>
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span> ข่าวด่วน</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block"></span> แผ่นดินไหว</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 border-2 border-red-500 rounded-full inline-block"></span> พื้นที่อันตราย</div>
     </div>
 
     {{-- News Ticker Panel --}}
@@ -438,6 +483,9 @@
 
         // Load breaking news
         loadBreakingNews();
+
+        // Load external data (weather, AQI, earthquakes, floods)
+        loadExternalData();
     }
 
     // Radar pulse animation overlay
@@ -529,6 +577,118 @@
         } else {
             loadMapData();
         }
+    }
+
+    // ─── External Data Layers ───
+    let extMarkers = { earthquake: [], flood: [], traffic: [], danger: [] };
+    let extLayers = { weather: true, aqi: true, earthquake: true, flood: false, traffic: true, danger: true };
+    let extData = {};
+
+    function toggleLayer(layer) {
+        extLayers[layer] = !extLayers[layer];
+        if (layer === 'earthquake' || layer === 'flood' || layer === 'traffic' || layer === 'danger') {
+            (extMarkers[layer] || []).forEach(m => m.setMap(extLayers[layer] ? map : null));
+        }
+        if (layer === 'weather' || layer === 'aqi') {
+            const widget = document.getElementById('weather-widget');
+            if (widget) widget.style.display = (extLayers.weather || extLayers.aqi) ? 'block' : 'none';
+            updateWeatherWidget();
+        }
+    }
+
+    async function loadExternalData() {
+        try {
+            const res = await fetch(`/api/external-data?lat=${userPos.lat}&lng=${userPos.lng}`);
+            const json = await res.json();
+            if (!json.success) return;
+            extData = json.data;
+
+            renderExternalData();
+        } catch (e) {
+            console.log('External data failed:', e);
+        }
+    }
+
+    function refreshExternalData() {
+        // Clear old markers
+        Object.keys(extMarkers).forEach(key => {
+            (extMarkers[key] || []).forEach(m => m.setMap(null));
+            extMarkers[key] = [];
+        });
+        loadExternalData();
+    }
+
+    function renderExternalData() {
+        // 🫨 Earthquakes
+        (extData.earthquakes || []).forEach(eq => {
+            if (!eq.latitude || !eq.longitude) return;
+            const magScale = Math.max(6, eq.magnitude * 4);
+            const marker = new google.maps.Marker({
+                position: { lat: eq.latitude, lng: eq.longitude },
+                map: extLayers.earthquake ? map : null,
+                title: eq.title,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: magScale,
+                    fillColor: '#f97316',
+                    fillOpacity: 0.7,
+                    strokeColor: '#fbbf24',
+                    strokeWeight: 2,
+                },
+                zIndex: 150,
+            });
+            const iw = new google.maps.InfoWindow({
+                content: `<div style="color:#000;font-size:12px;min-width:180px;">
+                    <strong>🫨 ${eq.title}</strong>
+                    <div style="margin-top:4px;font-size:11px;">
+                        <div>ขนาด: <strong style="color:#f97316;">${eq.magnitude}</strong></div>
+                        <div>ลึก: ${eq.depth_km} กม.</div>
+                        <div>เวลา: ${eq.time || 'ไม่ทราบ'}</div>
+                        ${eq.tsunami ? '<div style="color:red;font-weight:bold;">⚠️ เตือนสึนามิ!</div>' : ''}
+                    </div>
+                    ${eq.url ? '<a href="' + eq.url + '" target="_blank" style="color:#3b82f6;font-size:10px;">ดูรายละเอียด USGS →</a>' : ''}
+                </div>`
+            });
+            marker.addListener('click', () => iw.open(map, marker));
+            extMarkers.earthquake.push(marker);
+        });
+
+        // 🌤️ Weather + 💨 AQI Widget
+        updateWeatherWidget();
+    }
+
+    function updateWeatherWidget() {
+        const el = document.getElementById('weather-content');
+        if (!el) return;
+
+        let html = '';
+        const w = extData.weather?.current;
+        const aqi = extData.air_quality;
+
+        if (extLayers.weather && w) {
+            html += `<div class="flex items-center gap-1">
+                <span class="text-lg">${w.icon || '🌤️'}</span>
+                <span class="text-white font-bold text-sm">${w.temp}°C</span>
+            </div>
+            <div class="text-slate-400">${w.description || ''}</div>
+            <div class="text-slate-500 text-[10px]">💧 ${w.humidity}% · 💨 ${w.wind_speed} km/h</div>`;
+            if (w.rain > 0) {
+                html += `<div class="text-cyan-400 text-[10px]">🌧️ ฝน ${w.rain} mm</div>`;
+            }
+        }
+
+        if (extLayers.aqi && aqi && aqi.aqi) {
+            html += `<hr class="border-slate-700 my-1">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full inline-block" style="background:${aqi.color}"></span>
+                <span class="text-white text-xs">AQI <strong>${aqi.aqi}</strong></span>
+                <span class="text-[10px]" style="color:${aqi.color}">${aqi.label_th}</span>
+            </div>`;
+            if (aqi.pm25) html += `<div class="text-slate-500 text-[10px]">PM2.5: ${aqi.pm25} µg/m³</div>`;
+        }
+
+        if (!html) html = '<div class="text-slate-500 text-[10px]">ไม่มีข้อมูล</div>';
+        el.innerHTML = html;
     }
 
     // ─── Map Radius (based on zoom level) ───

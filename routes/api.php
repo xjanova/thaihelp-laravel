@@ -28,6 +28,34 @@ Route::post('/incidents/{incident}/resolve', [IncidentController::class, 'resolv
 Route::get('/my-incidents', [IncidentController::class, 'myIncidents'])
     ->middleware(['auth:sanctum', 'throttle:20,1']);
 
+// External Data (แผ่นดินไหว, อากาศ, AQI, น้ำท่วม, จราจร)
+Route::get('/external-data', function (\Illuminate\Http\Request $request) {
+    $lat = $request->query('lat', 13.7563);
+    $lng = $request->query('lng', 100.5018);
+    $types = $request->query('types', 'all'); // all, earthquakes, weather, air_quality, flood_warnings, traffic
+
+    $service = app(\App\Services\ExternalDataService::class);
+
+    if ($types === 'all') {
+        $data = $service->getAll((float) $lat, (float) $lng);
+    } else {
+        $data = [];
+        foreach (explode(',', $types) as $type) {
+            $type = trim($type);
+            $data[$type] = match ($type) {
+                'earthquakes' => $service->getEarthquakes(),
+                'weather' => $service->getWeather((float) $lat, (float) $lng),
+                'air_quality' => $service->getAirQuality((float) $lat, (float) $lng),
+                'flood_warnings' => $service->getFloodWarnings(),
+                'traffic' => $service->getTrafficAlerts((float) $lat, (float) $lng),
+                default => [],
+            };
+        }
+    }
+
+    return response()->json(['success' => true, 'data' => $data]);
+})->middleware('throttle:10,1');
+
 // Stats
 Route::get('/stats', [App\Http\Controllers\StatsController::class, 'apiStats'])
     ->middleware('throttle:20,1');
