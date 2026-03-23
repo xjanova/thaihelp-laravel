@@ -213,6 +213,49 @@
                             console.error('Failed to parse fuel report:', e);
                         }
                     }
+
+                    // Check for incident report in AI response
+                    const incidentMatch = reply.match(/\[INCIDENT_REPORT:(.*?)\]/);
+                    if (incidentMatch) {
+                        try {
+                            const incidentData = JSON.parse(incidentMatch[1]);
+                            if (navigator.geolocation) {
+                                navigator.geolocation.getCurrentPosition(async (pos) => {
+                                    try {
+                                        await fetch('/api/incidents', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                            },
+                                            body: JSON.stringify({
+                                                category: incidentData.category || 'other',
+                                                title: incidentData.title || 'รายงานจากน้องหญิง',
+                                                description: incidentData.description || '',
+                                                latitude: pos.coords.latitude,
+                                                longitude: pos.coords.longitude,
+                                            }),
+                                        });
+                                    } catch (e) {
+                                        console.error('Failed to submit incident:', e);
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse incident report:', e);
+                        }
+                    }
+
+                    // Clean command tags from displayed messages
+                    const lastMsg = this.messages[this.messages.length - 1];
+                    if (lastMsg && lastMsg.role === 'assistant') {
+                        lastMsg.content = lastMsg.content
+                            .replace(/\[FUEL_REPORT:.*?\]/g, '')
+                            .replace(/\[INCIDENT_REPORT:.*?\]/g, '')
+                            .replace(/\[CONDITION:.*?\]/g, '')
+                            .replace(/\[PLAY_VIDEO\]/g, '')
+                            .trim();
+                    }
                 } catch (err) {
                     this.messages.push({
                         role: 'assistant',
