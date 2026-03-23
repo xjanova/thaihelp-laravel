@@ -26,90 +26,68 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "Generated version: $VERSION ($SHORT_SHA)"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_APP_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+          DISCORD_PUBKEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
+          DISCORD_GUILD: ${{ secrets.DISCORD_GUILD_ID }}
+          APP_VER: ${{ steps.version.outputs.version }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          envs: DISCORD_TOKEN,DISCORD_APP_ID,DISCORD_PUBKEY,DISCORD_GUILD,APP_VER
           script_stop: true
           script: |
             set -e
-
             APP_DIR="${{ secrets.DEPLOY_PATH }}"
 
             echo "=========================================="
-            echo "  ThaiHelp Laravel - Auto Deploy"
-            echo "  Version: ${{ steps.version.outputs.version }}"
+            echo "  ThaiHelp Deploy - ${APP_VER}"
             echo "=========================================="
 
-            # First-time: clone repo if app dir doesn't exist
             if [ ! -d "$APP_DIR/.git" ]; then
-              echo ">>> First-time setup: cloning repo..."
               mkdir -p "$(dirname "$APP_DIR")"
               git clone https://github.com/xjanova/thaihelp-laravel.git "$APP_DIR"
               cd "$APP_DIR"
-
-              if [ ! -f .env ]; then
-                cp .env.example .env
-                php artisan key:generate --force
-              fi
-
+              [ ! -f .env ] && cp .env.example .env && php artisan key:generate --force
               composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
               npm ci && npm run build
-
               mkdir -p storage/logs storage/framework/{sessions,views,cache} storage/backups bootstrap/cache
               chmod -R 775 storage bootstrap/cache
-
               DOMAIN_DIR="$(dirname "$APP_DIR")"
-              PUBLIC_HTML="$DOMAIN_DIR/public_html"
-              if [ ! -L "$PUBLIC_HTML" ] || [ "$(readlink -f "$PUBLIC_HTML")" != "$APP_DIR/public" ]; then
-                rm -rf "$PUBLIC_HTML"
-                ln -s "$APP_DIR/public" "$PUBLIC_HTML"
-              fi
-
+              PH="$DOMAIN_DIR/public_html"
+              [ ! -L "$PH" ] && rm -rf "$PH" && ln -s "$APP_DIR/public" "$PH"
               php artisan migrate --force 2>&1 || true
               php artisan storage:link 2>&1 || true
-
-              echo ">>> First-time setup complete!"
               exit 0
             fi
 
-            # Ensure Redis env vars are set
             cd "$APP_DIR"
-            grep -q "^REDIS_CLIENT=" .env 2>/dev/null || cat >> .env << 'REDIS'
 
-# Redis
-REDIS_CLIENT=predis
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=null
-REDIS_PORT=6379
-SESSION_DRIVER=redis
-CACHE_STORE=redis
-QUEUE_CONNECTION=redis
-REDIS
+            # Redis env
+            grep -q "^REDIS_CLIENT=" .env || echo -e "\nREDIS_CLIENT=predis\nREDIS_HOST=127.0.0.1\nREDIS_PASSWORD=null\nREDIS_PORT=6379" >> .env
+            sed -i 's/^SESSION_DRIVER=database/SESSION_DRIVER=redis/' .env 2>/dev/null || true
+            sed -i 's/^CACHE_STORE=database/CACHE_STORE=redis/' .env 2>/dev/null || true
+            sed -i 's/^QUEUE_CONNECTION=database/QUEUE_CONNECTION=redis/' .env 2>/dev/null || true
 
-            # Ensure Discord env vars are set
-            grep -q "^DISCORD_BOT_TOKEN=" .env 2>/dev/null || cat >> .env << 'DISCORD'
+            # Discord env
+            if [ -n "$DISCORD_TOKEN" ]; then
+              grep -q "^DISCORD_BOT_TOKEN=" .env || echo -e "\nDISCORD_BOT_TOKEN=${DISCORD_TOKEN}\nDISCORD_APPLICATION_ID=${DISCORD_APP_ID}\nDISCORD_PUBLIC_KEY=${DISCORD_PUBKEY}\nDISCORD_GUILD_ID=${DISCORD_GUILD}" >> .env
+            fi
 
-# Discord Bot
-DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
-DISCORD_APPLICATION_ID=${{ secrets.DISCORD_APPLICATION_ID }}
-DISCORD_PUBLIC_KEY=${{ secrets.DISCORD_PUBLIC_KEY }}
-DISCORD_GUILD_ID=${{ secrets.DISCORD_GUILD_ID }}
-DISCORD
-
-            # Normal deploy
+            # Deploy
             bash deploy.sh main
 
-            # Write version file
-            echo '${{ steps.version.outputs.version }}' > "$APP_DIR/version.txt"
+            # Version
+            echo "${APP_VER}" > version.txt
 
-            # Discord setup (skip if already done)
-            if [ -n "${{ secrets.DISCORD_BOT_TOKEN }}" ]; then
+            # Discord setup
+            if [ -n "$DISCORD_TOKEN" ]; then
               php artisan discord:setup --skip-endpoint 2>&1 || true
             fi
 
@@ -117,15 +95,10 @@ DISCORD
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          name: "${{ steps.version.outputs.version }}"
+          name: ${{ steps.version.outputs.version }}
           body: |
-            ## Deploy ${{ steps.version.outputs.version }}
-
             **Commit:** `${{ steps.version.outputs.short_sha }}` — ${{ github.event.head_commit.message }}
-            **Deployed:** ${{ github.event.head_commit.timestamp }}
             **By:** ${{ github.actor }}
-
-            [View on site](https://thaihelp.xman4289.com)
           generate_release_notes: true
           make_latest: true
         env:
