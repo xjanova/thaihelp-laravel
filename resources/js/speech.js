@@ -1,79 +1,97 @@
 /**
  * ThaiHelp - Voice / Speech Utilities
- *
- * Provides Web Speech API integration for Thai language
- * voice recognition and text-to-speech synthesis.
+ * เสียงน้องหญิง - สาวน่ารัก ภาษาไทย
  */
 
 let recognition = null;
 let isListening = false;
+let cachedVoice = null;
 
-// Callbacks (override these from your page scripts)
 window.onSpeechResult = null;
 window.onSpeechError = null;
 
 /**
- * Start listening for voice input (Thai language)
- * @param {Object} options
- * @param {Function} options.onResult - Callback with transcript string
- * @param {Function} options.onError - Callback with error object
- * @param {boolean} options.continuous - Keep listening after result (default: false)
+ * Find the best Thai female voice
+ */
+function findThaiVoice() {
+    if (cachedVoice) return cachedVoice;
+
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return null;
+
+    // Priority: Thai female > Thai any > any female
+    const thaiVoices = voices.filter(v => v.lang.startsWith('th'));
+
+    // Prefer female voice (common names: Kanya, Niwat, female indicators)
+    cachedVoice = thaiVoices.find(v =>
+        /female|kanya|สตรี|หญิง/i.test(v.name)
+    ) || thaiVoices[0] || null;
+
+    if (cachedVoice) {
+        console.log('[Speech] Using voice:', cachedVoice.name, cachedVoice.lang);
+    }
+
+    return cachedVoice;
+}
+
+/**
+ * Start listening for voice input (Thai)
  */
 function startListening(options = {}) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-        const error = new Error('Speech recognition is not supported in this browser.');
-        if (options.onError) options.onError(error);
-        if (window.onSpeechError) window.onSpeechError(error);
+        const err = new Error('เบราว์เซอร์ไม่รองรับการฟังเสียง');
+        if (options.onError) options.onError(err);
+        if (window.onSpeechError) window.onSpeechError(err);
         return;
     }
 
-    if (isListening) {
-        stopListening();
-    }
+    if (isListening) stopListening();
 
     recognition = new SpeechRecognition();
     recognition.lang = 'th-TH';
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.continuous = options.continuous || false;
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript;
-        const confidence = event.results[event.results.length - 1][0].confidence;
+        const result = event.results[event.results.length - 1];
+        const transcript = result[0].transcript;
+        const isFinal = result.isFinal;
 
-        console.log(`[Speech] Result: "${transcript}" (confidence: ${(confidence * 100).toFixed(1)}%)`);
-
-        if (options.onResult) options.onResult(transcript, confidence);
-        if (window.onSpeechResult) window.onSpeechResult(transcript, confidence);
+        if (isFinal) {
+            console.log(`[Speech] Final: "${transcript}"`);
+            if (options.onResult) options.onResult(transcript, result[0].confidence);
+            if (window.onSpeechResult) window.onSpeechResult(transcript, result[0].confidence);
+        } else if (options.onInterim) {
+            options.onInterim(transcript);
+        }
     };
 
     recognition.onerror = (event) => {
         console.error('[Speech] Error:', event.error);
-
-        const error = new Error(`Speech recognition error: ${event.error}`);
-        if (options.onError) options.onError(error);
-        if (window.onSpeechError) window.onSpeechError(error);
-
+        if (event.error !== 'aborted') {
+            const err = new Error(event.error);
+            if (options.onError) options.onError(err);
+            if (window.onSpeechError) window.onSpeechError(err);
+        }
         isListening = false;
     };
 
     recognition.onend = () => {
         isListening = false;
-        console.log('[Speech] Recognition ended');
     };
 
     recognition.onstart = () => {
         isListening = true;
-        console.log('[Speech] Listening started...');
     };
 
     recognition.start();
 }
 
 /**
- * Stop listening for voice input
+ * Stop listening
  */
 function stopListening() {
     if (recognition) {
@@ -81,80 +99,52 @@ function stopListening() {
         recognition = null;
     }
     isListening = false;
-    console.log('[Speech] Listening stopped');
 }
 
 /**
- * Speak text aloud in Thai
- * @param {string} text - The text to speak
- * @param {Object} options
- * @param {number} options.rate - Speech rate (0.1-10, default: 1)
- * @param {number} options.pitch - Speech pitch (0-2, default: 1)
- * @param {number} options.volume - Volume (0-1, default: 1)
- * @param {Function} options.onEnd - Callback when speech finishes
- * @returns {SpeechSynthesisUtterance}
+ * Speak text as น้องหญิง (young female Thai voice)
  */
 function sayText(text, options = {}) {
-    if (!('speechSynthesis' in window)) {
-        console.error('[Speech] Speech synthesis not supported');
-        return null;
-    }
+    if (!('speechSynthesis' in window) || !text) return null;
 
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'th-TH';
-    utterance.rate = options.rate || 1;
-    utterance.pitch = options.pitch || 1;
+    utterance.rate = options.rate || 1.05;   // slightly faster = more lively
+    utterance.pitch = options.pitch || 1.4;  // higher pitch = younger/cuter
     utterance.volume = options.volume !== undefined ? options.volume : 1;
 
-    // Try to find a Thai voice
-    const voices = window.speechSynthesis.getVoices();
-    const thaiVoice = voices.find(v => v.lang.startsWith('th'));
-    if (thaiVoice) {
-        utterance.voice = thaiVoice;
-    }
+    const voice = findThaiVoice();
+    if (voice) utterance.voice = voice;
 
     utterance.onend = () => {
-        console.log('[Speech] Finished speaking');
         if (options.onEnd) options.onEnd();
     };
 
     utterance.onerror = (event) => {
-        console.error('[Speech] Synthesis error:', event.error);
+        console.error('[Speech] TTS error:', event.error);
     };
 
     window.speechSynthesis.speak(utterance);
     return utterance;
 }
 
-/**
- * Check if currently listening
- * @returns {boolean}
- */
-function isSpeechListening() {
-    return isListening;
-}
+function isSpeechListening() { return isListening; }
+function isSpeaking() { return window.speechSynthesis?.speaking || false; }
 
-/**
- * Check if currently speaking
- * @returns {boolean}
- */
-function isSpeaking() {
-    return window.speechSynthesis && window.speechSynthesis.speaking;
-}
-
-// Export for use in modules or global scope
+// Export globally
 window.startListening = startListening;
 window.stopListening = stopListening;
 window.sayText = sayText;
 window.isSpeechListening = isSpeechListening;
 window.isSpeaking = isSpeaking;
 
-// Preload voices (some browsers need this)
+// Preload voices
 if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
     window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
+        cachedVoice = null;
+        findThaiVoice();
     };
 }

@@ -170,6 +170,44 @@
         }
     }
 
+    // Radar pulse animation overlay
+    function addRadarPulse(center) {
+        const radarDiv = document.createElement('div');
+        radarDiv.innerHTML = `
+            <div class="radar-container">
+                <div class="radar-ring radar-ring-1"></div>
+                <div class="radar-ring radar-ring-2"></div>
+                <div class="radar-ring radar-ring-3"></div>
+            </div>
+        `;
+        document.getElementById('map').parentElement.appendChild(radarDiv);
+
+        // CSS for radar
+        if (!document.getElementById('radar-style')) {
+            const style = document.createElement('style');
+            style.id = 'radar-style';
+            style.textContent = `
+                .radar-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none; }
+                .radar-ring {
+                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    border: 2px solid rgba(59, 130, 246, 0.5); border-radius: 50%;
+                    animation: radarPulse 3s ease-out infinite;
+                }
+                .radar-ring-1 { width: 60px; height: 60px; animation-delay: 0s; }
+                .radar-ring-2 { width: 60px; height: 60px; animation-delay: 1s; }
+                .radar-ring-3 { width: 60px; height: 60px; animation-delay: 2s; }
+                @keyframes radarPulse {
+                    0% { width: 20px; height: 20px; opacity: 1; border-color: rgba(59, 130, 246, 0.8); }
+                    100% { width: 200px; height: 200px; opacity: 0; border-color: rgba(59, 130, 246, 0); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Remove radar after 10 seconds
+        setTimeout(() => radarDiv.remove(), 10000);
+    }
+
     function initMap() {
         const defaultCenter = { lat: 13.7563, lng: 100.5018 }; // Bangkok
 
@@ -202,6 +240,7 @@
                         lng: position.coords.longitude,
                     };
                     map.setCenter(userPos);
+                    // User location marker with pulse
                     new google.maps.Marker({
                         position: userPos,
                         map: map,
@@ -215,6 +254,10 @@
                         },
                         title: 'ตำแหน่งของคุณ',
                     });
+
+                    // Radar pulse animation
+                    addRadarPulse(userPos);
+
                     loadMapData();
                 },
                 () => {
