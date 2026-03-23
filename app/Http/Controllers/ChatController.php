@@ -22,11 +22,13 @@ class ChatController extends Controller
     public function apiChat(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'message' => ['required_without:messages', 'string', 'max:5000'],
+            'message' => ['required_without:messages', 'string', 'max:10000'], // base64 ยาวกว่า plaintext ~33%
             'messages' => ['required_without:message', 'array'],
             'messages.*.role' => ['required_with:messages', 'string'],
             'messages.*.content' => ['required_with:messages', 'string'],
             'history' => ['nullable', 'array'],
+            'history.*.role' => ['nullable', 'string'],
+            'history.*.content' => ['nullable', 'string'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'encoding' => ['nullable', 'string', 'in:base64'],

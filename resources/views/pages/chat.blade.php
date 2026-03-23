@@ -398,6 +398,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                             'X-Encoding': 'base64',
                         },
@@ -410,14 +411,25 @@
                         }),
                     });
 
-                    const data = await response.json().catch(() => null);
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (jsonErr) {
+                        const rawText = await response.clone().text().catch(() => '');
+                        console.error('[Chat] Non-JSON response:', response.status, rawText.substring(0, 200));
+                        throw new Error('ขอโทษค่ะ เซิร์ฟเวอร์ตอบกลับผิดปกติค่ะ (HTTP ' + response.status + ')');
+                    }
 
-                    if (!response.ok || !data) {
-                        const errMsg = data?.reply || data?.message || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่นะคะ';
+                    if (!response.ok) {
+                        // Laravel validation error (422) or other server error
+                        const errMsg = data?.reply || data?.message || data?.errors
+                            ? 'ขอโทษค่ะ ข้อมูลไม่ถูกต้องค่ะ: ' + JSON.stringify(data.errors || data.message).substring(0, 100)
+                            : 'ขอโทษค่ะ เซิร์ฟเวอร์มีปัญหาค่ะ (HTTP ' + response.status + ')';
+                        console.error('[Chat] Server error:', response.status, data);
                         throw new Error(errMsg);
                     }
 
-                    const reply = data.reply || 'ขอโทษค่ะ เกิดข้อผิดพลาด ลองใหม่นะคะ';
+                    const reply = data.reply || 'ขอโทษค่ะ AI ตอบกลับว่างเปล่าค่ะ ลองใหม่นะคะ';
                     this.messages.push({
                         role: 'assistant',
                         content: reply,
