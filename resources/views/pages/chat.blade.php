@@ -21,8 +21,8 @@
                 {{-- Assistant Message --}}
                 <template x-if="msg.role === 'assistant'">
                     <div class="flex gap-2 items-start">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-sm flex-shrink-0">
-                            👧
+                        <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
+                            <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
                         </div>
                         <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
                             <p class="text-sm text-slate-200 whitespace-pre-wrap" x-text="msg.content"></p>
@@ -61,6 +61,14 @@
     {{-- Input Bar --}}
     <div class="chrome-bar-bottom px-3 py-2">
         <div class="flex items-center gap-2">
+            {{-- Wake Word Toggle --}}
+            <button @click="wakeWordActive ? disableWakeWord() : enableWakeWord()"
+                    :class="wakeWordActive ? 'bg-green-600 ring-2 ring-green-400/50' : 'metal-btn'"
+                    class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
+                    :title="wakeWordActive ? 'ปิด Wake Word' : 'เปิด Wake Word (พูดว่า น้องหญิง)'">
+                <span class="text-sm" x-text="wakeWordActive ? '👂' : '🔇'"></span>
+            </button>
+
             {{-- Mic Button --}}
             <button @click="toggleMic()" :class="isRecording ? 'metal-btn-accent glow-orange' : 'metal-btn'"
                     class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -263,8 +271,8 @@
             },
 
             init() {
-                // Auto-enable wake word on chat page
-                this.enableWakeWord();
+                // Wake word is OFF by default — user toggles it on with 👂 button
+                // This prevents the page from being laggy
             }
         };
     }
