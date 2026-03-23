@@ -185,6 +185,28 @@
                             this.messages[this.messages.length - 1].content.replace('[PLAY_VIDEO]', '').trim();
                     }
 
+                    // Check for navigation command
+                    const navMatch = reply.match(/\[NAVIGATE:(.*?)\]/);
+                    if (navMatch) {
+                        try {
+                            const navData = JSON.parse(navMatch[1]);
+                            let mapsUrl;
+                            if (navData.lat && navData.lng) {
+                                mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${navData.lat},${navData.lng}&travelmode=driving`;
+                            } else if (navData.name) {
+                                mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navData.name)}&travelmode=driving`;
+                            }
+                            if (mapsUrl) {
+                                window.open(mapsUrl, '_blank');
+                            }
+                        } catch (e) {
+                            console.error('Navigate parse error:', e);
+                        }
+                        // Clean tag from message
+                        const lastMsg2 = this.messages[this.messages.length - 1];
+                        if (lastMsg2) lastMsg2.content = lastMsg2.content.replace(/\[NAVIGATE:.*?\]/g, '').trim();
+                    }
+
                     // Check for fuel report in AI response
                     const reportMatch = reply.match(/\[FUEL_REPORT:(.*?)\]/);
                     if (reportMatch) {
@@ -255,6 +277,7 @@
                             .replace(/\[FUEL_REPORT:.*?\]/g, '')
                             .replace(/\[INCIDENT_REPORT:.*?\]/g, '')
                             .replace(/\[CONDITION:.*?\]/g, '')
+                            .replace(/\[NAVIGATE:.*?\]/g, '')
                             .replace(/\[PLAY_VIDEO\]/g, '')
                             .trim();
                     }
