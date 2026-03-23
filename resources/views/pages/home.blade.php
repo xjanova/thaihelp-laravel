@@ -116,15 +116,31 @@
         </div>
     </div>
 
-    {{-- Map Legend --}}
-    <div class="absolute bottom-3 left-3 z-10 metal-panel rounded-lg px-3 py-2 text-xs space-y-1">
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span> มีน้ำมัน</div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span> เหลือน้อย</div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> หมด</div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gray-500 inline-block"></span> ไม่มีข้อมูล</div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span> ข่าวด่วน</div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-500 inline-block"></span> แผ่นดินไหว</div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 border-2 border-red-500 rounded-full inline-block"></span> พื้นที่อันตราย</div>
+    {{-- Map Legend (collapsible) --}}
+    <div class="absolute bottom-3 left-3 z-10" x-data="{ open: false }">
+        <button @click="open = !open" class="metal-panel rounded-full px-3 py-1.5 text-[10px] text-slate-400 shadow-lg flex items-center gap-1">
+            🗒️ สัญลักษณ์ <span x-text="open ? '▼' : '▲'" class="text-[8px]"></span>
+        </button>
+        <div x-show="open" x-transition class="mt-1 metal-panel rounded-xl px-3 py-2.5 text-xs space-y-1.5 shadow-xl min-w-[160px]">
+            <p class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">ปั๊มน้ำมัน</p>
+            <div class="flex items-center gap-2"><span class="text-sm">🟢</span> <span class="text-slate-300">มีน้ำมัน</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">🟡</span> <span class="text-slate-300">เหลือน้อย</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">🔴</span> <span class="text-slate-300">หมด</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">⚪</span> <span class="text-slate-300">ไม่มีข้อมูล</span></div>
+            <hr class="border-slate-700/50 my-1">
+            <p class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">เหตุการณ์</p>
+            <div class="flex items-center gap-2"><span class="text-sm">🔥</span> <span class="text-red-400">วิกฤต</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">🟠</span> <span class="text-orange-400">รุนแรง</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">🟡</span> <span class="text-yellow-400">ปานกลาง</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">🟢</span> <span class="text-green-400">เล็กน้อย</span></div>
+            <hr class="border-slate-700/50 my-1">
+            <p class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">อื่นๆ</p>
+            <div class="flex items-center gap-2"><span class="text-sm">📰</span> <span class="text-red-400 animate-pulse">ข่าวด่วน</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">🫨</span> <span class="text-orange-400">แผ่นดินไหว</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">⚡</span> <span class="text-emerald-400">ชาร์จ EV</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">🚫</span> <span class="text-red-500">พื้นที่อันตราย</span></div>
+            <div class="flex items-center gap-2"><span class="text-sm">📍</span> <span class="text-blue-400">ตำแหน่งคุณ</span></div>
+        </div>
     </div>
 
     {{-- News Ticker Panel --}}
