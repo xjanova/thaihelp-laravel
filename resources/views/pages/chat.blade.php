@@ -233,19 +233,26 @@
                 this.scrollToBottom();
 
                 try {
+                    // Encode Thai text as base64 to bypass Cloudflare WAF
+                    const encodedMsg = btoa(unescape(encodeURIComponent(text)));
+                    const encodedHistory = this.messages.filter(m => m.role && m.content).slice(-20).map(m => ({
+                        role: m.role,
+                        content: btoa(unescape(encodeURIComponent(m.content))),
+                    }));
+
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            'X-Encoding': 'base64',
                         },
                         body: JSON.stringify({
-                            message: text,
-                            history: this.messages.filter(m => m.role && m.content).slice(-20).map(m => ({
-                                role: m.role, content: m.content
-                            })),
+                            message: encodedMsg,
+                            history: encodedHistory,
                             latitude: window._userLat || null,
                             longitude: window._userLng || null,
+                            encoding: 'base64',
                         }),
                     });
 

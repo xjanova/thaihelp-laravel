@@ -22,24 +22,30 @@ class ChatController extends Controller
     public function apiChat(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'message' => ['required_without:messages', 'string', 'max:1000'],
+            'message' => ['required_without:messages', 'string', 'max:5000'],
             'messages' => ['required_without:message', 'array'],
             'messages.*.role' => ['required_with:messages', 'string'],
             'messages.*.content' => ['required_with:messages', 'string'],
             'history' => ['nullable', 'array'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'encoding' => ['nullable', 'string', 'in:base64'],
         ]);
+
+        // Decode base64 if encoded (bypass Cloudflare WAF for Thai text)
+        $isBase64 = ($validated['encoding'] ?? null) === 'base64';
 
         // Build messages array
         if (isset($validated['message'])) {
+            $messageText = $isBase64 ? base64_decode($validated['message']) : $validated['message'];
             $messages = [];
             if (!empty($validated['history'])) {
                 foreach ($validated['history'] as $h) {
-                    $messages[] = ['role' => $h['role'] ?? 'user', 'content' => $h['content'] ?? ''];
+                    $content = $isBase64 ? base64_decode($h['content'] ?? '') : ($h['content'] ?? '');
+                    $messages[] = ['role' => $h['role'] ?? 'user', 'content' => $content];
                 }
             }
-            $messages[] = ['role' => 'user', 'content' => $validated['message']];
+            $messages[] = ['role' => 'user', 'content' => $messageText];
         } else {
             $messages = $validated['messages'];
         }
