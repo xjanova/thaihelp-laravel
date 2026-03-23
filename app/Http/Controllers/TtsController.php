@@ -38,8 +38,9 @@ class TtsController extends Controller
         // Limit length
         $text = mb_substr($text, 0, 300);
 
-        // Cache audio (same text = same audio)
-        $cacheKey = 'tts_edge_' . md5($text);
+        // Cache audio (same text + voice settings = same audio)
+        $voice = SiteSetting::get('tts_voice', 'th-TH-PremwadeeNeural');
+        $cacheKey = 'tts_edge_' . md5($text . $voice . SiteSetting::get('tts_pitch', '+30Hz') . SiteSetting::get('tts_rate', '+0%'));
         $cached = Cache::get($cacheKey);
         if ($cached) {
             return response($cached)
@@ -81,9 +82,9 @@ class TtsController extends Controller
         $tempFile = '/tmp/thaihelp_tts_' . md5($text . time()) . '.mp3';
 
         try {
-            $voice = 'th-TH-PremwadeeNeural';
-            $pitch = '+15Hz';
-            $rate = '+5%';
+            $voice = SiteSetting::get('tts_voice', 'th-TH-PremwadeeNeural');
+            $pitch = SiteSetting::get('tts_pitch', '+30Hz');
+            $rate  = SiteSetting::get('tts_rate', '+0%');
 
             // Find edge-tts binary
             $edgeTtsBin = 'edge-tts';
@@ -128,7 +129,7 @@ class TtsController extends Controller
             @unlink($tempFile);
 
             // Fallback: try Python inline
-            return $this->edgeTtsPython($text, $tempFile, 'th-TH-PremwadeeNeural', '+15Hz', '+5%');
+            return $this->edgeTtsPython($text, $tempFile, $voice ?? 'th-TH-PremwadeeNeural', $pitch ?? '+30Hz', $rate ?? '+0%');
         }
     }
 

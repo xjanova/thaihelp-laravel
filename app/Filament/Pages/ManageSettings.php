@@ -9,6 +9,7 @@ use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -78,6 +79,11 @@ class ManageSettings extends Page
             'enable_fuel_reports'      => ['default' => true, 'group' => 'features'],
             'incident_expire_hours'    => ['default' => 4, 'group' => 'features'],
             'max_upload_size_mb'       => ['default' => 5, 'group' => 'features'],
+
+            // TTS Voice
+            'tts_voice'                => ['default' => 'th-TH-PremwadeeNeural', 'group' => 'tts'],
+            'tts_pitch'                => ['default' => '+30Hz', 'group' => 'tts'],
+            'tts_rate'                 => ['default' => '+0%', 'group' => 'tts'],
         ];
     }
 
@@ -145,6 +151,7 @@ class ManageSettings extends Page
                         $this->lineLoginTab(),
                         $this->discordBotTab(),
                         $this->featureTogglesTab(),
+                        $this->ttsVoiceTab(),
                     ])
                     ->columnSpanFull()
                     ->persistTabInQueryString(),
@@ -416,6 +423,55 @@ class ManageSettings extends Page
                             ->maxValue(50)
                             ->suffix('MB')
                             ->helperText('ขนาดไฟล์สูงสุดที่อนุญาตให้อัปโหลด'),
+                    ]),
+            ]);
+    }
+
+    protected function ttsVoiceTab(): Tab
+    {
+        return Tab::make('เสียงพูด')
+            ->label('เสียงพูด (TTS)')
+            ->icon('heroicon-o-speaker-wave')
+            ->schema([
+                Section::make('ตั้งค่าเสียงน้องหญิง')
+                    ->description('เลือกเสียง ความเร็ว และระดับเสียงสำหรับ Text-to-Speech')
+                    ->icon('heroicon-o-microphone')
+                    ->columns(3)
+                    ->schema([
+                        Select::make('tts_voice')
+                            ->label('เสียงพูด (Voice)')
+                            ->options([
+                                'th-TH-PremwadeeNeural' => '🇹🇭 Premwadee (หญิง ไทย)',
+                                'th-TH-NiwatNeural'     => '🇹🇭 Niwat (ชาย ไทย)',
+                            ])
+                            ->default('th-TH-PremwadeeNeural')
+                            ->helperText('เลือกเสียงที่ต้องการให้น้องหญิงพูด')
+                            ->required(),
+
+                        Select::make('tts_rate')
+                            ->label('ความเร็ว (Speed)')
+                            ->options([
+                                '-20%' => 'ช้ามาก',
+                                '-10%' => 'ช้า',
+                                '+0%'  => 'ปกติ',
+                                '+10%' => 'เร็ว',
+                                '+20%' => 'เร็วมาก',
+                            ])
+                            ->default('+0%')
+                            ->helperText('ปรับความเร็วในการพูด')
+                            ->required(),
+
+                        Select::make('tts_pitch')
+                            ->label('ระดับเสียง (Pitch)')
+                            ->options([
+                                '+0Hz'  => 'ปกติ (ต่ำ)',
+                                '+15Hz' => 'สูงเล็กน้อย',
+                                '+30Hz' => 'สาว (แนะนำ)',
+                                '+45Hz' => 'สูงมาก',
+                            ])
+                            ->default('+30Hz')
+                            ->helperText('ยิ่งสูง เสียงจะยิ่งสาวขึ้น')
+                            ->required(),
                     ]),
             ]);
     }
