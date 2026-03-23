@@ -64,6 +64,12 @@ jobs:
                 NEED_RESTART=1
               fi
             done
+            # Install edge-tts for น้องหญิง voice (PremwadeeNeural)
+            if ! command -v edge-tts >/dev/null 2>&1; then
+              echo ">>> Installing edge-tts..."
+              pip3 install edge-tts 2>/dev/null || sudo pip3 install edge-tts 2>/dev/null || true
+            fi
+
             if ! command -v redis-server >/dev/null 2>&1; then
               sudo apt-get install -y -qq redis-server 2>/dev/null || true
               sudo systemctl enable redis-server 2>/dev/null || true

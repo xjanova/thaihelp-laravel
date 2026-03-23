@@ -122,24 +122,45 @@
         if (on) window.sayText('เปิดเสียงในแชทแล้วค่ะ~');
     }
 
-    // TTS function for chat — respects toggle
-    window.sayText = function(text) {
+    // TTS function for chat — Edge TTS (สมจริง) → Web Speech API (fallback)
+    window.sayText = async function(text) {
         if (!isChatTTSEnabled()) return;
-        if (!window.speechSynthesis) return;
 
         // Strip action tags
         const clean = text.replace(/\[.*?\]/g, '').trim();
         if (!clean) return;
 
-        // Cancel any current speech
+        // Try Edge TTS first (เสียงสมจริง th-TH-PremwadeeNeural)
+        try {
+            const encoded = btoa(unescape(encodeURIComponent(clean)));
+            const res = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: encoded, encoding: 'base64' }),
+            });
+
+            if (res.ok) {
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('audio')) {
+                    const blob = await res.blob();
+                    const audio = new Audio(URL.createObjectURL(blob));
+                    audio.play();
+                    return; // Edge TTS success!
+                }
+            }
+        } catch (e) {
+            console.log('Edge TTS failed, fallback to Web Speech:', e);
+        }
+
+        // Fallback: Web Speech API (หุ่นยนต์กว่า แต่ฟรี offline)
+        if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
 
         const u = new SpeechSynthesisUtterance(clean);
         u.lang = 'th-TH';
         u.rate = 1.05;
-        u.pitch = 1.3; // เสียงสูงเหมือนเด็กสาว
+        u.pitch = 1.3;
 
-        // Try to find Thai female voice
         const voices = window.speechSynthesis.getVoices();
         const thaiVoice = voices.find(v => v.lang.startsWith('th') && v.name.toLowerCase().includes('female'))
             || voices.find(v => v.lang.startsWith('th'))
