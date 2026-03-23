@@ -37,6 +37,9 @@ Route::get('/stations', [StationController::class, 'index'])->name('stations');
 // Report - Anyone can report (GPS required, stars only for members)
 Route::get('/report', [IncidentController::class, 'create'])->name('report');
 
+// Stats
+Route::get('/stats', [App\Http\Controllers\StatsController::class, 'index'])->name('stats');
+
 // Chat
 Route::get('/chat', [ChatController::class, 'index'])->name('chat');
 
