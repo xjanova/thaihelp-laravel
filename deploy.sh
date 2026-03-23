@@ -423,6 +423,7 @@ pull_code() {
         fi
 
         # Reset local changes to avoid conflicts
+        git checkout -- . 2>/dev/null || true
         git reset --hard HEAD 2>/dev/null || true
         git clean -fd 2>/dev/null || true
 
