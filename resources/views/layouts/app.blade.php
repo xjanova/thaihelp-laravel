@@ -290,6 +290,179 @@
     </script>
     @endunless
 
+    {{-- SOS Emergency Button --}}
+    <div id="sos-btn" class="fixed bottom-24 right-4 z-50" x-data="{ showSOS: false }">
+        <button @click="showSOS = !showSOS"
+                class="w-14 h-14 rounded-full bg-red-600 shadow-2xl flex items-center justify-center text-white text-xl font-bold animate-pulse hover:bg-red-500 active:scale-95 transition-all"
+                style="box-shadow: 0 0 20px rgba(220,38,38,0.5);">
+            🆘
+        </button>
+        {{-- SOS Panel --}}
+        <div x-show="showSOS" x-transition
+             class="absolute bottom-16 right-0 w-64 metal-panel rounded-2xl p-4 shadow-2xl border border-red-500/30 space-y-3">
+            <p class="text-sm font-bold text-red-400 text-center">🆘 ฉุกเฉิน</p>
+            <a href="tel:1669" class="flex items-center gap-3 bg-red-600/20 hover:bg-red-600/30 rounded-xl px-4 py-3 transition-colors">
+                <span class="text-2xl">🚑</span>
+                <div>
+                    <p class="text-sm font-bold text-white">1669</p>
+                    <p class="text-[10px] text-red-300">การแพทย์ฉุกเฉิน</p>
+                </div>
+            </a>
+            <a href="tel:191" class="flex items-center gap-3 bg-blue-600/20 hover:bg-blue-600/30 rounded-xl px-4 py-3 transition-colors">
+                <span class="text-2xl">👮</span>
+                <div>
+                    <p class="text-sm font-bold text-white">191</p>
+                    <p class="text-[10px] text-blue-300">ตำรวจ</p>
+                </div>
+            </a>
+            <a href="tel:199" class="flex items-center gap-3 bg-orange-600/20 hover:bg-orange-600/30 rounded-xl px-4 py-3 transition-colors">
+                <span class="text-2xl">🚒</span>
+                <div>
+                    <p class="text-sm font-bold text-white">199</p>
+                    <p class="text-[10px] text-orange-300">ดับเพลิง</p>
+                </div>
+            </a>
+            <a href="tel:1784" class="flex items-center gap-3 bg-cyan-600/20 hover:bg-cyan-600/30 rounded-xl px-4 py-3 transition-colors">
+                <span class="text-2xl">🏛️</span>
+                <div>
+                    <p class="text-sm font-bold text-white">1784</p>
+                    <p class="text-[10px] text-cyan-300">ปภ. สาธารณภัย</p>
+                </div>
+            </a>
+            <button onclick="sendSOSLocation()" class="w-full bg-red-600 hover:bg-red-500 text-white rounded-xl py-2.5 text-xs font-bold transition-colors">
+                📡 ส่งพิกัดฉุกเฉินไป Discord
+            </button>
+        </div>
+    </div>
+
+    {{-- Share Floating Button --}}
+    <div id="share-btns" class="fixed bottom-24 left-4 z-50" x-data="{ showShare: false }">
+        <button @click="showShare = !showShare"
+                class="w-10 h-10 rounded-full metal-btn-accent shadow-lg flex items-center justify-center text-sm">
+            📤
+        </button>
+        <div x-show="showShare" x-transition
+             class="absolute bottom-12 left-0 metal-panel rounded-xl p-2 shadow-xl space-y-1 w-40">
+            <button onclick="shareToLine()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
+                💚 LINE
+            </button>
+            <button onclick="shareToFacebook()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
+                💙 Facebook
+            </button>
+            <button onclick="shareToTwitter()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
+                🐦 X / Twitter
+            </button>
+            <button onclick="shareNative()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
+                📱 แชร์...
+            </button>
+        </div>
+    </div>
+
+    <script>
+    // SOS — ส่งพิกัดฉุกเฉิน
+    function sendSOSLocation() {
+        if (!navigator.geolocation) return alert('GPS ไม่พร้อม');
+        navigator.geolocation.getCurrentPosition(pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+            fetch('/api/incidents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                body: JSON.stringify({
+                    category: 'other',
+                    title: '🆘 SOS ฉุกเฉิน!',
+                    description: 'ส่งจากปุ่ม SOS ฉุกเฉิน — ต้องการความช่วยเหลือ!',
+                    severity: 'critical',
+                    latitude: lat,
+                    longitude: lng,
+                    has_injuries: true,
+                    report_source: 'app',
+                }),
+            }).then(() => {
+                alert('📡 ส่งพิกัดฉุกเฉินแล้ว!\nน้องหญิงจะแจ้งศูนย์กู้ภัยให้ค่ะ');
+            }).catch(() => {
+                alert('ส่งไม่สำเร็จ กรุณาโทร 1669 โดยตรง');
+            });
+        }, () => alert('ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS'));
+    }
+
+    // Share functions
+    function shareToLine() {
+        const url = encodeURIComponent(window.location.href);
+        const text = encodeURIComponent('ThaiHelp — เช็คปั๊มน้ำมัน แจ้งเหตุ วางแผนเดินทาง');
+        window.open(`https://social-plugins.line.me/lineit/share?url=${url}&text=${text}`, '_blank');
+    }
+    function shareToFacebook() {
+        const url = encodeURIComponent(window.location.href);
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+    }
+    function shareToTwitter() {
+        const url = encodeURIComponent(window.location.href);
+        const text = encodeURIComponent('ThaiHelp — เช็คปั๊มน้ำมัน แจ้งเหตุ วางแผนเดินทาง 🚗⛽');
+        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+    }
+    function shareNative() {
+        if (navigator.share) {
+            navigator.share({
+                title: 'ThaiHelp',
+                text: 'เช็คปั๊มน้ำมัน แจ้งเหตุ วางแผนเดินทาง',
+                url: window.location.href,
+            });
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+            alert('คัดลอกลิงก์แล้ว!');
+        }
+    }
+
+    // Push Notification — ขออนุญาตและลงทะเบียน
+    if ('Notification' in window && 'serviceWorker' in navigator) {
+        if (Notification.permission === 'default') {
+            // ขออนุญาตหลังจาก user interact
+            document.addEventListener('click', function requestNotif() {
+                Notification.requestPermission().then(perm => {
+                    if (perm === 'granted') {
+                        console.log('Push notification granted');
+                    }
+                });
+                document.removeEventListener('click', requestNotif);
+            }, { once: true });
+        }
+    }
+
+    // Check nearby incidents and notify
+    function checkNearbyIncidents() {
+        if (Notification.permission !== 'granted') return;
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(pos => {
+            fetch(`/api/incidents?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}&radius=5&severity=critical`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+                    const incidents = data.data || [];
+                    const unnotified = incidents.filter(i => {
+                        const key = `notified_${i.id}`;
+                        if (localStorage.getItem(key)) return false;
+                        localStorage.setItem(key, '1');
+                        return true;
+                    });
+                    unnotified.forEach(i => {
+                        new Notification(`⚠️ ${i.title}`, {
+                            body: `${i.category} — ${i.severity}\n📍 ใกล้ตำแหน่งคุณ`,
+                            icon: '/images/ying-avatar.png',
+                            tag: `incident-${i.id}`,
+                        });
+                    });
+                });
+        });
+    }
+    // Check every 5 minutes
+    setInterval(checkNearbyIncidents, 300000);
+    setTimeout(checkNearbyIncidents, 10000); // First check after 10s
+    </script>
+
     {{-- Bottom Navigation --}}
     @include('components.bottom-nav')
 

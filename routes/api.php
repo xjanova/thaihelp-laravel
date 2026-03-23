@@ -69,6 +69,27 @@ Route::get('/ev-chargers', function (\Illuminate\Http\Request $request) {
     return response()->json(['success' => true, 'data' => $data, 'count' => count($data)]);
 })->middleware('throttle:20,1');
 
+// Gamification
+Route::get('/profile', [App\Http\Controllers\GamificationController::class, 'profile'])
+    ->middleware(['auth:sanctum', 'throttle:30,1']);
+Route::get('/leaderboard', [App\Http\Controllers\GamificationController::class, 'leaderboard'])
+    ->middleware('throttle:20,1');
+Route::get('/challenges', [App\Http\Controllers\GamificationController::class, 'challenges'])
+    ->middleware('throttle:20,1');
+
+// Fuel Prices
+Route::get('/fuel-prices', function () {
+    $prices = app(\App\Services\FuelPriceService::class)->getTodayPrices();
+    return response()->json(['success' => true, 'data' => $prices, 'date' => now()->toDateString()]);
+})->middleware('throttle:20,1');
+
+Route::get('/fuel-prices/history', function (\Illuminate\Http\Request $request) {
+    $type = $request->query('type', 'diesel');
+    $days = min((int) $request->query('days', 30), 90);
+    $history = app(\App\Services\FuelPriceService::class)->getPriceHistory($type, $days);
+    return response()->json(['success' => true, 'data' => $history]);
+})->middleware('throttle:10,1');
+
 // Stats
 Route::get('/stats', [App\Http\Controllers\StatsController::class, 'apiStats'])
     ->middleware('throttle:20,1');

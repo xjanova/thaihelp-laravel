@@ -43,6 +43,11 @@ Route::get('/stats', [App\Http\Controllers\StatsController::class, 'index'])->na
 // Trip Planner
 Route::get('/trip', [App\Http\Controllers\TripPlannerController::class, 'index'])->name('trip');
 
+// Fuel Prices
+Route::get('/fuel-prices', function () {
+    return view('pages.fuel-prices');
+})->name('fuel-prices');
+
 // Chat
 Route::get('/chat', [ChatController::class, 'index'])->name('chat');
 
