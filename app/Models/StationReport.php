@@ -20,6 +20,9 @@ class StationReport extends Model
         'note',
         'latitude',
         'longitude',
+        'confirmation_count',
+        'is_verified',
+        'confirmed_ips',
     ];
 
     protected function casts(): array
@@ -27,7 +30,39 @@ class StationReport extends Model
         return [
             'latitude' => 'double',
             'longitude' => 'double',
+            'confirmed_ips' => 'array',
+            'is_verified' => 'boolean',
         ];
+    }
+
+    /**
+     * Confirm this report from an IP address.
+     * Returns false if this IP already confirmed.
+     */
+    public function confirm(string $ip): bool
+    {
+        $confirmedIps = $this->confirmed_ips ?? [];
+
+        if (in_array($ip, $confirmedIps, true)) {
+            return false;
+        }
+
+        $confirmedIps[] = $ip;
+
+        $this->confirmed_ips = $confirmedIps;
+        $this->confirmation_count = count($confirmedIps);
+        $this->is_verified = $this->confirmation_count >= 2;
+        $this->save();
+
+        return true;
+    }
+
+    /**
+     * Scope: only verified reports (confirmation_count >= 2).
+     */
+    public function scopeVerified($query)
+    {
+        return $query->where('is_verified', true);
     }
 
     public function user(): BelongsTo

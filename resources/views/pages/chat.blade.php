@@ -98,6 +98,7 @@
             input: '',
             isTyping: false,
             isRecording: false,
+            wakeWordActive: false,
 
             formatTime() {
                 return new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
@@ -155,6 +156,37 @@
                     if (window.sayText) {
                         window.sayText(reply);
                     }
+
+                    // Check for fuel report in AI response
+                    const reportMatch = reply.match(/\[FUEL_REPORT:(.*?)\]/);
+                    if (reportMatch) {
+                        try {
+                            const reportData = JSON.parse(reportMatch[1]);
+                            if (navigator.geolocation) {
+                                navigator.geolocation.getCurrentPosition(async (pos) => {
+                                    try {
+                                        await fetch('/api/voice-command', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                            },
+                                            body: JSON.stringify({
+                                                transcript: text,
+                                                latitude: pos.coords.latitude,
+                                                longitude: pos.coords.longitude,
+                                                fuel_report: reportData,
+                                            }),
+                                        });
+                                    } catch (e) {
+                                        console.error('Failed to submit fuel report:', e);
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse fuel report:', e);
+                        }
+                    }
                 } catch (err) {
                     this.messages.push({
                         role: 'assistant',
@@ -189,6 +221,60 @@
                         window.stopListening();
                     }
                 }
+            },
+
+            // Wake word detection - listens for "น้องหญิง"
+            startWakeWordListener() {
+                if (!window.startListening) return;
+                this.wakeWordActive = true;
+
+                window.startListening({
+                    continuous: true,
+                    onResult: (transcript) => {
+                        if (transcript.includes('น้องหญิง') || transcript.includes('หญิง')) {
+                            if (window.sayText) {
+                                window.sayText('ว่าไงคะ หญิงพร้อมช่วยแล้วค่ะ');
+                            }
+                            this.isRecording = true;
+                            // Now listen for actual command
+                            setTimeout(() => {
+                                window.startListening({
+                                    onResult: async (command) => {
+                                        this.isRecording = false;
+                                        this.input = command;
+                                        await this.send();
+                                        // Restart wake word listener after command processed
+                                        if (this.wakeWordActive) {
+                                            this.startWakeWordListener();
+                                        }
+                                    },
+                                    onError: (err) => {
+                                        console.error('Wake word command error:', err);
+                                        this.isRecording = false;
+                                        if (this.wakeWordActive) {
+                                            this.startWakeWordListener();
+                                        }
+                                    }
+                                });
+                            }, 2000);
+                        }
+                    },
+                    onInterim: (text) => {
+                        // Show interim text as visual feedback
+                    }
+                });
+            },
+
+            stopWakeWordListener() {
+                this.wakeWordActive = false;
+                if (window.stopListening) {
+                    window.stopListening();
+                }
+            },
+
+            init() {
+                // Auto-start wake word listener
+                this.startWakeWordListener();
             }
         };
     }

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\FuelReport;
+use App\Models\StationReport;
 use Illuminate\Support\Facades\Log;
 
 class VoiceCommandService
@@ -27,6 +29,70 @@ class VoiceCommandService
     }
 
     /**
+     * Process a fuel report submitted via voice command.
+     * Creates a StationReport + FuelReport from voice data.
+     */
+    public function processFuelReport(array $data): array
+    {
+        $latitude = $data['latitude'] ?? null;
+        $longitude = $data['longitude'] ?? null;
+        $fuelReport = $data['fuel_report'] ?? null;
+
+        if (!$latitude || !$longitude || !$fuelReport) {
+            return [
+                'success' => false,
+                'reply' => 'ข้อมูลไม่ครบค่ะ ต้องการตำแหน่งและข้อมูลน้ำมัน',
+            ];
+        }
+
+        try {
+            // Create a station report from voice
+            $stationReport = StationReport::create([
+                'place_id' => $fuelReport['place_id'] ?? 'voice_report_' . time(),
+                'station_name' => $fuelReport['station_name'] ?? 'ปั๊มน้ำมัน (รายงานจากเสียง)',
+                'reporter_name' => 'น้องหญิง Voice',
+                'note' => $data['transcript'] ?? 'รายงานจากคำสั่งเสียง',
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+            ]);
+
+            // Create fuel report entry
+            $fuelType = $fuelReport['fuel_type'] ?? 'diesel';
+            $fuelStatus = $fuelReport['status'] ?? 'available';
+
+            // Validate against allowed values
+            if (!in_array($fuelType, FuelReport::FUEL_TYPES)) {
+                $fuelType = 'diesel';
+            }
+            if (!in_array($fuelStatus, FuelReport::STATUSES)) {
+                $fuelStatus = 'available';
+            }
+
+            $stationReport->fuelReports()->create([
+                'fuel_type' => $fuelType,
+                'status' => $fuelStatus,
+                'price' => $fuelReport['price'] ?? null,
+            ]);
+
+            return [
+                'success' => true,
+                'reply' => 'บันทึกรายงานน้ำมันเรียบร้อยแล้วค่ะ ขอบคุณที่ช่วยแจ้งนะคะ',
+                'report_id' => $stationReport->id,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to process fuel report from voice', [
+                'error' => $e->getMessage(),
+                'data' => $data,
+            ]);
+
+            return [
+                'success' => false,
+                'reply' => 'ขอโทษค่ะ ไม่สามารถบันทึกรายงานได้ ลองใหม่อีกครั้งนะคะ',
+            ];
+        }
+    }
+
+    /**
      * Process transcript using Groq AI for intelligent action detection.
      */
     private function processWithAI(
@@ -48,8 +114,11 @@ class VoiceCommandService
             . 'จากข้อความที่ผู้ใช้พูด ให้ตรวจจับประเภทการกระทำและตอบกลับเป็นภาษาไทย '
             . 'ข้อมูลบริบท: ' . $context . ' '
             . 'ตอบเป็น JSON เท่านั้นในรูปแบบ: {"reply": "ข้อความตอบกลับ", "action": "ACTION_TYPE", "fuelType": null} '
-            . 'ประเภท action ที่เป็นไปได้: FIND_STATION, FIND_DIESEL, FIND_GASOHOL, REPORT, INCIDENT, NAVIGATE, CHECK_PRICE, HELP, CHAT '
-            . 'fuelType อาจเป็น: diesel, gasohol95, gasohol91, e20, e85, lpg หรือ null';
+            . 'ประเภท action ที่เป็นไปได้: FIND_STATION, FIND_DIESEL, FIND_GASOHOL, REPORT, INCIDENT, NAVIGATE, CHECK_PRICE, FUEL_REPORT, HELP, CHAT '
+            . 'fuelType อาจเป็น: diesel, gasohol95, gasohol91, e20, e85, lpg หรือ null '
+            . 'ถ้าผู้ใช้รายงานสถานะน้ำมัน (เช่น "ปั๊มนี้น้ำมันหมด" หรือ "ดีเซลเหลือน้อย") ให้ตั้ง action เป็น FUEL_REPORT '
+            . 'และเพิ่ม fuelStatus (available, low, empty) กับ fuelType ในผลลัพธ์ '
+            . 'ตัวอย่าง: {"reply":"รับทราบค่ะ บันทึกว่าน้ำมันดีเซลหมดแล้ว","action":"FUEL_REPORT","fuelType":"diesel","fuelStatus":"empty"}';
 
         $messages = [
             ['role' => 'user', 'content' => $transcript],
@@ -105,6 +174,7 @@ class VoiceCommandService
             'reply' => $data['reply'],
             'action' => $data['action'],
             'fuelType' => $data['fuelType'] ?? null,
+            'fuelStatus' => $data['fuelStatus'] ?? null,
         ];
     }
 
@@ -157,6 +227,36 @@ class VoiceCommandService
                 'reply' => 'รับทราบค่ะ กำลังเปิดหน้ารายงานเหตุการณ์ให้นะคะ',
                 'action' => 'INCIDENT',
                 'fuelType' => null,
+            ];
+        }
+
+        // FUEL_REPORT
+        if ($this->containsAny($text, ['น้ำมันหมด', 'หมดแล้ว', 'เหลือน้อย', 'น้ำมันเหลือ', 'มีน้ำมัน', 'เติมได้'])) {
+            $fuelStatus = 'available';
+            if ($this->containsAny($text, ['หมด', 'ไม่มี'])) {
+                $fuelStatus = 'empty';
+            } elseif ($this->containsAny($text, ['น้อย', 'เหลือน้อย'])) {
+                $fuelStatus = 'low';
+            }
+
+            $fuelType = null;
+            if ($this->containsAny($text, ['ดีเซล', 'diesel', 'โซล่า'])) {
+                $fuelType = 'diesel';
+            } elseif ($this->containsAny($text, ['95', 'แก๊สโซฮอล์'])) {
+                $fuelType = 'gasohol95';
+            } elseif ($this->containsAny($text, ['91'])) {
+                $fuelType = 'gasohol91';
+            } elseif ($this->containsAny($text, ['e20'])) {
+                $fuelType = 'e20';
+            } elseif ($this->containsAny($text, ['e85'])) {
+                $fuelType = 'e85';
+            }
+
+            return [
+                'reply' => 'รับทราบค่ะ บันทึกรายงานสถานะน้ำมันให้แล้วนะคะ ขอบคุณค่ะ',
+                'action' => 'FUEL_REPORT',
+                'fuelType' => $fuelType,
+                'fuelStatus' => $fuelStatus,
             ];
         }
 

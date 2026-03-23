@@ -23,6 +23,9 @@ Route::get('/stations', [StationController::class, 'apiSearch'])
 Route::post('/stations/report', [StationController::class, 'apiReport'])
     ->middleware('throttle:5,1');
 
+Route::post('/stations/report/{report}/confirm', [StationController::class, 'apiConfirm'])
+    ->middleware('throttle:10,1');
+
 // Chat
 Route::post('/chat', [ChatController::class, 'apiChat'])
     ->middleware('throttle:10,1');

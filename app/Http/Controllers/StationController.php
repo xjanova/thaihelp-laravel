@@ -142,4 +142,28 @@ class StationController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * API: Confirm a station report.
+     */
+    public function apiConfirm(Request $request, StationReport $report): JsonResponse
+    {
+        $ip = $request->ip();
+
+        if ($report->confirm($ip)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'ยืนยันรายงานสำเร็จ ขอบคุณค่ะ!',
+                'data' => [
+                    'confirmation_count' => $report->confirmation_count,
+                    'is_verified' => $report->is_verified,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'คุณได้ยืนยันรายงานนี้แล้ว',
+        ], 409);
+    }
 }

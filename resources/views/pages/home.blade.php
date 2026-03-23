@@ -18,6 +18,14 @@
         </button>
     </div>
 
+    {{-- Map Legend --}}
+    <div class="absolute bottom-3 left-3 z-10 metal-panel rounded-lg px-3 py-2 text-xs space-y-1">
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span> มีน้ำมัน</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span> เหลือน้อย</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> หมด</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gray-500 inline-block"></span> ไม่มีข้อมูล</div>
+    </div>
+
     {{-- Welcome Overlay --}}
     <div id="welcome-overlay" x-data="{ show: !localStorage.getItem('thaihelp_welcomed') }" x-show="show" x-transition
          class="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -114,21 +122,52 @@
                 const lat = station.latitude || station.lat;
                 const lng = station.longitude || station.lng;
                 if (!lat || !lng) return;
+
+                // Determine color from fuel reports
+                let color = '#6b7280'; // gray = no data
+                const fuels = station.fuel_reports || [];
+                if (fuels.length > 0) {
+                    const hasEmpty = fuels.some(f => f.status === 'empty');
+                    const hasLow = fuels.some(f => f.status === 'low');
+                    const hasAvailable = fuels.some(f => f.status === 'available');
+                    if (hasEmpty && !hasAvailable) color = '#ef4444'; // red
+                    else if (hasLow) color = '#eab308'; // yellow
+                    else if (hasAvailable) color = '#22c55e'; // green
+                }
+
                 const marker = new google.maps.Marker({
                     position: { lat: parseFloat(lat), lng: parseFloat(lng) },
                     map: map,
                     title: station.name || 'Gas Station',
                     icon: {
                         path: google.maps.SymbolPath.CIRCLE,
-                        scale: 7,
-                        fillColor: '#f97316',
+                        scale: 8,
+                        fillColor: color,
                         fillOpacity: 0.9,
                         strokeColor: '#ffffff',
-                        strokeWeight: 1.5,
+                        strokeWeight: 2,
                     },
                 });
+
+                // Rich info window with fuel status
+                let fuelHtml = '';
+                if (fuels.length > 0) {
+                    fuelHtml = '<div style="margin-top:6px">';
+                    fuels.forEach(f => {
+                        const emoji = f.status === 'available' ? '🟢' : f.status === 'low' ? '🟡' : '🔴';
+                        const price = f.price ? ` ฿${f.price}` : '';
+                        fuelHtml += `<div>${emoji} ${f.fuel_type}${price}</div>`;
+                    });
+                    fuelHtml += '</div>';
+                }
+
                 const infoWindow = new google.maps.InfoWindow({
-                    content: `<div style="color:#000;font-size:13px"><strong>${station.name || 'ปั๊มน้ำมัน'}</strong><br>${station.brand || ''}</div>`
+                    content: `<div style="color:#000;font-size:13px;min-width:150px">
+                        <strong>${station.name || 'ปั๊มน้ำมัน'}</strong>
+                        <div style="color:#666;font-size:11px">${station.brand || ''} ${station.vicinity || ''}</div>
+                        ${fuelHtml}
+                        ${station.last_report_at ? '<div style="color:#999;font-size:10px;margin-top:4px">อัพเดท: ' + new Date(station.last_report_at).toLocaleString('th-TH') + '</div>' : ''}
+                    </div>`
                 });
                 marker.addListener('click', () => infoWindow.open(map, marker));
                 stationMarkers.push(marker);
