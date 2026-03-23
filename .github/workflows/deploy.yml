@@ -50,21 +50,23 @@ jobs:
             echo "  ThaiHelp Deploy - ${APP_VER}"
             echo "=========================================="
 
-            # Ensure php-sodium + redis extensions are installed
-            if ! php -m 2>/dev/null | grep -q sodium; then
-              echo ">>> Installing php-sodium..."
-              PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
-              sudo apt-get install -y -qq "php${PHP_VER}-sodium" 2>/dev/null || true
-              sudo systemctl restart apache2 2>/dev/null || sudo systemctl restart httpd 2>/dev/null || true
-            fi
-            if ! php -m 2>/dev/null | grep -q redis; then
-              echo ">>> Installing php-redis..."
-              PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
-              sudo apt-get install -y -qq "php${PHP_VER}-redis" redis-server 2>/dev/null || true
+            # Ensure php extensions are installed
+            PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
+            NEED_RESTART=0
+            for EXT in sodium redis opcache; do
+              if ! php -m 2>/dev/null | grep -qi "$EXT"; then
+                echo ">>> Installing php${PHP_VER}-${EXT}..."
+                sudo apt-get install -y -qq "php${PHP_VER}-${EXT}" 2>/dev/null || true
+                NEED_RESTART=1
+              fi
+            done
+            if ! command -v redis-server >/dev/null 2>&1; then
+              sudo apt-get install -y -qq redis-server 2>/dev/null || true
               sudo systemctl enable redis-server 2>/dev/null || true
               sudo systemctl start redis-server 2>/dev/null || true
-              sudo systemctl restart apache2 2>/dev/null || sudo systemctl restart httpd 2>/dev/null || true
+              NEED_RESTART=1
             fi
+            [ "$NEED_RESTART" -eq 1 ] && { sudo systemctl restart apache2 2>/dev/null || sudo systemctl restart httpd 2>/dev/null || true; }
 
             if [ ! -d "$APP_DIR/.git" ]; then
               mkdir -p "$(dirname "$APP_DIR")"

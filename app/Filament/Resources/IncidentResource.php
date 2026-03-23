@@ -30,9 +30,11 @@ class IncidentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('is_active', true)
-            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->count() ?: null;
+        return \Illuminate\Support\Facades\Cache::remember('admin_incident_badge', 60, function () {
+            return static::getModel()::where('is_active', true)
+                ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                ->count() ?: null;
+        });
     }
 
     public static function getNavigationBadgeColor(): ?string

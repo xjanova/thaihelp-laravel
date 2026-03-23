@@ -772,24 +772,18 @@ optimize_application() {
     print_success "Caches cleared"
 
     # Rebuild caches for production
-    if grep -q "APP_ENV=production" .env; then
-        print_info "Rebuilding caches for production..."
+    print_info "Rebuilding caches for production..."
 
-        set +e
-        OPTIMIZE_OUTPUT=$(php artisan config:cache 2>&1)
-        if [ $? -ne 0 ]; then
-            print_warning "config:cache had issues: $OPTIMIZE_OUTPUT"
-        fi
+    set +e
+    php artisan config:cache 2>&1 || print_warning "config:cache had issues"
+    php artisan route:cache 2>&1 || print_warning "route:cache had issues"
+    php artisan view:cache 2>&1 || print_warning "view:cache had issues"
+    php artisan event:cache 2>&1 || print_warning "event:cache had issues"
+    php artisan filament:cache-components 2>&1 || true
+    php artisan icons:cache 2>&1 || true
+    set -e
 
-        php artisan route:cache 2>&1 || print_warning "route:cache had issues"
-        php artisan view:cache 2>&1 || print_warning "view:cache had issues"
-        php artisan event:cache 2>&1 || print_warning "event:cache had issues"
-        set -e
-
-        print_success "Application optimized for production"
-    else
-        print_info "Non-production environment, skipping cache rebuild"
-    fi
+    print_success "Application optimized for production"
 
     # Optimize composer autoload
     print_info "Optimizing autoloader..."
