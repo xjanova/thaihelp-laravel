@@ -106,10 +106,8 @@ class TtsController extends Controller
                 '--write-media', $tempFile,
             ]);
             $process->setTimeout(15);
-            // Add ~/.local/bin to PATH
-            $env = $process->getEnv();
-            $env['PATH'] = (getenv('HOME') ?: '/home/admin') . '/.local/bin:' . (getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin');
-            $process->setEnv($env);
+            // Don't setEnv — it clears all inherited env vars!
+            // edge-tts is at /usr/local/bin which is in default PATH
             $process->run();
 
             if (!$process->isSuccessful() || !file_exists($tempFile)) {
