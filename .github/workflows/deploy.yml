@@ -54,6 +54,22 @@ jobs:
               chmod -R 775 storage bootstrap/cache
               chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
+              # Symlink public_html → Laravel public/
+              DOMAIN_DIR="$(dirname "$APP_DIR")"
+              PUBLIC_HTML="$DOMAIN_DIR/public_html"
+              if [ ! -L "$PUBLIC_HTML" ] || [ "$(readlink -f "$PUBLIC_HTML")" != "$APP_DIR/public" ]; then
+                echo ">>> Setting up public_html symlink..."
+                rm -rf "$PUBLIC_HTML"
+                ln -s "$APP_DIR/public" "$PUBLIC_HTML"
+                echo ">>> Symlink: $PUBLIC_HTML → $APP_DIR/public"
+              fi
+
+              # Run migrations
+              php artisan migrate --force 2>&1 || true
+
+              # Storage link for uploads
+              php artisan storage:link 2>&1 || true
+
               echo ""
               echo "=========================================="
               echo "  First-time setup complete!"
