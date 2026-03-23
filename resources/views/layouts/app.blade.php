@@ -290,70 +290,35 @@
     </script>
     @endunless
 
-    {{-- SOS Emergency Button --}}
-    <div id="sos-btn" class="fixed bottom-24 right-4 z-50" x-data="{ showSOS: false }">
+    {{-- SOS Button (เล็กลง ชิดขวาบน ไม่บังอะไร) --}}
+    <div class="fixed top-16 right-3 z-40" x-data="{ showSOS: false }">
         <button @click="showSOS = !showSOS"
-                class="w-14 h-14 rounded-full bg-red-600 shadow-2xl flex items-center justify-center text-white text-xl font-bold animate-pulse hover:bg-red-500 active:scale-95 transition-all"
-                style="box-shadow: 0 0 20px rgba(220,38,38,0.5);">
+                class="w-9 h-9 rounded-full bg-red-600/80 backdrop-blur-sm shadow-lg flex items-center justify-center text-xs text-white hover:bg-red-500 active:scale-95 transition-all">
             🆘
         </button>
-        {{-- SOS Panel --}}
-        <div x-show="showSOS" x-transition
-             class="absolute bottom-16 right-0 w-64 metal-panel rounded-2xl p-4 shadow-2xl border border-red-500/30 space-y-3">
-            <p class="text-sm font-bold text-red-400 text-center">🆘 ฉุกเฉิน</p>
-            <a href="tel:1669" class="flex items-center gap-3 bg-red-600/20 hover:bg-red-600/30 rounded-xl px-4 py-3 transition-colors">
-                <span class="text-2xl">🚑</span>
-                <div>
-                    <p class="text-sm font-bold text-white">1669</p>
-                    <p class="text-[10px] text-red-300">การแพทย์ฉุกเฉิน</p>
-                </div>
-            </a>
-            <a href="tel:191" class="flex items-center gap-3 bg-blue-600/20 hover:bg-blue-600/30 rounded-xl px-4 py-3 transition-colors">
-                <span class="text-2xl">👮</span>
-                <div>
-                    <p class="text-sm font-bold text-white">191</p>
-                    <p class="text-[10px] text-blue-300">ตำรวจ</p>
-                </div>
-            </a>
-            <a href="tel:199" class="flex items-center gap-3 bg-orange-600/20 hover:bg-orange-600/30 rounded-xl px-4 py-3 transition-colors">
-                <span class="text-2xl">🚒</span>
-                <div>
-                    <p class="text-sm font-bold text-white">199</p>
-                    <p class="text-[10px] text-orange-300">ดับเพลิง</p>
-                </div>
-            </a>
-            <a href="tel:1784" class="flex items-center gap-3 bg-cyan-600/20 hover:bg-cyan-600/30 rounded-xl px-4 py-3 transition-colors">
-                <span class="text-2xl">🏛️</span>
-                <div>
-                    <p class="text-sm font-bold text-white">1784</p>
-                    <p class="text-[10px] text-cyan-300">ปภ. สาธารณภัย</p>
-                </div>
-            </a>
-            <button onclick="sendSOSLocation()" class="w-full bg-red-600 hover:bg-red-500 text-white rounded-xl py-2.5 text-xs font-bold transition-colors">
-                📡 ส่งพิกัดฉุกเฉินไป Discord
-            </button>
-        </div>
-    </div>
-
-    {{-- Share Floating Button --}}
-    <div id="share-btns" class="fixed bottom-24 left-4 z-50" x-data="{ showShare: false }">
-        <button @click="showShare = !showShare"
-                class="w-10 h-10 rounded-full metal-btn-accent shadow-lg flex items-center justify-center text-sm">
-            📤
-        </button>
-        <div x-show="showShare" x-transition
-             class="absolute bottom-12 left-0 metal-panel rounded-xl p-2 shadow-xl space-y-1 w-40">
-            <button onclick="shareToLine()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
-                💚 LINE
-            </button>
-            <button onclick="shareToFacebook()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
-                💙 Facebook
-            </button>
-            <button onclick="shareToTwitter()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
-                🐦 X / Twitter
-            </button>
-            <button onclick="shareNative()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 text-xs text-white transition-colors">
-                📱 แชร์...
+        <div x-show="showSOS" x-transition @click.outside="showSOS = false"
+             class="absolute top-11 right-0 w-56 metal-panel rounded-2xl p-3 shadow-2xl border border-red-500/30 space-y-2">
+            <p class="text-xs font-bold text-red-400 text-center">🆘 เบอร์ฉุกเฉิน</p>
+            <div class="grid grid-cols-2 gap-1.5">
+                <a href="tel:1669" class="flex items-center gap-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg px-2.5 py-2 transition-colors">
+                    <span class="text-lg">🚑</span>
+                    <div><p class="text-xs font-bold text-white">1669</p><p class="text-[8px] text-red-300">แพทย์ฉุกเฉิน</p></div>
+                </a>
+                <a href="tel:191" class="flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 rounded-lg px-2.5 py-2 transition-colors">
+                    <span class="text-lg">👮</span>
+                    <div><p class="text-xs font-bold text-white">191</p><p class="text-[8px] text-blue-300">ตำรวจ</p></div>
+                </a>
+                <a href="tel:199" class="flex items-center gap-2 bg-orange-600/20 hover:bg-orange-600/30 rounded-lg px-2.5 py-2 transition-colors">
+                    <span class="text-lg">🚒</span>
+                    <div><p class="text-xs font-bold text-white">199</p><p class="text-[8px] text-orange-300">ดับเพลิง</p></div>
+                </a>
+                <a href="tel:1784" class="flex items-center gap-2 bg-cyan-600/20 hover:bg-cyan-600/30 rounded-lg px-2.5 py-2 transition-colors">
+                    <span class="text-lg">🏛️</span>
+                    <div><p class="text-xs font-bold text-white">1784</p><p class="text-[8px] text-cyan-300">ปภ.</p></div>
+                </a>
+            </div>
+            <button onclick="sendSOSLocation()" class="w-full bg-red-600 hover:bg-red-500 text-white rounded-lg py-2 text-[10px] font-bold transition-colors">
+                📡 ส่งพิกัดฉุกเฉิน
             </button>
         </div>
     </div>

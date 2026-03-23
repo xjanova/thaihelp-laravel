@@ -68,16 +68,51 @@
                 @endif
             </a>
 
-            {{-- 5. สถิติ --}}
-            <a href="/stats" class="relative flex flex-col items-center justify-center gap-0.5 w-14 pb-1 pt-2 {{ Request::is('stats*') ? 'text-orange-500' : 'text-slate-400 hover:text-slate-300' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                </svg>
-                <span class="text-[10px] font-medium leading-tight">สถิติ</span>
-                @if(Request::is('stats*'))
-                <span class="absolute bottom-0 w-6 h-0.5 rounded-full bg-orange-500"></span>
-                @endif
-            </a>
+            {{-- 5. อื่นๆ (เมนูรวม) --}}
+            <div class="relative flex flex-col items-center justify-center gap-0.5 w-14 pb-1 pt-2" x-data="{ open: false }">
+                <button @click="open = !open" class="{{ Request::is('stats*') || Request::is('trip*') || Request::is('hospitals*') || Request::is('fuel-prices*') ? 'text-orange-500' : 'text-slate-400 hover:text-slate-300' }}">
+                    <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                    <span class="text-[10px] font-medium leading-tight block">อื่นๆ</span>
+                </button>
+
+                {{-- Flyout Menu --}}
+                <div x-show="open" x-transition @click.outside="open = false"
+                     class="absolute bottom-14 right-0 w-52 metal-panel rounded-2xl p-2 shadow-2xl border border-slate-700/50 space-y-0.5">
+
+                    <a href="/stats" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-700/50 transition-colors {{ Request::is('stats*') ? 'bg-orange-500/10 text-orange-400' : 'text-slate-300' }}">
+                        <span class="text-base">📊</span>
+                        <span class="text-xs font-medium">สถิติชุมชน</span>
+                    </a>
+                    <a href="/trip" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-700/50 transition-colors {{ Request::is('trip*') ? 'bg-orange-500/10 text-orange-400' : 'text-slate-300' }}">
+                        <span class="text-base">🗺️</span>
+                        <span class="text-xs font-medium">วางแผนเดินทาง</span>
+                    </a>
+                    <a href="/hospitals" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-700/50 transition-colors {{ Request::is('hospitals*') ? 'bg-orange-500/10 text-orange-400' : 'text-slate-300' }}">
+                        <span class="text-base">🏥</span>
+                        <span class="text-xs font-medium">สถานพยาบาล</span>
+                    </a>
+                    <a href="/fuel-prices" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-700/50 transition-colors {{ Request::is('fuel-prices*') ? 'bg-orange-500/10 text-orange-400' : 'text-slate-300' }}">
+                        <span class="text-base">⛽</span>
+                        <span class="text-xs font-medium">ราคาน้ำมัน</span>
+                    </a>
+
+                    <hr class="border-slate-700/50 my-1">
+
+                    {{-- Share --}}
+                    <button onclick="shareNative()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-700/50 transition-colors text-slate-300">
+                        <span class="text-base">📤</span>
+                        <span class="text-xs font-medium">แชร์ ThaiHelp</span>
+                    </button>
+
+                    <div class="flex justify-center gap-2 px-3 py-1">
+                        <button onclick="shareToLine()" class="w-8 h-8 rounded-full bg-[#06C755]/20 hover:bg-[#06C755]/30 flex items-center justify-center text-xs transition-colors" title="LINE">💚</button>
+                        <button onclick="shareToFacebook()" class="w-8 h-8 rounded-full bg-[#1877F2]/20 hover:bg-[#1877F2]/30 flex items-center justify-center text-xs transition-colors" title="Facebook">💙</button>
+                        <button onclick="shareToTwitter()" class="w-8 h-8 rounded-full bg-slate-600/20 hover:bg-slate-600/30 flex items-center justify-center text-xs transition-colors" title="X">🐦</button>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
