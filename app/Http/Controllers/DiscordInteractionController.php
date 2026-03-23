@@ -57,8 +57,15 @@ class DiscordInteractionController extends Controller
             return false;
         }
 
-        $body = $request->getContent();
+        $body = file_get_contents('php://input');
         $message = $timestamp . $body;
+
+        Log::debug('Discord verify attempt', [
+            'has_sig' => !empty($signature),
+            'has_key' => !empty($publicKey),
+            'body_len' => strlen($body),
+            'key_first8' => substr($publicKey, 0, 8),
+        ]);
 
         try {
             if (function_exists('sodium_hex2bin')) {
