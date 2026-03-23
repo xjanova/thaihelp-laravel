@@ -29,7 +29,7 @@ $sizeClass = match($size ?? 'md') {
     </div>
 
     {{-- Avatar image with animations --}}
-    <img src="/images/ying.png"
+    <img src="/images/ying.webp"
          alt="น้องหญิง"
          class="nongying-img w-full h-full rounded-full object-cover border-2 relative z-10"
          :class="{

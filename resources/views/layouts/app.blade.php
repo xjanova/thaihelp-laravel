@@ -13,7 +13,7 @@
 
     {{-- PWA --}}
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/images/logo.png">
+    <link rel="apple-touch-icon" href="/images/logo.webp">
     <meta name="theme-color" content="#f97316">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,7 +35,7 @@
          class="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center cursor-pointer">
         {{-- App frame: logo + border --}}
         <div class="absolute top-0 left-0 right-0 z-10 flex items-center justify-center gap-2 py-3 bg-gradient-to-b from-black/80 to-transparent">
-            <img src="/images/logo.png" class="w-7 h-7 rounded-lg" alt="ThaiHelp" onerror="this.style.display='none'">
+            <img src="/images/logo.webp" class="w-7 h-7 rounded-lg" alt="ThaiHelp" onerror="this.style.display='none'">
             <span class="text-white font-bold text-sm tracking-wide">ThaiHelp</span>
             <span class="text-orange-400 text-[10px] ml-1 border border-orange-400/50 rounded px-1.5 py-0.5">WELCOME</span>
         </div>
@@ -43,7 +43,7 @@
 
         {{-- Tap to start prompt (shown first) --}}
         <div id="intro-tap" class="text-center animate-pulse">
-            <img src="/images/ying.png" class="w-20 h-20 rounded-full border-2 border-orange-400 mx-auto mb-4 shadow-xl" alt="น้องหญิง" onerror="this.style.display='none'">
+            <img src="/images/ying.webp" class="w-20 h-20 rounded-full border-2 border-orange-400 mx-auto mb-4 shadow-xl" alt="น้องหญิง" onerror="this.style.display='none'">
             <p class="text-white text-lg font-medium">สวัสดีค่ะ! ยินดีต้อนรับสู่ ThaiHelp</p>
             <p class="text-orange-400 text-sm mt-2">แตะเพื่อเริ่มต้น ▶</p>
         </div>
@@ -167,7 +167,7 @@
                 <span id="ying-bubble-text">สวัสดีค่ะ! ถามหญิงได้นะ</span>
                 <div class="absolute bottom-0 right-4 translate-y-1/2 rotate-45 w-3 h-3 bg-white"></div>
             </div>
-            <img src="/images/ying.png" alt="น้องหญิง" class="w-14 h-14 rounded-full shadow-lg border-2 border-orange-400 ying-float-anim"
+            <img src="/images/ying.webp" alt="น้องหญิง" class="w-14 h-14 rounded-full shadow-lg border-2 border-orange-400 ying-float-anim"
                  onerror="this.parentElement.parentElement.style.display='none'">
         </a>
     </div>
@@ -368,7 +368,7 @@
     <div id="pwa-install-banner" style="display:none;"
          class="fixed bottom-20 left-3 right-3 z-[998] metal-panel rounded-xl p-3 shadow-2xl border border-orange-500/30">
         <div class="flex items-center gap-3">
-            <img src="/images/logo.png" class="w-10 h-10 rounded-xl" alt="ThaiHelp">
+            <img src="/images/logo.webp" class="w-10 h-10 rounded-xl" alt="ThaiHelp">
             <div class="flex-1">
                 <p class="text-sm font-medium text-white">ติดตั้ง ThaiHelp</p>
                 <p class="text-[10px] text-slate-400">เพิ่มลงหน้าจอเพื่อใช้งานสะดวกขึ้น</p>

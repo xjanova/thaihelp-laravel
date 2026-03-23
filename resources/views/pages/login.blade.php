@@ -20,7 +20,7 @@
         {{-- Logo + Title --}}
         <div class="text-center mb-6">
             <div class="flex items-center justify-center gap-3 mb-3">
-                <img src="/images/logo.png" alt="ThaiHelp" class="w-14 h-14 rounded-2xl" onerror="this.style.display='none'">
+                <img src="/images/logo.webp" alt="ThaiHelp" class="w-14 h-14 rounded-2xl" onerror="this.style.display='none'">
                 <div>
                     <h1 class="text-3xl font-bold">
                         <span class="text-blue-500">Thai</span><span class="text-orange-500">Help</span>

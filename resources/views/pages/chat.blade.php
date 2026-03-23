@@ -7,7 +7,7 @@
         {{-- Welcome Message --}}
         <div class="flex gap-2 items-start">
             <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
-                <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
+                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover">
             </div>
             <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
                 <p class="text-sm text-slate-200">สวัสดีค่ะ! หญิงเองค่ะ 😊 มีอะไรให้ช่วยไหมคะ?</p>
@@ -22,7 +22,7 @@
                 <template x-if="msg.role === 'assistant'">
                     <div class="flex gap-2 items-start">
                         <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
-                            <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
+                            <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover">
                         </div>
                         <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
                             <p class="text-sm text-slate-200 whitespace-pre-wrap" x-text="msg.content"></p>
@@ -46,7 +46,7 @@
         {{-- Typing Indicator --}}
         <div x-show="isTyping" class="flex gap-2 items-start">
             <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
-                <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
+                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover">
             </div>
             <div class="metal-panel rounded-2xl rounded-tl-sm px-4 py-3">
                 <div class="flex gap-1">

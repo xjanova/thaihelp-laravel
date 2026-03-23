@@ -512,6 +512,10 @@ build_assets() {
         fi
 
         print_success "Assets built successfully"
+
+        # Convert images to WebP
+        echo ">>> Converting images to WebP..."
+        php artisan images:convert-webp --quality=80 2>&1 || true
     else
         print_warning "NPM not available, skipping asset build"
     fi

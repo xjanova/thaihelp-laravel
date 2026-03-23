@@ -23,7 +23,7 @@
     <div class="metal-panel rounded-xl p-3 mb-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full overflow-hidden ring-2 ring-orange-500/50">
-                <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
+                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover">
             </div>
             <div>
                 <p class="text-sm font-medium text-white">พูดกับน้องหญิง</p>

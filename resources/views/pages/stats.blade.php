@@ -175,9 +175,9 @@
                                         </td>
                                         <td class="py-2.5">
                                             <div class="flex items-center gap-2">
-                                                <img :src="reporter.avatar_url || '/images/default-avatar.png'"
+                                                <img :src="reporter.avatar_url || '/images/default-avatar.webp'"
                                                      class="w-7 h-7 rounded-full border border-slate-600 object-cover"
-                                                     onerror="this.src='/images/default-avatar.png'"
+                                                     onerror="this.src='/images/default-avatar.webp'"
                                                      alt="">
                                                 <span class="text-white font-medium truncate max-w-[100px]"
                                                       x-text="reporter.nickname || reporter.name || 'ไม่ระบุ'"></span>

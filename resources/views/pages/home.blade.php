@@ -128,7 +128,7 @@
         <div class="metal-panel rounded-2xl p-6 mx-4 max-w-sm w-full text-center">
             {{-- Logo --}}
             <div class="flex items-center justify-center gap-2 mb-4">
-                <img src="/images/logo.png" alt="ThaiHelp" class="w-12 h-12 rounded-xl" onerror="this.style.display='none'">
+                <img src="/images/logo.webp" alt="ThaiHelp" class="w-12 h-12 rounded-xl" onerror="this.style.display='none'">
                 <h1 class="text-2xl font-bold">
                     <span class="text-blue-500">Thai</span><span class="text-orange-500">Help</span>
                 </h1>
@@ -137,7 +137,7 @@
             {{-- Avatar Greeting --}}
             <div class="mb-4">
                 <div class="w-20 h-20 mx-auto mb-3 rounded-full overflow-hidden ring-4 ring-orange-500/50 shadow-lg shadow-orange-500/20">
-                    <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl\'>👧</div>'">
+                    <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-3xl\'>👧</div>'">
                 </div>
                 <p class="text-slate-300 text-sm">สวัสดีค่ะ! น้องหญิงยินดีต้อนรับสู่ ThaiHelp</p>
                 <p class="text-slate-400 text-xs mt-1">ผู้ช่วยอัจฉริยะสำหรับคนไทย</p>

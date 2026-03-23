@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between h-14 px-4">
         {{-- Left: Logo + Brand --}}
         <a href="/" class="flex items-center gap-2">
-            <img src="/images/logo.png" alt="ThaiHelp" class="w-8 h-8 rounded-lg" onerror="this.style.display='none'">
+            <img src="/images/logo.webp" alt="ThaiHelp" class="w-8 h-8 rounded-lg" onerror="this.style.display='none'">
             <span class="text-lg font-bold">
                 <span class="text-blue-500">Thai</span><span class="text-orange-500">Help</span>
             </span>
