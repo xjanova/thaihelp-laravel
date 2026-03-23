@@ -62,6 +62,8 @@ class IncidentController extends Controller
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'image_url' => ['nullable', 'url', 'max:500'],
+            'photos' => ['nullable', 'array', 'max:5'],
+            'photos.*' => ['url', 'max:500'],
         ]);
 
         try {
@@ -73,6 +75,7 @@ class IncidentController extends Controller
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
                 'image_url' => $validated['image_url'] ?? null,
+                'photos' => $validated['photos'] ?? null,
                 'upvotes' => 0,
                 'is_active' => true,
                 'expires_at' => now()->addHours(4),
@@ -89,6 +92,16 @@ class IncidentController extends Controller
                 app(DiscordService::class)->notifyNewIncident($incident);
             } catch (\Exception $e) {
                 Log::warning('Discord notification failed', ['error' => $e->getMessage()]);
+            }
+
+            // Check if this triggers breaking news (3+ similar reports)
+            try {
+                $breakingNews = app(\App\Services\BreakingNewsService::class)->checkForBreakingNews($incident);
+                if ($breakingNews) {
+                    Log::info('Breaking news triggered', ['news_id' => $breakingNews->id]);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Breaking news check failed', ['error' => $e->getMessage()]);
             }
 
             return response()->json([

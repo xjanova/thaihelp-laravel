@@ -16,6 +16,14 @@ Route::post('/incidents', [IncidentController::class, 'apiStore'])
 Route::post('/incidents/{incident}/vote', [IncidentController::class, 'vote'])
     ->middleware('throttle:10,1');
 
+// Breaking News (auto-generated from 3+ similar reports)
+Route::get('/breaking-news', function () {
+    return response()->json([
+        'success' => true,
+        'data' => \App\Models\BreakingNews::active()->latest()->limit(10)->get(),
+    ]);
+})->middleware('throttle:30,1');
+
 // Stations
 Route::get('/stations', [StationController::class, 'apiSearch'])
     ->middleware('throttle:20,1');

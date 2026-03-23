@@ -5,17 +5,51 @@
     {{-- Google Map --}}
     <div id="map" class="w-full h-full"></div>
 
-    {{-- Map Filter Buttons --}}
-    <div class="absolute top-3 left-3 flex gap-2 z-10">
-        <button onclick="setFilter('all')" id="filter-all" class="metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white">
-            ทั้งหมด
-        </button>
-        <button onclick="setFilter('stations')" id="filter-stations" class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300">
-            ปั๊ม
-        </button>
-        <button onclick="setFilter('incidents')" id="filter-incidents" class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300">
-            เหตุการณ์
-        </button>
+    {{-- Map Controls --}}
+    <div class="absolute top-3 left-3 z-10 space-y-2">
+        {{-- Filter Buttons --}}
+        <div class="flex gap-2">
+            <button onclick="setFilter('all')" id="filter-all" class="metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white">
+                ทั้งหมด
+            </button>
+            <button onclick="setFilter('stations')" id="filter-stations" class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300">
+                ⛽ ปั๊ม
+            </button>
+            <button onclick="setFilter('incidents')" id="filter-incidents" class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300">
+                🚨 เหตุการณ์
+            </button>
+        </div>
+
+        {{-- Display Options --}}
+        <div class="flex gap-2">
+            <button onclick="toggleBalloons()" id="btn-balloons" class="metal-btn px-2.5 py-1 rounded-full text-[10px] text-slate-400">
+                🎈 บอลลูน
+            </button>
+            <button onclick="toggleLabels()" id="btn-labels" class="metal-btn-accent px-2.5 py-1 rounded-full text-[10px] text-white">
+                📌 ป้าย
+            </button>
+        </div>
+    </div>
+
+    {{-- Breaking News Banner --}}
+    <div id="breaking-news-bar" style="display:none;"
+         class="absolute top-[4.5rem] left-3 right-3 z-10 bg-red-600/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-xl cursor-pointer"
+         onclick="toggleBreakingNews()">
+        <div class="flex items-center gap-2">
+            <span class="text-sm animate-pulse">🔴</span>
+            <span id="breaking-news-title" class="text-xs font-medium text-white flex-1 truncate"></span>
+            <span class="text-[10px] text-white/60" id="breaking-news-count"></span>
+        </div>
+    </div>
+
+    {{-- Breaking News Detail Panel --}}
+    <div id="breaking-news-panel" style="display:none;"
+         class="absolute top-[7rem] left-3 right-3 z-10 metal-panel rounded-xl max-h-[50vh] overflow-y-auto shadow-2xl border border-red-500/30">
+        <div class="p-3 border-b border-slate-700 flex items-center justify-between">
+            <span class="text-sm font-bold text-red-400">🔴 ข่าวด่วน</span>
+            <button onclick="document.getElementById('breaking-news-panel').style.display='none'" class="text-slate-500 hover:text-white">&times;</button>
+        </div>
+        <div id="breaking-news-list" class="divide-y divide-slate-700/30"></div>
     </div>
 
     {{-- Map Legend --}}
@@ -24,6 +58,7 @@
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span> เหลือน้อย</div>
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> หมด</div>
         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gray-500 inline-block"></span> ไม่มีข้อมูล</div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span> ข่าวด่วน</div>
     </div>
 
     {{-- News Ticker Panel --}}
@@ -265,6 +300,19 @@
         } catch (err) {
             console.error('Failed to load incidents:', err);
         }
+
+        // Add balloon labels for stations with fuel
+        balloonLabels.forEach(l => l.setMap(null));
+        balloonLabels = [];
+        stationMarkers.forEach((marker, idx) => {
+            const title = marker.getTitle() || '';
+            if (title && marker.getVisible()) {
+                addBalloonLabel(marker.getPosition(), title, '#22c55e');
+            }
+        });
+
+        // Load breaking news
+        loadBreakingNews();
     }
 
     // Radar pulse animation overlay
@@ -365,6 +413,145 @@
         } else {
             loadMapData();
         }
+    }
+
+    // ─── Balloon Labels for stations/incidents ───
+    let balloonLabels = [];
+    let showBalloons = false;
+    let showLabels = true;
+
+    function toggleBalloons() {
+        showBalloons = !showBalloons;
+        const btn = document.getElementById('btn-balloons');
+        btn.className = showBalloons
+            ? 'metal-btn-accent px-2.5 py-1 rounded-full text-[10px] text-white'
+            : 'metal-btn px-2.5 py-1 rounded-full text-[10px] text-slate-400';
+        updateBalloonVisibility();
+    }
+
+    function toggleLabels() {
+        showLabels = !showLabels;
+        const btn = document.getElementById('btn-labels');
+        btn.className = showLabels
+            ? 'metal-btn-accent px-2.5 py-1 rounded-full text-[10px] text-white'
+            : 'metal-btn px-2.5 py-1 rounded-full text-[10px] text-slate-400';
+
+        stationMarkers.forEach(m => m.setVisible(showLabels && (currentFilter === 'all' || currentFilter === 'stations')));
+        incidentMarkers.forEach(m => m.setVisible(showLabels && (currentFilter === 'all' || currentFilter === 'incidents')));
+    }
+
+    function updateBalloonVisibility() {
+        balloonLabels.forEach(lbl => lbl.setMap(showBalloons ? map : null));
+    }
+
+    function addBalloonLabel(position, text, color = '#22c55e') {
+        if (!google.maps.marker?.AdvancedMarkerElement) {
+            // Fallback: use InfoWindow-like labels
+            const label = new google.maps.Marker({
+                position,
+                map: showBalloons ? map : null,
+                icon: {
+                    path: 'M-8,-16 L8,-16 L8,0 L2,6 L-2,6 L-8,0 Z',
+                    scale: 1.2,
+                    fillColor: color,
+                    fillOpacity: 0.9,
+                    strokeColor: '#fff',
+                    strokeWeight: 1,
+                    anchor: new google.maps.Point(0, 6),
+                    labelOrigin: new google.maps.Point(0, -8),
+                },
+                label: {
+                    text: text.substring(0, 15),
+                    color: '#fff',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                },
+                clickable: false,
+                zIndex: 100,
+            });
+            balloonLabels.push(label);
+        }
+    }
+
+    // ─── Breaking News ───
+    let breakingNewsData = [];
+
+    async function loadBreakingNews() {
+        try {
+            const res = await fetch('/api/breaking-news');
+            const data = await res.json();
+            if (data.success && data.data?.length > 0) {
+                breakingNewsData = data.data;
+                const bar = document.getElementById('breaking-news-bar');
+                const title = document.getElementById('breaking-news-title');
+                const count = document.getElementById('breaking-news-count');
+
+                title.textContent = breakingNewsData[0].title;
+                count.textContent = breakingNewsData.length + ' ข่าว';
+                bar.style.display = 'block';
+
+                // Add markers for breaking news
+                breakingNewsData.forEach(news => {
+                    if (!news.latitude || !news.longitude) return;
+                    const marker = new google.maps.Marker({
+                        position: { lat: news.latitude, lng: news.longitude },
+                        map: map,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 12,
+                            fillColor: '#dc2626',
+                            fillOpacity: 0.8,
+                            strokeColor: '#fbbf24',
+                            strokeWeight: 3,
+                        },
+                        title: news.title,
+                        zIndex: 500,
+                    });
+
+                    const photos = (news.image_urls || []).map(url =>
+                        `<img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;" onerror="this.remove()">`
+                    ).join('');
+
+                    const iw = new google.maps.InfoWindow({
+                        content: `<div style="color:#000;max-width:280px;font-family:sans-serif;">
+                            <div style="background:#dc2626;color:#fff;padding:4px 8px;border-radius:8px 8px 0 0;font-size:11px;font-weight:bold;">🔴 ข่าวด่วน — ${news.reporter_count} คนรายงาน</div>
+                            <div style="padding:8px;">
+                                <p style="font-size:13px;font-weight:bold;margin:0 0 4px;">${news.title}</p>
+                                <p style="font-size:11px;color:#555;margin:0 0 6px;">${news.content?.substring(0, 150)}...</p>
+                                ${photos ? '<div style="display:flex;gap:4px;flex-wrap:wrap;">' + photos + '</div>' : ''}
+                                <p style="font-size:10px;color:#999;margin-top:4px;">— น้องหญิง รายงาน</p>
+                            </div>
+                        </div>`
+                    });
+                    marker.addListener('click', () => iw.open(map, marker));
+                });
+
+                renderBreakingNewsList();
+            }
+        } catch (e) {
+            console.log('Breaking news load failed:', e);
+        }
+    }
+
+    function toggleBreakingNews() {
+        const panel = document.getElementById('breaking-news-panel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function renderBreakingNewsList() {
+        const list = document.getElementById('breaking-news-list');
+        list.innerHTML = breakingNewsData.map(news => `
+            <div class="p-3">
+                <p class="text-xs font-medium text-white">${news.title}</p>
+                <p class="text-[11px] text-slate-400 mt-1 line-clamp-3">${news.content || ''}</p>
+                <div class="flex items-center gap-2 mt-2 text-[10px] text-slate-500">
+                    <span>👥 ${news.reporter_count} คนรายงาน</span>
+                    <span>•</span>
+                    <span>${new Date(news.created_at).toLocaleString('th-TH')}</span>
+                </div>
+                ${(news.image_urls || []).length > 0 ? '<div class="flex gap-1 mt-2">' + news.image_urls.slice(0, 3).map(u => '<img src="' + u + '" class="w-16 h-16 object-cover rounded" onerror="this.remove()">').join('') + '</div>' : ''}
+            </div>
+        `).join('');
     }
 
     // Initialize map when Google Maps API is loaded

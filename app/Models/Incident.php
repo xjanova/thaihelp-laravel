@@ -47,6 +47,7 @@ class Incident extends Model
         'latitude',
         'longitude',
         'image_url',
+        'photos',
         'upvotes',
         'is_active',
         'is_demo',
@@ -58,6 +59,7 @@ class Incident extends Model
         return [
             'is_active' => 'boolean',
             'is_demo' => 'boolean',
+            'photos' => 'array',
             'expires_at' => 'datetime',
             'latitude' => 'double',
             'longitude' => 'double',
