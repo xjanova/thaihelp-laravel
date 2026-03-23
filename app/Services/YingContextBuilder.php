@@ -202,4 +202,49 @@ class YingContextBuilder
 
             $lines = ["\n═══ แผ่นดินไหวล่าสุด (M4.0+) ═══"];
             foreach (array_slice($recent, 0, 3) as $q) {
-                $lines[] = "🫨 M{$q['magnitude'
+                $lines[] = "🫨 M{$q['magnitude']} — {$q['title']} ({$q['time']})";
+            }
+            return implode("\n", $lines);
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    private function buildStatsContext(): string
+    {
+        try {
+            $totalReports = \App\Models\Incident::where('is_demo', false)->count();
+            $totalStations = StationReport::where('is_demo', false)->count();
+            $activeNow = \App\Models\Incident::active()->where('is_demo', false)->count();
+
+            return "\n═══ สถิติ ThaiHelp ═══\nรายงานทั้งหมด: {$totalReports} | รายงานปั๊ม: {$totalStations} | เหตุการณ์ตอนนี้: {$activeNow}";
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    private function buildUserContext(int $userId): string
+    {
+        try {
+            $user = \App\Models\User::find($userId);
+            if (!$user) return '';
+
+            $starLevel = \App\Models\Achievement::STAR_LEVELS[$user->star_level ?? 0] ?? ['name' => 'สมาชิกใหม่', 'icon' => '⭐'];
+
+            return "\n═══ ข้อมูลผู้ใช้ที่กำลังคุย ═══"
+                . "\nชื่อ: " . ($user->nickname ?? $user->name) . " | ระดับ: {$starLevel['icon']} {$starLevel['name']}"
+                . "\nรายงาน: {$user->total_reports} ครั้ง | ยืนยัน: {$user->total_confirmations} ครั้ง | คะแนน: {$user->reputation_score}";
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $r = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+}

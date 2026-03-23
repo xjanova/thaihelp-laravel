@@ -206,7 +206,7 @@ class ApiKeyPool
         }
 
         if ($fallbackEnvKey) {
-            return config("services.{$fallbackEnvKey}") ?: env(strtoupper($fallbackEnvKey));
+            return config("services.{$fallbackEnvKey}") ?: '';
         }
 
         return null;

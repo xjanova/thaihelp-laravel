@@ -71,6 +71,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(AdminLog::class);
     }
 
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(Achievement::class);
+    }
+
     public function addReputation(int $points): void
     {
         $this->increment('reputation_score', $points);

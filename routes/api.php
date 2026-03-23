@@ -17,16 +17,16 @@ Route::post('/incidents/{incident}/vote', [IncidentController::class, 'vote'])
     ->middleware('throttle:10,1');
 
 Route::put('/incidents/{incident}', [IncidentController::class, 'apiUpdate'])
-    ->middleware(['auth:sanctum', 'throttle:10,1']);
+    ->middleware(['auth', 'throttle:10,1']);
 
 Route::delete('/incidents/{incident}', [IncidentController::class, 'apiDestroy'])
-    ->middleware(['auth:sanctum', 'throttle:5,1']);
+    ->middleware(['auth', 'throttle:5,1']);
 
 Route::post('/incidents/{incident}/resolve', [IncidentController::class, 'resolve'])
-    ->middleware(['auth:sanctum', 'throttle:10,1']);
+    ->middleware(['auth', 'throttle:10,1']);
 
 Route::get('/my-incidents', [IncidentController::class, 'myIncidents'])
-    ->middleware(['auth:sanctum', 'throttle:20,1']);
+    ->middleware(['auth', 'throttle:20,1']);
 
 // External Data (แผ่นดินไหว, อากาศ, AQI, น้ำท่วม, จราจร)
 Route::get('/external-data', function (\Illuminate\Http\Request $request) {
@@ -71,7 +71,7 @@ Route::get('/ev-chargers', function (\Illuminate\Http\Request $request) {
 
 // Gamification
 Route::get('/profile', [App\Http\Controllers\GamificationController::class, 'profile'])
-    ->middleware(['auth:sanctum', 'throttle:30,1']);
+    ->middleware(['auth', 'throttle:30,1']);
 Route::get('/leaderboard', [App\Http\Controllers\GamificationController::class, 'leaderboard'])
     ->middleware('throttle:20,1');
 Route::get('/challenges', [App\Http\Controllers\GamificationController::class, 'challenges'])
@@ -116,9 +116,7 @@ Route::post('/stations/report', [StationController::class, 'apiReport'])
 Route::post('/stations/report/{report}/confirm', [StationController::class, 'apiConfirm'])
     ->middleware('throttle:10,1');
 
-// Fuel Prices (official daily prices)
-Route::get('/fuel-prices', [StationController::class, 'apiFuelPrices'])
-    ->middleware('throttle:30,1');
+// Note: /fuel-prices is defined above (lines 79-91) with FuelPriceService
 
 // News feed
 Route::get('/news', function () {

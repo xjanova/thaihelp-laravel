@@ -93,7 +93,7 @@ class EmergencyReportService
         $date = now()->format('d/m/Y');
 
         $mapUrl = "https://www.google.com/maps?q={$incident->latitude},{$incident->longitude}";
-        $appUrl = "https://thaihelp.xman4289.com";
+        $appUrl = config('app.url', 'https://thaihelp.xman4289.com');
 
         // สร้าง text version
         $text = "🚨 น้องหญิงรายงานเหตุฉุกเฉิน 🚨\n"
@@ -159,16 +159,16 @@ class EmergencyReportService
     private function sendToDiscord(Incident $incident, array $message): bool
     {
         try {
-            $webhookUrl = SiteSetting::getValue('discord_emergency_webhook');
+            $webhookUrl = SiteSetting::get('discord_emergency_webhook');
             if (!$webhookUrl) {
                 // Fallback: use main channel webhook
-                $webhookUrl = SiteSetting::getValue('discord_webhook_url');
+                $webhookUrl = SiteSetting::get('discord_webhook_url');
             }
             if (!$webhookUrl) return false;
 
             $payload = [
                 'username' => 'น้องหญิง 🚨 Emergency',
-                'avatar_url' => 'https://thaihelp.xman4289.com/images/ying-avatar.png',
+                'avatar_url' => config('app.url', 'https://thaihelp.xman4289.com') . '/images/ying-avatar.png',
                 'content' => $incident->has_injuries
                     ? '@everyone 🚨 **เหตุฉุกเฉิน — มีผู้บาดเจ็บ!**'
                     : ($incident->severity === 'critical' ? '@here 🚨 **เหตุฉุกเฉินระดับวิกฤต**' : ''),
@@ -194,8 +194,8 @@ class EmergencyReportService
     private function sendToLine(Incident $incident, array $message): bool
     {
         try {
-            $channelToken = SiteSetting::getValue('line_emergency_token');
-            $groupId = SiteSetting::getValue('line_emergency_group_id');
+            $channelToken = SiteSetting::get('line_emergency_token');
+            $groupId = SiteSetting::get('line_emergency_group_id');
             if (!$channelToken || !$groupId) return false;
 
             $mapUrl = "https://www.google.com/maps?q={$incident->latitude},{$incident->longitude}";
@@ -269,7 +269,7 @@ class EmergencyReportService
     private function sendToWebhook(Incident $incident, array $message): bool
     {
         try {
-            $webhookUrl = SiteSetting::getValue('emergency_webhook_url');
+            $webhookUrl = SiteSetting::get('emergency_webhook_url');
             if (!$webhookUrl) return false;
 
             $payload = [

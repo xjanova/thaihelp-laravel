@@ -283,7 +283,7 @@ class IncidentController extends Controller
 
         // Owner or admin can resolve
         $isOwner = $request->user()->id === $incident->user_id;
-        $isAdmin = $request->user()->role === 'admin';
+        $isAdmin = $request->user()->is_admin;
 
         if (!$isOwner && !$isAdmin) {
             return response()->json(['success' => false, 'message' => 'ไม่มีสิทธิ์'], 403);
