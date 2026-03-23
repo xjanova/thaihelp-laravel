@@ -308,14 +308,14 @@ class EmergencyReportService
     /**
      * Convert severity to Discord embed color
      */
-    private function severityToColor(string $severity): int
+    private function severityToColor(?string $severity): int
     {
         return match ($severity) {
             'critical' => 0xdc2626,
             'high' => 0xf97316,
             'medium' => 0xeab308,
             'low' => 0x22c55e,
-            default => 0xeab308,
+            null, default => 0xeab308,
         };
     }
 }

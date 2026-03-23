@@ -263,7 +263,7 @@ function fuelPricesPage() {
             try {
                 const res = await fetch('/api/fuel-prices');
                 const data = await res.json();
-                this.prices = data.prices || {};
+                this.prices = data.data || {};
                 this.date = data.date || new Date().toLocaleDateString('th-TH', {
                     year: 'numeric', month: 'long', day: 'numeric',
                     hour: '2-digit', minute: '2-digit'
@@ -295,7 +295,7 @@ function fuelPricesPage() {
             try {
                 const res = await fetch(`/api/fuel-prices/history?type=${this.selectedType}&days=30`);
                 const data = await res.json();
-                this.history = data.history || [];
+                this.history = data.data || [];
             } catch (e) {
                 console.error('Failed to load price history:', e);
                 this.history = this.getDemoHistory();
@@ -319,7 +319,7 @@ function fuelPricesPage() {
                 const d = new Date(h.date);
                 return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
             });
-            const prices = this.history.map(h => h.price);
+            const prices = this.history.map(h => h.avg_price);
 
             // Gradient fill
             const gradient = ctx.createLinearGradient(0, 0, 0, 200);
@@ -415,8 +415,8 @@ function fuelPricesPage() {
 
             let trend = '';
             if (this.history.length >= 2) {
-                const last = this.history[this.history.length - 1]?.price || 0;
-                const prev = this.history[this.history.length - 2]?.price || 0;
+                const last = this.history[this.history.length - 1]?.avg_price || 0;
+                const prev = this.history[this.history.length - 2]?.avg_price || 0;
                 if (last > prev) trend = ' แนวโน้มราคาปรับขึ้นค่ะ';
                 else if (last < prev) trend = ' แนวโน้มราคาปรับลดลงค่ะ';
                 else trend = ' ราคาทรงตัวค่ะ';

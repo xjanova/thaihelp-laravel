@@ -162,7 +162,7 @@
                     <svg x-show="!expanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     <svg x-show="expanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 </button>
-                <button @click="show = false" class="text-white/70 hover:text-white p-0.5">
+                <button @click="show = false; $dispatch('news-closed')" class="text-white/70 hover:text-white p-0.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -199,8 +199,10 @@
     </div>
 
     {{-- News Reopen Button (when closed) --}}
-    <button id="news-reopen" x-data="{ hidden: false }" x-show="hidden"
-            @click="hidden = false; document.getElementById('news-panel').__x.$data.show = true"
+    <button id="news-reopen" x-data="{ visible: false }" x-show="visible"
+            @news-closed.window="visible = true"
+            @click="visible = false; document.getElementById('news-panel').__x.$data.show = true"
+            x-transition
             class="absolute top-14 right-3 z-10 metal-btn p-2 rounded-full shadow-lg">
         <span class="text-sm">📰</span>
     </button>

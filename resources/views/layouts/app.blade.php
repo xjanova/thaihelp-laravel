@@ -13,7 +13,7 @@
 
     {{-- PWA --}}
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/images/logo.webp">
+    <link rel="apple-touch-icon" href="/images/logo.png">
     <meta name="theme-color" content="#f97316">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -381,6 +381,11 @@
         }
     }
 
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     // Push Notification — ขออนุญาตและลงทะเบียน
     if ('Notification' in window && 'serviceWorker' in navigator) {
         if (Notification.permission === 'default') {
@@ -504,7 +509,7 @@
     <div id="pwa-install-banner" style="display:none;"
          class="fixed bottom-20 left-3 right-3 z-[998] metal-panel rounded-xl p-3 shadow-2xl border border-orange-500/30">
         <div class="flex items-center gap-3">
-            <img src="/images/logo.webp" class="w-10 h-10 rounded-xl" alt="ThaiHelp">
+            <img src="/images/logo.webp" class="w-10 h-10 rounded-xl" alt="ThaiHelp" onerror="this.src='/images/logo.png'">
             <div class="flex-1">
                 <p class="text-sm font-medium text-white">ติดตั้ง ThaiHelp</p>
                 <p class="text-[10px] text-slate-400">เพิ่มลงหน้าจอเพื่อใช้งานสะดวกขึ้น</p>
