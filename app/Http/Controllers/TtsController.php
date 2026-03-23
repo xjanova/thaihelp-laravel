@@ -47,11 +47,16 @@ class TtsController extends Controller
                 ->header('Cache-Control', 'public, max-age=86400');
         }
 
-        // Generate using Edge TTS (via Node.js edge-tts package)
-        $audio = $this->edgeTts($text);
+        // Generate using Edge TTS
+        $audio = null;
+        try {
+            $audio = $this->edgeTts($text);
+        } catch (\Exception $e) {
+            Log::error('TTS synthesize exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
 
         if (!$audio) {
-            // Fallback: browser Web Speech API
+            Log::warning('TTS fallback to browser', ['text' => mb_substr($text, 0, 50)]);
             return response()->json([
                 'success' => false,
                 'fallback' => true,
@@ -73,7 +78,7 @@ class TtsController extends Controller
      */
     private function edgeTts(string $text): ?string
     {
-        $tempFile = storage_path('app/tts_' . md5($text) . '.mp3');
+        $tempFile = '/tmp/thaihelp_tts_' . md5($text . time()) . '.mp3';
 
         try {
             $voice = 'th-TH-PremwadeeNeural';
