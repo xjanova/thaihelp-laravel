@@ -11,6 +11,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version
+        id: version
+        run: |
+          VERSION="v1.$(date +'%Y%m%d').$(git rev-list --count HEAD)"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION ($SHORT_SHA)"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -26,6 +40,7 @@ jobs:
 
             echo "=========================================="
             echo "  ThaiHelp Laravel - Auto Deploy"
+            echo "  Version: ${{ steps.version.outputs.version }}"
             echo "=========================================="
 
             # First-time: clone repo if app dir doesn't exist
@@ -35,51 +50,52 @@ jobs:
               git clone https://github.com/xjanova/thaihelp-laravel.git "$APP_DIR"
               cd "$APP_DIR"
 
-              # Setup .env
               if [ ! -f .env ]; then
                 cp .env.example .env
                 php artisan key:generate --force
-                echo ""
-                echo "=========================================="
-                echo "  .env created — EDIT credentials!"
-                echo "  nano $APP_DIR/.env"
-                echo "=========================================="
               fi
 
-              # Install dependencies
               composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
               npm ci && npm run build
 
-              # Storage & permissions
               mkdir -p storage/logs storage/framework/{sessions,views,cache} storage/backups bootstrap/cache
               chmod -R 775 storage bootstrap/cache
-              chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
-              # Symlink public_html → Laravel public/
               DOMAIN_DIR="$(dirname "$APP_DIR")"
               PUBLIC_HTML="$DOMAIN_DIR/public_html"
               if [ ! -L "$PUBLIC_HTML" ] || [ "$(readlink -f "$PUBLIC_HTML")" != "$APP_DIR/public" ]; then
-                echo ">>> Setting up public_html symlink..."
                 rm -rf "$PUBLIC_HTML"
                 ln -s "$APP_DIR/public" "$PUBLIC_HTML"
-                echo ">>> Symlink: $PUBLIC_HTML → $APP_DIR/public"
               fi
 
-              # Run migrations
               php artisan migrate --force 2>&1 || true
-
-              # Storage link for uploads
               php artisan storage:link 2>&1 || true
 
-              echo ""
-              echo "=========================================="
-              echo "  First-time setup complete!"
-              echo "  Open site → /setup to create DB & admin"
-              echo "=========================================="
+              echo ">>> First-time setup complete!"
               exit 0
             fi
 
-            # Normal deploy: use deploy.sh
+            # Normal deploy
             cd "$APP_DIR"
-            echo ">>> Running deploy.sh..."
             bash deploy.sh main
+
+            # Write version file
+            echo '${{ steps.version.outputs.version }}' > "$APP_DIR/version.txt"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "${{ steps.version.outputs.version }}"
+          body: |
+            ## Deploy ${{ steps.version.outputs.version }}
+
+            **Commit:** `${{ steps.version.outputs.short_sha }}` — ${{ github.event.head_commit.message }}
+            **Deployed:** ${{ github.event.head_commit.timestamp }}
+            **By:** ${{ github.actor }}
+
+            [View on site](https://thaihelp.xman4289.com)
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

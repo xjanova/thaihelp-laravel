@@ -41,6 +41,16 @@
     {{-- Bottom Navigation --}}
     @include('components.bottom-nav')
 
+    {{-- Version --}}
+    @php
+        $version = 'dev';
+        $versionFile = base_path('version.txt');
+        if (file_exists($versionFile)) {
+            $version = trim(file_get_contents($versionFile));
+        }
+    @endphp
+    <div class="fixed bottom-16 right-2 z-40 text-[9px] text-slate-600 opacity-50">{{ $version }}</div>
+
     {{-- Vite JS --}}
     @vite(['resources/js/app.js'])
 

@@ -34,6 +34,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->darkMode(true, true)
             ->brandName('ThaiHelp Admin')
+            ->brandLogo(null)
+            ->favicon('/icons/icon-192x192.png')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
