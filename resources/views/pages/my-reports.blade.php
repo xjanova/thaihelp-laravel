@@ -229,12 +229,12 @@
                                     <label class="block text-[10px] text-slate-500 mb-1">ประเภท</label>
                                     <select x-model="editForm.category"
                                             class="w-full px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-600/50 text-sm text-slate-200 outline-none focus:border-orange-500/50 transition-all">
-                                        <option value="flood">น้ำท่วม</option>
-                                        <option value="fire">ไฟไหม้</option>
-                                        <option value="accident">อุบัติเหตุ</option>
-                                        <option value="crime">อาชญากรรม</option>
-                                        <option value="road">ถนน/จราจร</option>
-                                        <option value="other">อื่นๆ</option>
+                                        <option value="accident">🚗 อุบัติเหตุ</option>
+                                        <option value="flood">🌊 น้ำท่วม</option>
+                                        <option value="roadblock">🚧 ถนนปิด</option>
+                                        <option value="checkpoint">👮 จุดตรวจ</option>
+                                        <option value="construction">🏗️ ก่อสร้าง</option>
+                                        <option value="other">⚠️ อื่นๆ</option>
                                     </select>
                                 </div>
                             </template>
@@ -423,9 +423,14 @@ function myReportsPage() {
                     ? `/api/stations/${report.id}`
                     : `/api/incidents/${report.id}`;
 
-                const body = { title: this.editForm.title, description: this.editForm.description };
-                if (report.type === 'incident' && this.editForm.category) {
-                    body.category = this.editForm.category;
+                let body;
+                if (report.type === 'station') {
+                    body = { station_name: this.editForm.title, note: this.editForm.description };
+                } else {
+                    body = { title: this.editForm.title, description: this.editForm.description };
+                    if (this.editForm.category) {
+                        body.category = this.editForm.category;
+                    }
                 }
 
                 const res = await fetch(endpoint, {
@@ -507,19 +512,13 @@ function myReportsPage() {
         },
 
         getCategoryEmoji(cat) {
-            const map = {
-                flood: '🌊', fire: '🔥', accident: '🚗', crime: '🚨',
-                road: '🚧', power: '⚡', water: '💧', other: '⚠️'
-            };
-            return map[cat] || '⚠️';
+            const emojis = {accident:'🚗',flood:'🌊',roadblock:'🚧',checkpoint:'👮',construction:'🏗️',other:'⚠️'};
+            return emojis[cat] || '📌';
         },
 
         getCategoryLabel(cat) {
-            const map = {
-                flood: 'น้ำท่วม', fire: 'ไฟไหม้', accident: 'อุบัติเหตุ', crime: 'อาชญากรรม',
-                road: 'ถนน/จราจร', power: 'ไฟดับ', water: 'น้ำประปา', other: 'อื่นๆ'
-            };
-            return map[cat] || cat;
+            const labels = {accident:'อุบัติเหตุ',flood:'น้ำท่วม',roadblock:'ถนนปิด',checkpoint:'จุดตรวจ',construction:'ก่อสร้าง',other:'อื่นๆ'};
+            return labels[cat] || cat;
         },
 
         getCategoryStyle(cat) {

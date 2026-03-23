@@ -623,13 +623,14 @@ function reportPage() {
             this.fuelSubmitting = true;
 
             // Build fuel data for selected fuels only
-            const fuels = {};
+            const fuelReports = [];
             Object.keys(this.fuel.selectedFuels).forEach(key => {
                 if (this.fuel.selectedFuels[key] && this.fuel.fuelData[key]) {
-                    fuels[key] = {
-                        status: this.fuel.fuelData[key].status,
+                    fuelReports.push({
+                        fuel_type: key,
+                        status: this.fuel.fuelData[key].status || 'available',
                         price: parseFloat(this.fuel.fuelData[key].price) || null,
-                    };
+                    });
                 }
             });
 
@@ -647,8 +648,10 @@ function reportPage() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify({
-                        station_name: this.fuel.stationName,
-                        fuels: fuels,
+                        placeId: 'user_report_' + Date.now(),
+                        stationName: this.fuel.stationName,
+                        reporterName: this.fuel.reporterName || null,
+                        fuelReports: fuelReports,
                         facilities: facilitiesList,
                         note: this.fuel.note || null,
                         latitude: this.lat,

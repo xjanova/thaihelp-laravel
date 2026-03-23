@@ -249,4 +249,30 @@ class StationController extends Controller
             ], 500);
         }
     }
+
+    public function apiUpdate(Request $request, StationReport $report): JsonResponse
+    {
+        if (!$request->user() || $request->user()->id !== $report->user_id) {
+            return response()->json(['success' => false, 'message' => 'ไม่มีสิทธิ์แก้ไข'], 403);
+        }
+
+        $validated = $request->validate([
+            'station_name' => ['sometimes', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $report->update($validated);
+        return response()->json(['success' => true, 'data' => $report->fresh()]);
+    }
+
+    public function apiDestroy(Request $request, StationReport $report): JsonResponse
+    {
+        if (!$request->user() || $request->user()->id !== $report->user_id) {
+            return response()->json(['success' => false, 'message' => 'ไม่มีสิทธิ์ลบ'], 403);
+        }
+
+        $report->fuelReports()->delete();
+        $report->delete();
+        return response()->json(['success' => true, 'message' => 'ลบรายงานสำเร็จ']);
+    }
 }

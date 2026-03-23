@@ -6,8 +6,8 @@
     <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3" id="chat-messages" x-ref="messages">
         {{-- Welcome Message --}}
         <div class="flex gap-2 items-start">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-sm flex-shrink-0">
-                👧
+            <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
+                <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
             </div>
             <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
                 <p class="text-sm text-slate-200">สวัสดีค่ะ! หญิงเองค่ะ 😊 มีอะไรให้ช่วยไหมคะ?</p>
@@ -45,8 +45,8 @@
 
         {{-- Typing Indicator --}}
         <div x-show="isTyping" class="flex gap-2 items-start">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-sm flex-shrink-0">
-                👧
+            <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
+                <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
             </div>
             <div class="metal-panel rounded-2xl rounded-tl-sm px-4 py-3">
                 <div class="flex gap-1">

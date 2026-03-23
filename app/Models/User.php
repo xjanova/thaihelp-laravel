@@ -38,6 +38,9 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'reputation_score' => 'integer',
+            'total_reports' => 'integer',
+            'total_confirmations' => 'integer',
         ];
     }
 
