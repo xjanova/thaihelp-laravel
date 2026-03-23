@@ -40,6 +40,9 @@ Route::get('/report', [IncidentController::class, 'create'])->name('report');
 // Stats
 Route::get('/stats', [App\Http\Controllers\StatsController::class, 'index'])->name('stats');
 
+// Trip Planner
+Route::get('/trip', [App\Http\Controllers\TripPlannerController::class, 'index'])->name('trip');
+
 // Chat
 Route::get('/chat', [ChatController::class, 'index'])->name('chat');
 

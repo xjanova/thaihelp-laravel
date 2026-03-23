@@ -56,6 +56,19 @@ Route::get('/external-data', function (\Illuminate\Http\Request $request) {
     return response()->json(['success' => true, 'data' => $data]);
 })->middleware('throttle:10,1');
 
+// Trip Planner
+Route::post('/trip/plan', [App\Http\Controllers\TripPlannerController::class, 'plan'])
+    ->middleware('throttle:10,1');
+
+// EV Charging Stations
+Route::get('/ev-chargers', function (\Illuminate\Http\Request $request) {
+    $lat = $request->query('lat', 13.7563);
+    $lng = $request->query('lng', 100.5018);
+    $radius = $request->query('radius', 25);
+    $data = app(\App\Services\EVChargingService::class)->getNearby((float) $lat, (float) $lng, (float) $radius);
+    return response()->json(['success' => true, 'data' => $data, 'count' => count($data)]);
+})->middleware('throttle:20,1');
+
 // Stats
 Route::get('/stats', [App\Http\Controllers\StatsController::class, 'apiStats'])
     ->middleware('throttle:20,1');

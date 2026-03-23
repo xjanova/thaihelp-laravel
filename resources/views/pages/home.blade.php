@@ -86,6 +86,10 @@
                 <input type="checkbox" id="layer-danger" checked onchange="toggleLayer('danger')" class="rounded accent-red-600">
                 🔴 พื้นที่อันตราย
             </label>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="layer-ev" onchange="toggleLayer('ev')" class="rounded accent-emerald-500">
+                🔌 สถานีชาร์จ EV
+            </label>
             <hr class="border-slate-700">
             <p class="text-[10px] text-slate-500 uppercase tracking-wider">Google Maps Layers</p>
             <label class="flex items-center gap-2 text-xs text-green-400 cursor-pointer">
@@ -601,6 +605,61 @@
         }
     }
 
+    // ─── EV Charger Layer ───
+    async function loadEVChargers() {
+        try {
+            const res = await fetch(`/api/ev-chargers?lat=${userPos.lat}&lng=${userPos.lng}&radius=25`);
+            const json = await res.json();
+            if (!json.success) return;
+
+            (json.data || []).forEach(ev => {
+                if (!ev.latitude || !ev.longitude) return;
+                const speedIcon = ev.speed_category === 'fast' ? '⚡' : '🔌';
+                const speedColor = ev.speed_category === 'fast' ? '#22c55e' : ev.speed_category === 'medium' ? '#3b82f6' : '#6b7280';
+
+                const marker = new google.maps.Marker({
+                    position: { lat: ev.latitude, lng: ev.longitude },
+                    map: extLayers.ev ? map : null,
+                    title: ev.name,
+                    icon: {
+                        path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                        scale: 6,
+                        fillColor: speedColor,
+                        fillOpacity: 0.9,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 1.5,
+                    },
+                    zIndex: 180,
+                });
+
+                const connHtml = (ev.connectors || []).map(c =>
+                    `<div style="font-size:10px;color:#666;">🔌 ${c.type} — ${c.power_kw} kW × ${c.quantity}</div>`
+                ).join('');
+
+                const iw = new google.maps.InfoWindow({
+                    content: `<div style="color:#000;font-size:12px;min-width:180px;">
+                        <strong>${speedIcon} ${ev.name}</strong>
+                        <div style="color:#666;font-size:10px;margin:2px 0;">${ev.operator || ''}</div>
+                        <div style="display:inline-block;background:${speedColor};color:#fff;padding:1px 6px;border-radius:8px;font-size:9px;margin:3px 0;">
+                            ${ev.max_power_kw} kW ${ev.speed_category === 'fast' ? 'DC Fast' : ev.speed_category === 'medium' ? 'AC' : 'Slow'}
+                        </div>
+                        ${connHtml}
+                        <div style="margin-top:4px;font-size:10px;color:#888;">
+                            📍 ${ev.address || ''} ${ev.town || ''}
+                            ${ev.distance_km ? ' · ' + ev.distance_km.toFixed(1) + ' km' : ''}
+                        </div>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination=${ev.latitude},${ev.longitude}"
+                           target="_blank" style="display:inline-block;margin-top:4px;background:#3b82f6;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;text-decoration:none;">🧭 นำทาง</a>
+                    </div>`
+                });
+                marker.addListener('click', () => iw.open(map, marker));
+                extMarkers.ev.push(marker);
+            });
+        } catch (e) {
+            console.log('EV chargers failed:', e);
+        }
+    }
+
     // ─── Google Maps Built-in Layers ───
     function toggleGoogleLayer(type) {
         if (type === 'traffic') {
@@ -616,8 +675,8 @@
     }
 
     // ─── External Data Layers ───
-    let extMarkers = { earthquake: [], flood: [], traffic: [], danger: [] };
-    let extLayers = { weather: true, aqi: true, earthquake: true, flood: false, traffic: true, danger: true };
+    let extMarkers = { earthquake: [], flood: [], traffic: [], danger: [], ev: [] };
+    let extLayers = { weather: true, aqi: true, earthquake: true, flood: false, traffic: true, danger: true, ev: false };
     let extData = {};
 
     function toggleLayer(layer) {
@@ -688,6 +747,11 @@
             marker.addListener('click', () => iw.open(map, marker));
             extMarkers.earthquake.push(marker);
         });
+
+        // 🔌 EV Chargers (loaded on-demand when toggled)
+        if (extLayers.ev && extMarkers.ev.length === 0) {
+            loadEVChargers();
+        }
 
         // 🌤️ Weather + 💨 AQI Widget
         updateWeatherWidget();
