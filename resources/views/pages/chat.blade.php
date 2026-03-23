@@ -124,57 +124,125 @@
         if (on) window.sayText('เปิดเสียงในแชทแล้วค่ะ~');
     }
 
-    // TTS function for chat — Edge TTS (สมจริง) → Web Speech API (fallback)
+    // ─── TTS: ซอยข้อความเป็นประโยค → prefetch + เล่นต่อกัน ───
+    let ttsAbort = null; // AbortController สำหรับหยุดพูดกลางคัน
+
+    /**
+     * ซอยข้อความยาวเป็นประโยคสั้นๆ (แยกตาม ค่ะ นะคะ เลยค่ะ ! ? หรือขึ้นบรรทัดใหม่)
+     */
+    function splitTtsChunks(text) {
+        // แยกตามจุดจบประโยคภาษาไทย + อังกฤษ
+        const parts = text.split(/(?<=ค่ะ|คะ|นะคะ|เลยค่ะ|ครับ|นะครับ|[!?。\n])\s*/);
+        const chunks = [];
+        let buf = '';
+
+        for (const p of parts) {
+            const trimmed = p.trim();
+            if (!trimmed) continue;
+
+            // รวมประโยคสั้นๆ เข้าด้วยกัน (< 30 ตัวอักษร)
+            if (buf.length + trimmed.length < 80) {
+                buf += (buf ? ' ' : '') + trimmed;
+            } else {
+                if (buf) chunks.push(buf);
+                buf = trimmed;
+            }
+        }
+        if (buf) chunks.push(buf);
+
+        return chunks.length ? chunks : [text];
+    }
+
+    /**
+     * Fetch TTS audio สำหรับ 1 chunk
+     */
+    async function fetchTtsAudio(text, signal) {
+        const encoded = btoa(unescape(encodeURIComponent(text)));
+        const res = await fetch('/api/tts?text=' + encodeURIComponent(encoded) + '&encoding=base64', { signal });
+
+        if (!res.ok) throw new Error('TTS API ' + res.status);
+
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('audio')) throw new Error('Not audio');
+
+        const blob = await res.blob();
+        return URL.createObjectURL(blob);
+    }
+
+    /**
+     * เล่น audio แล้ว return Promise ที่ resolve เมื่อเล่นจบ
+     */
+    function playAudioUrl(url) {
+        return new Promise((resolve, reject) => {
+            const audio = new Audio(url);
+            audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+            audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('play error')); };
+            audio.play().catch(reject);
+        });
+    }
+
+    /**
+     * TTS หลัก — ซอย → prefetch → เล่นต่อกัน (chunk แรกเริ่มเร็วมาก)
+     */
     window.sayText = async function(text) {
         if (!isChatTTSEnabled()) return;
+
+        // หยุดเสียงก่อนหน้า
+        if (ttsAbort) ttsAbort.abort();
+        ttsAbort = new AbortController();
+        const signal = ttsAbort.signal;
 
         // Strip action tags
         const clean = text.replace(/\[.*?\]/g, '').trim();
         if (!clean) return;
 
-        // Try Edge TTS first (เสียงสมจริง th-TH-PremwadeeNeural)
-        try {
-            const encoded = btoa(unescape(encodeURIComponent(clean)));
-            const res = await fetch('/api/tts?text=' + encodeURIComponent(encoded) + '&encoding=base64');
+        const chunks = splitTtsChunks(clean);
+        console.log('[TTS] Split into', chunks.length, 'chunks:', chunks.map(c => c.substring(0, 30) + '...'));
 
-            if (res.ok) {
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('audio')) {
-                    const blob = await res.blob();
-                    const audio = new Audio(URL.createObjectURL(blob));
-                    audio.play();
-                    return; // Edge TTS success!
-                }
+        // Prefetch ทุก chunk พร้อมกัน
+        const audioPromises = chunks.map(chunk => fetchTtsAudio(chunk, signal).catch(() => null));
+
+        // เล่นทีละ chunk ตามลำดับ — chunk แรกเริ่มเร็วเพราะสั้น
+        for (let i = 0; i < audioPromises.length; i++) {
+            if (signal.aborted) return;
+
+            try {
+                const url = await audioPromises[i];
+                if (!url || signal.aborted) continue;
+                await playAudioUrl(url);
+            } catch (e) {
+                if (signal.aborted) return;
+                console.log('[TTS] Chunk', i, 'failed, trying browser fallback');
+                // Fallback สำหรับ chunk ที่ล้มเหลว
+                await sayChunkBrowser(chunks[i]);
             }
-        } catch (e) {
-            console.log('Edge TTS failed, fallback to Web Speech:', e);
         }
-
-        // Fallback: Web Speech API (หุ่นยนต์กว่า แต่ฟรี offline)
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-
-        const u = new SpeechSynthesisUtterance(clean);
-        u.lang = 'th-TH';
-        u.rate = 1.1;
-        u.pitch = 1.4; // เสียงสูงขึ้น = เด็กสาว
-
-        // หา Thai voice — ลองหลายชื่อ
-        const voices = window.speechSynthesis.getVoices();
-        const thaiVoice = voices.find(v => v.lang === 'th-TH' && /female|premwadee|สาว/i.test(v.name))
-            || voices.find(v => v.lang === 'th-TH')
-            || voices.find(v => v.lang.startsWith('th'))
-            || null;
-
-        if (thaiVoice) {
-            u.voice = thaiVoice;
-            console.log('Web Speech using voice:', thaiVoice.name);
-        } else {
-            console.warn('No Thai voice found! Available:', voices.map(v => v.lang + ':' + v.name).join(', '));
-        }
-
-        window.speechSynthesis.speak(u);
     };
+
+    /**
+     * Browser Web Speech fallback สำหรับ 1 chunk
+     */
+    function sayChunkBrowser(text) {
+        return new Promise((resolve) => {
+            if (!window.speechSynthesis) { resolve(); return; }
+
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'th-TH';
+            u.rate = 1.1;
+            u.pitch = 1.4;
+
+            const voices = window.speechSynthesis.getVoices();
+            const thaiVoice = voices.find(v => v.lang === 'th-TH' && /female|premwadee|สาว/i.test(v.name))
+                || voices.find(v => v.lang === 'th-TH')
+                || voices.find(v => v.lang.startsWith('th'))
+                || null;
+            if (thaiVoice) u.voice = thaiVoice;
+
+            u.onend = resolve;
+            u.onerror = resolve;
+            window.speechSynthesis.speak(u);
+        });
+    }
 
     // Preload voices
     if (window.speechSynthesis) {
