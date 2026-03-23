@@ -51,7 +51,12 @@ class ChatController extends Controller
             $lng = $validated['longitude'] ?? null;
 
             if ($lat && $lng) {
-                $locationContext = $this->buildLocationContext($lat, $lng);
+                // ใช้ YingContextBuilder — cache 5 นาที ประหยัด token
+                $cacheKey = "ying_ctx_" . round($lat, 2) . "_" . round($lng, 2);
+                $locationContext = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($lat, $lng, $request) {
+                    return app(\App\Services\YingContextBuilder::class)
+                        ->build((float) $lat, (float) $lng, $request->user()?->id);
+                });
             }
 
             $groqService = app(GroqAIService::class);
