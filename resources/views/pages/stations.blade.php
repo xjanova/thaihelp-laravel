@@ -243,9 +243,9 @@
                 const brandCfg = brandKey ? this.brandConfig[brandKey] : null;
 
                 // Brand logo HTML
-                const brandLogoHtml = brandCfg?.logo
-                    ? `<img src="${brandCfg.logo}" alt="${brandCfg.name}" class="w-12 h-12 rounded-xl object-contain bg-white p-1 border border-slate-600" onerror="this.outerHTML='<span class=\\'text-3xl\\'>⛽</span>'">`
-                    : `<span class="inline-flex items-center justify-center w-12 h-12 rounded-xl text-white font-bold text-lg" style="background:${brandCfg?.color || '#6b7280'}">${brandCfg ? brandCfg.name.charAt(0) : '⛽'}</span>`;
+                const brandLogoHtml = brandCfg
+                    ? `<span class="inline-flex items-center justify-center w-12 h-12 rounded-xl font-bold shadow-lg border-2 border-white/20" style="background:${brandCfg.color};color:${brandCfg.textColor};font-size:${brandCfg.text.length > 2 ? '12' : '18'}px;">${brandCfg.text}</span>`
+                    : `<span class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-600 text-2xl">⛽</span>`;
 
                 // Fuel reports HTML
                 let fuelsHtml = '';
@@ -313,15 +313,15 @@
 
             // Brand detection helper (matches maps.js detectBrand)
             brandConfig: {
-                ptt:      { name: 'PTT Station',  color: '#1e3a8a', logo: 'https://logo.clearbit.com/pttor.com' },
-                shell:    { name: 'Shell',         color: '#dd1d21', logo: 'https://logo.clearbit.com/shell.com' },
-                bangchak: { name: 'Bangchak',      color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
-                esso:     { name: 'Esso',          color: '#d62631', logo: 'https://logo.clearbit.com/esso.com' },
-                caltex:   { name: 'Caltex',        color: '#c8102e', logo: 'https://logo.clearbit.com/caltex.com' },
-                susco:    { name: 'Susco',         color: '#7c3aed', logo: 'https://logo.clearbit.com/susco.co.th' },
-                pt:       { name: 'PT',            color: '#ea580c', logo: 'https://logo.clearbit.com/pt.co.th' },
-                pure:     { name: 'PURE',          color: '#0284c7', logo: null },
-                irpc:     { name: 'IRPC',          color: '#0d9488', logo: 'https://logo.clearbit.com/irpc.co.th' },
+                ptt:      { name: 'PTT',      color: '#1e3a8a', text: 'PTT',  textColor: '#fbbf24' },
+                shell:    { name: 'Shell',     color: '#dd1d21', text: 'S',    textColor: '#fbbf24' },
+                bangchak: { name: 'Bangchak',  color: '#006838', text: 'BCP',  textColor: '#ffffff' },
+                esso:     { name: 'Esso',      color: '#d62631', text: 'E',    textColor: '#ffffff' },
+                caltex:   { name: 'Caltex',    color: '#c8102e', text: 'C★',   textColor: '#ffffff' },
+                susco:    { name: 'Susco',     color: '#7c3aed', text: 'SS',   textColor: '#ffffff' },
+                pt:       { name: 'PT',        color: '#ea580c', text: 'PT',   textColor: '#ffffff' },
+                pure:     { name: 'PURE',      color: '#0284c7', text: 'P',    textColor: '#ffffff' },
+                irpc:     { name: 'IRPC',      color: '#0d9488', text: 'IR',   textColor: '#ffffff' },
             },
             detectBrand(name) {
                 if (!name) return null;

@@ -282,18 +282,82 @@
 
 @push('scripts')
 <script>
-    // ─── Brand Configuration (real logos via Clearbit) ───
+    // ─── Brand Configuration — canvas-generated marker icons ───
     const _BRAND_CFG = {
-        ptt:      { name: 'PTT Station',  color: '#1e3a8a', logo: 'https://logo.clearbit.com/pttor.com' },
-        shell:    { name: 'Shell',         color: '#dd1d21', logo: 'https://logo.clearbit.com/shell.com' },
-        bangchak: { name: 'Bangchak',      color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
-        esso:     { name: 'Esso',          color: '#d62631', logo: 'https://logo.clearbit.com/esso.com' },
-        caltex:   { name: 'Caltex',        color: '#c8102e', logo: 'https://logo.clearbit.com/caltex.com' },
-        susco:    { name: 'Susco',         color: '#7c3aed', logo: 'https://logo.clearbit.com/susco.co.th' },
-        pt:       { name: 'PT',            color: '#ea580c', logo: 'https://logo.clearbit.com/pt.co.th' },
-        pure:     { name: 'PURE',          color: '#0284c7', logo: null },
-        irpc:     { name: 'IRPC',          color: '#0d9488', logo: 'https://logo.clearbit.com/irpc.co.th' },
+        ptt:      { name: 'PTT',      color: '#1e3a8a', text: 'PTT',  textColor: '#fbbf24' },
+        shell:    { name: 'Shell',     color: '#dd1d21', text: 'S',    textColor: '#fbbf24' },
+        bangchak: { name: 'Bangchak',  color: '#006838', text: 'BCP',  textColor: '#ffffff' },
+        esso:     { name: 'Esso',      color: '#d62631', text: 'E',    textColor: '#ffffff' },
+        caltex:   { name: 'Caltex',    color: '#c8102e', text: 'C★',   textColor: '#ffffff' },
+        susco:    { name: 'Susco',     color: '#7c3aed', text: 'SS',   textColor: '#ffffff' },
+        pt:       { name: 'PT',        color: '#ea580c', text: 'PT',   textColor: '#ffffff' },
+        pure:     { name: 'PURE',      color: '#0284c7', text: 'P',    textColor: '#ffffff' },
+        irpc:     { name: 'IRPC',      color: '#0d9488', text: 'IR',   textColor: '#ffffff' },
     };
+
+    // Cache generated icons to avoid re-drawing
+    const _brandIconCache = {};
+
+    /** Generate a brand marker icon as data URL using canvas */
+    function _makeBrandIcon(brand, statusColor) {
+        const cfg = brand ? _BRAND_CFG[brand] : null;
+        const cacheKey = brand || statusColor || 'default';
+        if (_brandIconCache[cacheKey]) return _brandIconCache[cacheKey];
+
+        const size = 40;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size + 10; // extra for pin tail
+        const ctx = canvas.getContext('2d');
+
+        const bgColor = cfg?.color || statusColor || '#6b7280';
+        const text = cfg?.text || '⛽';
+        const textColor = cfg?.textColor || '#ffffff';
+
+        // Draw pin shape: circle + triangle tail
+        // Circle
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
+        ctx.fillStyle = bgColor;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Triangle tail
+        ctx.beginPath();
+        ctx.moveTo(size / 2 - 7, size / 2 + 12);
+        ctx.lineTo(size / 2, size + 6);
+        ctx.lineTo(size / 2 + 7, size / 2 + 12);
+        ctx.fillStyle = bgColor;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Re-fill circle to cover triangle overlap
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+        ctx.fillStyle = bgColor;
+        ctx.fill();
+
+        // Draw text
+        const fontSize = text.length > 2 ? 11 : 14;
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, size / 2, size / 2);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        const icon = {
+            url: dataUrl,
+            scaledSize: new google.maps.Size(size, size + 10),
+            anchor: new google.maps.Point(size / 2, size + 6),
+        };
+        _brandIconCache[cacheKey] = icon;
+        return icon;
+    }
+
     function _detectBrand(name) {
         if (!name) return null;
         const n = name.toLowerCase();
@@ -408,45 +472,18 @@
                 const brand = _detectBrand(stName);
                 const brandCfg = brand ? _BRAND_CFG[brand] : null;
 
-                const markerOpts = {
+                const marker = new google.maps.Marker({
                     position: { lat: parseFloat(lat), lng: parseFloat(lng) },
                     map: map,
                     title: stName || 'Gas Station',
+                    icon: _makeBrandIcon(brand, color),
                     optimized: true,
-                };
-
-                // Use brand logo as marker icon, or colored circle fallback
-                if (brandCfg?.logo) {
-                    markerOpts.icon = {
-                        url: brandCfg.logo,
-                        scaledSize: new google.maps.Size(32, 32),
-                        anchor: new google.maps.Point(16, 16),
-                    };
-                } else {
-                    markerOpts.icon = {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 14,
-                        fillColor: brandCfg?.color || color,
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 2.5,
-                    };
-                    if (brandCfg) {
-                        markerOpts.label = {
-                            text: brandCfg.name.charAt(0),
-                            color: '#ffffff',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                        };
-                    }
-                }
-
-                const marker = new google.maps.Marker(markerOpts);
+                });
 
                 // Rich info window with brand logo + fuel status + nav button
-                const brandBadge = brandCfg?.logo
-                    ? `<img src="${brandCfg.logo}" style="width:28px;height:28px;border-radius:6px;object-fit:contain;background:#fff;padding:2px;border:1px solid #e5e7eb;" onerror="this.outerHTML='⛽'">`
-                    : (brandCfg ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:${brandCfg.color};color:#fff;font-weight:bold;font-size:13px;">${brandCfg.name.charAt(0)}</span>` : '<span style="font-size:20px;">⛽</span>');
+                const brandBadge = brandCfg
+                    ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:${brandCfg.color};color:${brandCfg.textColor};font-weight:bold;font-size:${brandCfg.text.length > 2 ? '10' : '14'}px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.2);">${brandCfg.text}</span>`
+                    : '<span style="font-size:22px;">⛽</span>';
                 const brandLabel = brandCfg ? `<span style="font-size:11px;color:${brandCfg.color};font-weight:600;">${brandCfg.name}</span>` : '';
 
                 let fuelHtml = '';
