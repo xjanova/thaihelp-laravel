@@ -533,6 +533,21 @@
                         }
                     }
 
+                    // Handle app navigation commands
+                    if (reply.includes('[OPEN_STATIONS]')) {
+                        setTimeout(() => window.location.href = '/stations', 1500);
+                    }
+                    if (reply.includes('[OPEN_TRIP]')) {
+                        setTimeout(() => window.location.href = '/trip', 1500);
+                    }
+                    if (reply.includes('[OPEN_HOSPITALS]')) {
+                        setTimeout(() => window.location.href = '/hospitals', 1500);
+                    }
+                    if (reply.includes('[CALL_SOS]')) {
+                        // Trigger SOS if available
+                        if (window.triggerSOS) window.triggerSOS();
+                    }
+
                     // Clean command tags from displayed messages
                     const lastMsg = this.messages[this.messages.length - 1];
                     if (lastMsg && lastMsg.role === 'assistant') {
@@ -542,6 +557,10 @@
                             .replace(/\[CONDITION:.*?\]/g, '')
                             .replace(/\[NAVIGATE:.*?\]/g, '')
                             .replace(/\[PLAY_VIDEO\]/g, '')
+                            .replace(/\[OPEN_STATIONS\]/g, '')
+                            .replace(/\[OPEN_TRIP\]/g, '')
+                            .replace(/\[OPEN_HOSPITALS\]/g, '')
+                            .replace(/\[CALL_SOS\]/g, '')
                             .trim();
                     }
                 } catch (err) {
