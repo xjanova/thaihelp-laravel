@@ -392,7 +392,7 @@ function reportPage() {
                             this.fuel.fuelData = { ...this.fuel.fuelData, [fuelType]: { status: fuelStatus || 'available', price: '' } };
                         }
                         // Try to extract station name from transcript
-                        const stationMatch = transcript.match(/(PTT|Shell|Bangchak|Esso|Caltex|ปตท|เชลล์|บางจาก|เอสโซ่|คาลเท็กซ์|ซัสโก้|Susco)[\s\S]*/i);
+                        const stationMatch = transcript.match(/(PTT|Shell|Bangchak|Esso|Caltex|ปตท|เชลล์|บางจาก|เอสโซ่|คาลเท็กซ์|ซัสโก้|Susco)[\w\s]*/i);
                         if (stationMatch) {
                             this.fuel.stationName = stationMatch[0].trim().substring(0, 50);
                         }

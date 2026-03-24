@@ -489,29 +489,23 @@
                     if (reportMatch) {
                         try {
                             const reportData = JSON.parse(reportMatch[1]);
-                            if (navigator.geolocation) {
-                                navigator.geolocation.getCurrentPosition(async (pos) => {
-                                    try {
-                                        await fetch('/api/voice-command', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                            },
-                                            body: JSON.stringify({
-                                                transcript: text,
-                                                latitude: pos.coords.latitude,
-                                                longitude: pos.coords.longitude,
-                                                fuel_report: reportData,
-                                            }),
-                                        });
-                                    } catch (e) {
-                                        console.error('Failed to submit fuel report:', e);
-                                    }
+                            // Use cached GPS or request fresh
+                            const lat = window._userLat;
+                            const lng = window._userLng;
+                            if (lat && lng) {
+                                const res = await fetch('/api/voice-command', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                                    body: JSON.stringify({ transcript: text, latitude: lat, longitude: lng, fuel_report: reportData }),
                                 });
+                                const result = await res.json().catch(() => null);
+                                this.messages.push({ role: 'assistant', content: result?.success ? '✅ บันทึกรายงานน้ำมันเรียบร้อยค่ะ!' : '❌ บันทึกไม่สำเร็จค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });
+                            } else {
+                                this.messages.push({ role: 'assistant', content: '📍 ไม่สามารถระบุตำแหน่งได้ค่ะ กรุณาเปิด GPS แล้วลองใหม่นะคะ', time: this.formatTime() });
                             }
                         } catch (e) {
-                            console.error('Failed to parse fuel report:', e);
+                            console.error('Failed to submit fuel report:', e);
+                            this.messages.push({ role: 'assistant', content: '❌ เกิดข้อผิดพลาดในการบันทึกค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });
                         }
                     }
 
@@ -520,30 +514,22 @@
                     if (incidentMatch) {
                         try {
                             const incidentData = JSON.parse(incidentMatch[1]);
-                            if (navigator.geolocation) {
-                                navigator.geolocation.getCurrentPosition(async (pos) => {
-                                    try {
-                                        await fetch('/api/incidents', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                            },
-                                            body: JSON.stringify({
-                                                category: incidentData.category || 'other',
-                                                title: incidentData.title || 'รายงานจากน้องหญิง',
-                                                description: incidentData.description || '',
-                                                latitude: pos.coords.latitude,
-                                                longitude: pos.coords.longitude,
-                                            }),
-                                        });
-                                    } catch (e) {
-                                        console.error('Failed to submit incident:', e);
-                                    }
+                            const lat = window._userLat;
+                            const lng = window._userLng;
+                            if (lat && lng) {
+                                const res = await fetch('/api/incidents', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                                    body: JSON.stringify({ category: incidentData.category || 'other', title: incidentData.title || 'รายงานจากน้องหญิง', description: incidentData.description || '', latitude: lat, longitude: lng }),
                                 });
+                                const result = await res.json().catch(() => null);
+                                this.messages.push({ role: 'assistant', content: result?.success ? '✅ บันทึกรายงานเหตุการณ์เรียบร้อยค่ะ!' : '❌ บันทึกไม่สำเร็จค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });
+                            } else {
+                                this.messages.push({ role: 'assistant', content: '📍 ไม่สามารถระบุตำแหน่งได้ค่ะ กรุณาเปิด GPS แล้วลองใหม่นะคะ', time: this.formatTime() });
                             }
                         } catch (e) {
-                            console.error('Failed to parse incident report:', e);
+                            console.error('Failed to submit incident:', e);
+                            this.messages.push({ role: 'assistant', content: '❌ เกิดข้อผิดพลาดในการบันทึกค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });
                         }
                     }
 

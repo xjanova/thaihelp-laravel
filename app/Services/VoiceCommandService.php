@@ -47,10 +47,12 @@ class VoiceCommandService
 
         try {
             // Create a station report from voice
+            $user = auth()->user();
             $stationReport = StationReport::create([
                 'place_id' => $fuelReport['place_id'] ?? 'voice_report_' . time(),
-                'station_name' => $fuelReport['station_name'] ?? 'ปั๊มน้ำมัน (รายงานจากเสียง)',
-                'reporter_name' => 'น้องหญิง Voice',
+                'station_name' => $fuelReport['station_name'] ?? $fuelReport['brand'] ?? 'ปั๊มน้ำมัน (รายงานจากเสียง)',
+                'user_id' => $user?->id,
+                'reporter_name' => $user?->nickname ?? $user?->name ?? 'น้องหญิง Voice',
                 'note' => $data['transcript'] ?? 'รายงานจากคำสั่งเสียง',
                 'latitude' => $latitude,
                 'longitude' => $longitude,
@@ -73,6 +75,11 @@ class VoiceCommandService
                 'status' => $fuelStatus,
                 'price' => $fuelReport['price'] ?? null,
             ]);
+
+            // Award reputation points
+            if ($user) {
+                try { $user->incrementReports(); } catch (\Exception $e) { /* silent */ }
+            }
 
             return [
                 'success' => true,
