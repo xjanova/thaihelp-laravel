@@ -61,16 +61,16 @@
     {{-- Input Bar --}}
     <div class="chrome-bar-bottom px-3 py-2 pb-20 flex-shrink-0" style="padding-bottom: max(5rem, calc(4rem + env(safe-area-inset-bottom, 0.75rem)))">
         <div class="flex items-center gap-2">
-            {{-- Wake Word Toggle --}}
-            <button @click="wakeWordActive ? disableWakeWord() : enableWakeWord()"
+            {{-- Wake Word Toggle (hidden if speech not supported) --}}
+            <button x-show="speechSupported" @click="wakeWordActive ? disableWakeWord() : enableWakeWord()"
                     :class="wakeWordActive ? 'bg-green-600 ring-2 ring-green-400/50' : 'metal-btn'"
                     class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
                     :title="wakeWordActive ? 'ปิด Wake Word' : 'เปิด Wake Word (พูดว่า น้องหญิง)'">
                 <span class="text-sm" x-text="wakeWordActive ? '👂' : '🔇'"></span>
             </button>
 
-            {{-- Mic Button --}}
-            <button @click="toggleMic()" :class="isRecording ? 'metal-btn-accent glow-orange' : 'metal-btn'"
+            {{-- Mic Button (hidden if speech not supported on this device) --}}
+            <button x-show="speechSupported" @click="toggleMic()" :class="isRecording ? 'metal-btn-accent glow-orange' : 'metal-btn'"
                     class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5" :class="isRecording ? 'text-white' : 'text-slate-400'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z"/>
@@ -299,11 +299,29 @@
             isTyping: false,
             isRecording: false,
             wakeWordActive: false,
+            speechSupported: true, // will be set in init()
             memoryStartedAt: memory.startedAt,
             memoryWarned: memory.warned,
             memoryTimer: null,
 
             init() {
+                // Check speech recognition support (iOS Safari may not have it)
+                this.speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+                // Register fallback: if speech fails on iOS, focus text input
+                window.onSpeechNotSupported = () => {
+                    this.speechSupported = false;
+                    this.isRecording = false;
+                    // Focus text input as fallback
+                    this.$nextTick(() => {
+                        const inputEl = this.$el.querySelector('input[type="text"]');
+                        if (inputEl) {
+                            inputEl.focus();
+                            inputEl.placeholder = 'พิมพ์ข้อความที่นี่ค่ะ (ไมค์ไม่พร้อมใช้งาน)';
+                        }
+                    });
+                };
+
                 this.scrollToBottom();
 
                 // ถ้าเป็นครั้งแรก (ไม่มีข้อความเก่า) → ทักทาย
@@ -614,20 +632,43 @@
 
             toggleMic() {
                 if (!this.isRecording) {
-                    this.isRecording = true;
-                    if (window.startListening) {
-                        window.startListening({
-                            onResult: (transcript) => {
-                                this.input = transcript;
-                                this.isRecording = false;
-                                this.send();
-                            },
-                            onError: (err) => {
-                                console.error('Speech error:', err);
-                                this.isRecording = false;
-                            }
-                        });
+                    // Check if speech is supported before trying
+                    if (!window.startListening || !(window.SpeechRecognition || window.webkitSpeechRecognition)) {
+                        // No speech support — focus text input instead
+                        this.speechSupported = false;
+                        const inputEl = this.$el.querySelector('input[type="text"]');
+                        if (inputEl) {
+                            inputEl.focus();
+                            inputEl.placeholder = 'พิมพ์ข้อความที่นี่ค่ะ (ไมค์ไม่พร้อมใช้งาน)';
+                        }
+                        return;
                     }
+
+                    this.isRecording = true;
+                    window.startListening({
+                        onResult: (transcript) => {
+                            this.input = transcript;
+                            this.isRecording = false;
+                            this.send();
+                        },
+                        onInterim: (text) => {
+                            this.input = text + '...';
+                        },
+                        onError: (err) => {
+                            console.error('Speech error:', err);
+                            this.isRecording = false;
+
+                            // If speech failed (e.g. iOS permission), focus text input
+                            if (err.message === 'speech_not_supported' || err.message === 'not-allowed') {
+                                this.speechSupported = false;
+                                const inputEl = this.$el.querySelector('input[type="text"]');
+                                if (inputEl) {
+                                    inputEl.focus();
+                                    inputEl.placeholder = 'พิมพ์ข้อความที่นี่ค่ะ (ไมค์ไม่พร้อมใช้งาน)';
+                                }
+                            }
+                        }
+                    });
                 } else {
                     this.isRecording = false;
                     if (window.stopListening) {

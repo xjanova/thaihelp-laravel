@@ -2,6 +2,12 @@
  * ThaiHelp - Voice / Speech Utilities
  * เสียงน้องหญิง - สาวน่ารัก ภาษาไทย
  * Wake word: "น้องหญิง" or "หญิง"
+ *
+ * iOS Safari compatibility:
+ * - Uses webkitSpeechRecognition (SpeechRecognition not available)
+ * - Requires user gesture to start audio/mic
+ * - continuous mode may not work — disabled on iOS
+ * - Falls back to text input if speech recognition unavailable
  */
 
 let recognition = null;
@@ -15,6 +21,28 @@ window.onSpeechError = null;
 window.onWakeWordDetected = null;
 
 const WAKE_WORDS = ['น้องหญิง', 'หญิง', 'nong ying', 'ying'];
+
+// ─── iOS / Platform Detection ───────────────────────────
+const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const _isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const _isIOSSafari = _isIOS && _isSafari;
+
+/**
+ * Check if SpeechRecognition API is available
+ */
+function getSpeechRecognitionClass() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+/**
+ * Check if speech recognition is supported on this device
+ */
+function isSpeechSupported() {
+    return !!getSpeechRecognitionClass();
+}
+
+// Expose for other scripts
+window.isSpeechSupported = isSpeechSupported;
 
 /**
  * Find the best Thai female voice
@@ -40,14 +68,20 @@ function findThaiVoice() {
 
 /**
  * Start listening for voice input (Thai)
+ * iOS Safari: webkitSpeechRecognition, no continuous mode, needs user gesture
  */
 function startListening(options = {}) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognitionClass = getSpeechRecognitionClass();
 
-    if (!SpeechRecognition) {
-        const err = new Error('เบราว์เซอร์ไม่รองรับการฟังเสียง');
+    if (!SpeechRecognitionClass) {
+        console.warn('[Speech] SpeechRecognition not supported on this browser');
+        const err = new Error('speech_not_supported');
+        err.iosHint = _isIOS;
         if (options.onError) options.onError(err);
         if (window.onSpeechError) window.onSpeechError(err);
+
+        // Notify chat to show text input fallback
+        if (window.onSpeechNotSupported) window.onSpeechNotSupported();
         return;
     }
 
@@ -56,11 +90,17 @@ function startListening(options = {}) {
     // Pause wake word listener while active listening
     if (isWakeListening) pauseWakeWord();
 
-    recognition = new SpeechRecognition();
+    recognition = new SpeechRecognitionClass();
     recognition.lang = 'th-TH';
     recognition.interimResults = true;
-    recognition.continuous = options.continuous || false;
     recognition.maxAlternatives = 1;
+
+    // iOS Safari does NOT support continuous mode reliably — disable it
+    if (_isIOSSafari) {
+        recognition.continuous = false;
+    } else {
+        recognition.continuous = options.continuous || false;
+    }
 
     recognition.onresult = (event) => {
         const result = event.results[event.results.length - 1];
@@ -78,6 +118,13 @@ function startListening(options = {}) {
 
     recognition.onerror = (event) => {
         console.error('[Speech] Error:', event.error);
+
+        // On iOS, "not-allowed" often means no user gesture or permission denied
+        if (_isIOS && (event.error === 'not-allowed' || event.error === 'service-not-allowed')) {
+            console.warn('[Speech] iOS mic permission issue — showing text input fallback');
+            if (window.onSpeechNotSupported) window.onSpeechNotSupported();
+        }
+
         if (event.error !== 'aborted') {
             const err = new Error(event.error);
             if (options.onError) options.onError(err);
@@ -98,7 +145,16 @@ function startListening(options = {}) {
         isListening = true;
     };
 
-    recognition.start();
+    // iOS requires this to be called within a user gesture handler
+    try {
+        recognition.start();
+    } catch (e) {
+        console.error('[Speech] Failed to start recognition:', e.message);
+        const err = new Error('speech_start_failed');
+        if (options.onError) options.onError(err);
+        if (window.onSpeechNotSupported) window.onSpeechNotSupported();
+        isListening = false;
+    }
 }
 
 /**
@@ -106,7 +162,7 @@ function startListening(options = {}) {
  */
 function stopListening() {
     if (recognition) {
-        recognition.abort();
+        try { recognition.abort(); } catch (e) {}
         recognition = null;
     }
     isListening = false;
@@ -207,10 +263,13 @@ function sayTextBrowser(text, options = {}) {
  * Start background wake word listener.
  * Continuously listens for "น้องหญิง" or "หญิง".
  * When detected, calls window.onWakeWordDetected callback.
+ *
+ * NOTE: On iOS Safari, continuous mode is unreliable.
+ * We use a restart-loop instead: listen for a short burst, then restart.
  */
 function startWakeWordListener() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    const SpeechRecognitionClass = getSpeechRecognitionClass();
+    if (!SpeechRecognitionClass) return;
 
     // Don't start if already active listening
     if (isListening) return;
@@ -219,11 +278,17 @@ function startWakeWordListener() {
 
     window._wakeWordEnabled = true;
 
-    wakeRecognition = new SpeechRecognition();
+    wakeRecognition = new SpeechRecognitionClass();
     wakeRecognition.lang = 'th-TH';
     wakeRecognition.interimResults = true;
-    wakeRecognition.continuous = true;
     wakeRecognition.maxAlternatives = 3;
+
+    // iOS Safari: continuous mode unreliable — use non-continuous + auto-restart
+    if (_isIOSSafari) {
+        wakeRecognition.continuous = false;
+    } else {
+        wakeRecognition.continuous = true;
+    }
 
     wakeRecognition.onresult = (event) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -264,8 +329,9 @@ function startWakeWordListener() {
     wakeRecognition.onend = () => {
         isWakeListening = false;
         // Auto-restart if still enabled and not actively listening
+        // On iOS this fires after every short burst — restart loop
         if (window._wakeWordEnabled && !isListening) {
-            setTimeout(() => startWakeWordListener(), 1000);
+            setTimeout(() => startWakeWordListener(), _isIOSSafari ? 500 : 1000);
         }
     };
 
@@ -346,8 +412,10 @@ function isWakeWordActive() { return isWakeListening; }
 window.startListening = startListening;
 window.stopListening = stopListening;
 window.sayText = sayText;
+window.sayTextBrowser = sayTextBrowser;
 window.isSpeechListening = isSpeechListening;
 window.isSpeaking = isSpeaking;
+window.isSpeechSupported = isSpeechSupported;
 window.startWakeWordListener = startWakeWordListener;
 window.stopWakeWordListener = stopWakeWordListener;
 window.isWakeWordActive = isWakeWordActive;
