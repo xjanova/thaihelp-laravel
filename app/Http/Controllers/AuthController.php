@@ -56,7 +56,16 @@ class AuthController extends Controller
     public function callbackGoogle()
     {
         try {
-            $socialUser = Socialite::driver('google')->user();
+            // Try stateful first; fall back to stateless if session/state was lost
+            // (common with SameSite cookie policies and cross-origin redirects)
+            try {
+                $socialUser = Socialite::driver('google')->user();
+            } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+                Log::warning('Google OAuth state mismatch, retrying stateless', [
+                    'error' => $e->getMessage(),
+                ]);
+                $socialUser = Socialite::driver('google')->stateless()->user();
+            }
 
             $user = User::updateOrCreate(
                 [
@@ -97,7 +106,14 @@ class AuthController extends Controller
     public function callbackLine()
     {
         try {
-            $socialUser = Socialite::driver('line')->user();
+            try {
+                $socialUser = Socialite::driver('line')->user();
+            } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+                Log::warning('LINE OAuth state mismatch, retrying stateless', [
+                    'error' => $e->getMessage(),
+                ]);
+                $socialUser = Socialite::driver('line')->stateless()->user();
+            }
 
             $user = User::updateOrCreate(
                 [

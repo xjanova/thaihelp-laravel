@@ -16,8 +16,8 @@ class CheckSetup
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip for setup routes, API, assets, and admin login
-        if ($request->is('setup*', 'api/*', '_debugbar/*', 'livewire/*', 'admin/login*')) {
+        // Skip for setup routes, API, assets, OAuth callbacks, and admin login
+        if ($request->is('setup*', 'api/*', '_debugbar/*', 'livewire/*', 'admin/login*', 'auth/*')) {
             return $next($request);
         }
 

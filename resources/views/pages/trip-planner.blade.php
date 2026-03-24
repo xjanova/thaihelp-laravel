@@ -227,6 +227,15 @@ function tripPlanner() {
             [this.originText, this.destText] = [this.destText, this.originText];
         },
 
+        // Haversine distance in km (client-side fallback)
+        haversine(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        },
+
         async planTrip() {
             if (!this.origin || !this.dest) return alert('กรุณาระบุต้นทางและปลายทาง');
             this.loading = true;
@@ -247,11 +256,44 @@ function tripPlanner() {
                 const data = await res.json();
                 if (data.success) {
                     this.result = data.data;
+
+                    // Client-side fallback: if distance is still 0, calculate via Haversine
+                    if (!this.result.summary?.distance_km || this.result.summary.distance_km <= 0) {
+                        const straight = this.haversine(this.origin.lat, this.origin.lng, this.dest.lat, this.dest.lng);
+                        const roadDist = Math.round(straight * 1.35 * 10) / 10;
+                        const durationMin = Math.max(1, Math.round(roadDist / 60 * 60));
+                        this.result.summary = {
+                            ...this.result.summary,
+                            distance_km: roadDist,
+                            duration_min: durationMin,
+                        };
+                        if (this.result.route) this.result.route.is_fallback = true;
+                    }
                 } else {
                     alert(data.message || 'เกิดข้อผิดพลาด');
                 }
             } catch (e) {
-                alert('ไม่สามารถวางแผนได้ กรุณาลองใหม่');
+                // Full client-side fallback if API fails entirely
+                const straight = this.haversine(this.origin.lat, this.origin.lng, this.dest.lat, this.dest.lng);
+                const roadDist = Math.round(straight * 1.35 * 10) / 10;
+                const durationMin = Math.max(1, Math.round(roadDist / 60 * 60));
+                this.result = {
+                    route: { is_fallback: true },
+                    summary: {
+                        distance_km: roadDist,
+                        duration_min: durationMin,
+                        fuel_stations_count: 0,
+                        ev_chargers_count: 0,
+                        incidents_count: 0,
+                        danger_zones_count: 0,
+                        has_warnings: false,
+                    },
+                    fuel_stations: [],
+                    ev_chargers: [],
+                    incidents: [],
+                    danger_zones: [],
+                    ying_summary: `🗺️ ระยะทางประมาณ ${roadDist} กม. ใช้เวลาประมาณ ${durationMin} นาทีค่ะ\n📏 ระยะทางเป็นค่าประมาณ (คำนวณจากพิกัด)\n— น้องหญิง 💕`,
+                };
             } finally {
                 this.loading = false;
             }

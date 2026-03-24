@@ -62,10 +62,23 @@ class TripPlannerController extends Controller
                 ->where('is_danger_zone', true)
                 ->get(['id', 'title', 'category', 'severity', 'latitude', 'longitude', 'danger_radius_km']);
 
-            // Calculate trip summary
+            // Calculate trip summary — ensure distance is never 0
+            $distanceKm = $route['distance_km'] ?? 0;
+            $durationMin = $route['duration_min'] ?? 0;
+
+            // If distance is still 0 (API returned no distance), compute via Haversine
+            if ($distanceKm <= 0) {
+                $straightLine = $this->haversine($originLat, $originLng, $destLat, $destLng);
+                $distanceKm = round($straightLine * 1.35, 1);
+                $durationMin = max(1, round($distanceKm / 60 * 60));
+                $route['distance_km'] = $distanceKm;
+                $route['duration_min'] = $durationMin;
+                $route['is_fallback'] = true;
+            }
+
             $summary = [
-                'distance_km' => $route['distance_km'] ?? 0,
-                'duration_min' => $route['duration_min'] ?? 0,
+                'distance_km' => $distanceKm,
+                'duration_min' => $durationMin,
                 'fuel_stations_count' => count($fuelStations),
                 'ev_chargers_count' => count($evChargers),
                 'incidents_count' => count($incidents),

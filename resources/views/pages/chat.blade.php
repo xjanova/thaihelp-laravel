@@ -59,7 +59,7 @@
     </div>
 
     {{-- Input Bar --}}
-    <div class="chrome-bar-bottom px-3 py-2 flex-shrink-0" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem))">
+    <div class="chrome-bar-bottom px-3 py-2 pb-20 flex-shrink-0" style="padding-bottom: max(5rem, calc(4rem + env(safe-area-inset-bottom, 0.75rem)))">
         <div class="flex items-center gap-2">
             {{-- Wake Word Toggle --}}
             <button @click="wakeWordActive ? disableWakeWord() : enableWakeWord()"
