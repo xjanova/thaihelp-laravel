@@ -138,9 +138,13 @@ jobs:
             # Deploy
             bash deploy.sh main
 
-            # Version + clear cache
+            # Version + clear ALL caches (fixes "Class not found" errors)
             echo "${APP_VER}" > version.txt
-            php artisan config:clear 2>/dev/null || true
+            composer dump-autoload --optimize 2>/dev/null || true
+            php artisan optimize:clear 2>/dev/null || true
+            php artisan config:cache 2>/dev/null || true
+            php artisan route:cache 2>/dev/null || true
+            php artisan view:cache 2>/dev/null || true
 
             # Discord setup
             if [ -n "$DISCORD_TOKEN" ]; then
