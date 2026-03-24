@@ -386,21 +386,14 @@ function handleWakeWordDetected() {
     pauseWakeWord();
 
     // Play acknowledgment
-    sayText('ว่าไงคะ หญิงพร้อมช่วยแล้วค่ะ', {
-        onEnd: () => {
-            // After speaking, trigger callback
-            if (window.onWakeWordDetected) {
-                window.onWakeWordDetected();
-            }
-        }
-    });
+    sayText('ว่าไงคะ');
 
-    // Also trigger immediately (don't wait for TTS)
+    // Trigger callback once after short delay (let TTS start first)
     setTimeout(() => {
         if (window.onWakeWordDetected) {
             window.onWakeWordDetected();
         }
-    }, 300);
+    }, 500);
 }
 
 // ─── Exports ───────────────────────────────────────────
