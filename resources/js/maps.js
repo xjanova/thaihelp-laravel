@@ -49,20 +49,19 @@ const STATUS_COLORS = {
 };
 
 /**
- * Brand configuration — official colors + logo URLs from public CDN
- * Uses brand's actual logo images as map markers for instant recognition
+ * Brand configuration — local PNG icons at /images/brands/
  */
 const BRAND_CONFIG = {
-    ptt:      { name: 'PTT Station',  color: '#1e3a8a', logo: 'https://logo.clearbit.com/pttor.com' },
-    shell:    { name: 'Shell',        color: '#dd1d21', logo: 'https://logo.clearbit.com/shell.com' },
-    bangchak: { name: 'Bangchak',     color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
-    bcp:      { name: 'Bangchak',     color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
-    esso:     { name: 'Esso',         color: '#d62631', logo: 'https://logo.clearbit.com/esso.com' },
-    caltex:   { name: 'Caltex',       color: '#c8102e', logo: 'https://logo.clearbit.com/caltex.com' },
-    susco:    { name: 'Susco',        color: '#7c3aed', logo: 'https://logo.clearbit.com/susco.co.th' },
-    pt:       { name: 'PT',           color: '#ea580c', logo: 'https://logo.clearbit.com/pt.co.th' },
-    pure:     { name: 'PURE',         color: '#0284c7', logo: null },
-    irpc:     { name: 'IRPC',         color: '#0d9488', logo: 'https://logo.clearbit.com/irpc.co.th' },
+    ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.png' },
+    shell:    { name: 'Shell',    color: '#dd1d21', icon: '/images/brands/shell.png' },
+    bangchak: { name: 'Bangchak', color: '#006838', icon: '/images/brands/bangchak.png' },
+    bcp:      { name: 'Bangchak', color: '#006838', icon: '/images/brands/bangchak.png' },
+    esso:     { name: 'Esso',     color: '#d62631', icon: '/images/brands/esso.png' },
+    caltex:   { name: 'Caltex',   color: '#c8102e', icon: '/images/brands/caltex.png' },
+    susco:    { name: 'Susco',    color: '#7c3aed', icon: '/images/brands/susco.png' },
+    pt:       { name: 'PT',       color: '#ea580c', icon: '/images/brands/pt.png' },
+    pure:     { name: 'PURE',     color: '#0284c7', icon: '/images/brands/default.png' },
+    irpc:     { name: 'IRPC',     color: '#0d9488', icon: '/images/brands/irpc.png' },
 };
 
 /** Detect brand from station name */
@@ -82,36 +81,19 @@ function detectBrand(name) {
 }
 
 /** Create brand marker icon — uses logo image if available, colored pin otherwise */
-function createBrandMarkerIcon(brand, statusColor) {
+function createBrandMarkerIcon(brand) {
     const cfg = brand ? BRAND_CONFIG[brand] : null;
-
-    if (cfg?.logo) {
-        // Use actual brand logo as map marker
-        return {
-            url: cfg.logo,
-            scaledSize: new google.maps.Size(32, 32),
-            anchor: new google.maps.Point(16, 16),
-            origin: new google.maps.Point(0, 0),
-        };
-    }
-
-    // Fallback: colored pin with brand color or status color
     return {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 14,
-        fillColor: cfg?.color || statusColor || '#6b7280',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 2.5,
-        anchor: new google.maps.Point(0, 0),
-        labelOrigin: new google.maps.Point(0, 0),
+        url: cfg?.icon || '/images/brands/default.png',
+        scaledSize: new google.maps.Size(36, 36),
+        anchor: new google.maps.Point(18, 18),
     };
 }
 
 /** Generate brand badge HTML for InfoWindow */
-function brandBadgeHtml(brand, stationName) {
+function brandBadgeHtml(brand) {
     const cfg = brand ? BRAND_CONFIG[brand] : null;
-    if (!cfg) return `<span style="font-size:18px;">⛽</span>`;
+    return `<img src="${cfg?.icon || '/images/brands/default.png'}" style="width:28px;height:28px;border-radius:6px;" onerror="this.outerHTML='⛽'">`;
 
     if (cfg.logo) {
         return `<img src="${cfg.logo}" alt="${cfg.name}" style="width:28px;height:28px;border-radius:6px;object-fit:contain;background:#fff;padding:2px;border:1px solid #e5e7eb;" onerror="this.outerHTML='⛽'">`;

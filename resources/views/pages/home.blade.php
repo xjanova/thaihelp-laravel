@@ -282,80 +282,27 @@
 
 @push('scripts')
 <script>
-    // ─── Brand Configuration — canvas-generated marker icons ───
+    // ─── Brand Configuration — real PNG icons at /images/brands/ ───
     const _BRAND_CFG = {
-        ptt:      { name: 'PTT',      color: '#1e3a8a', text: 'PTT',  textColor: '#fbbf24' },
-        shell:    { name: 'Shell',     color: '#dd1d21', text: 'S',    textColor: '#fbbf24' },
-        bangchak: { name: 'Bangchak',  color: '#006838', text: 'BCP',  textColor: '#ffffff' },
-        esso:     { name: 'Esso',      color: '#d62631', text: 'E',    textColor: '#ffffff' },
-        caltex:   { name: 'Caltex',    color: '#c8102e', text: 'C★',   textColor: '#ffffff' },
-        susco:    { name: 'Susco',     color: '#7c3aed', text: 'SS',   textColor: '#ffffff' },
-        pt:       { name: 'PT',        color: '#ea580c', text: 'PT',   textColor: '#ffffff' },
-        pure:     { name: 'PURE',      color: '#0284c7', text: 'P',    textColor: '#ffffff' },
-        irpc:     { name: 'IRPC',      color: '#0d9488', text: 'IR',   textColor: '#ffffff' },
+        ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.png' },
+        shell:    { name: 'Shell',     color: '#dd1d21', icon: '/images/brands/shell.png' },
+        bangchak: { name: 'Bangchak',  color: '#006838', icon: '/images/brands/bangchak.png' },
+        esso:     { name: 'Esso',      color: '#d62631', icon: '/images/brands/esso.png' },
+        caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.png' },
+        susco:    { name: 'Susco',     color: '#7c3aed', icon: '/images/brands/susco.png' },
+        pt:       { name: 'PT',        color: '#ea580c', icon: '/images/brands/pt.png' },
+        pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.png' },
+        irpc:     { name: 'IRPC',      color: '#0d9488', icon: '/images/brands/irpc.png' },
     };
 
-    // Cache generated icons to avoid re-drawing
-    const _brandIconCache = {};
-
-    /** Generate a brand marker icon as data URL using canvas */
-    function _makeBrandIcon(brand, statusColor) {
+    /** Create Google Maps marker icon from brand PNG */
+    function _makeBrandIcon(brand) {
         const cfg = brand ? _BRAND_CFG[brand] : null;
-        const cacheKey = brand || statusColor || 'default';
-        if (_brandIconCache[cacheKey]) return _brandIconCache[cacheKey];
-
-        const size = 40;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size + 10; // extra for pin tail
-        const ctx = canvas.getContext('2d');
-
-        const bgColor = cfg?.color || statusColor || '#6b7280';
-        const text = cfg?.text || '⛽';
-        const textColor = cfg?.textColor || '#ffffff';
-
-        // Draw pin shape: circle + triangle tail
-        // Circle
-        ctx.beginPath();
-        ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
-        ctx.fillStyle = bgColor;
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Triangle tail
-        ctx.beginPath();
-        ctx.moveTo(size / 2 - 7, size / 2 + 12);
-        ctx.lineTo(size / 2, size + 6);
-        ctx.lineTo(size / 2 + 7, size / 2 + 12);
-        ctx.fillStyle = bgColor;
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        // Re-fill circle to cover triangle overlap
-        ctx.beginPath();
-        ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
-        ctx.fillStyle = bgColor;
-        ctx.fill();
-
-        // Draw text
-        const fontSize = text.length > 2 ? 11 : 14;
-        ctx.fillStyle = textColor;
-        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, size / 2, size / 2);
-
-        const dataUrl = canvas.toDataURL('image/png');
-        const icon = {
-            url: dataUrl,
-            scaledSize: new google.maps.Size(size, size + 10),
-            anchor: new google.maps.Point(size / 2, size + 6),
+        return {
+            url: cfg?.icon || '/images/brands/default.png',
+            scaledSize: new google.maps.Size(36, 36),
+            anchor: new google.maps.Point(18, 18),
         };
-        _brandIconCache[cacheKey] = icon;
-        return icon;
     }
 
     function _detectBrand(name) {
@@ -476,14 +423,12 @@
                     position: { lat: parseFloat(lat), lng: parseFloat(lng) },
                     map: map,
                     title: stName || 'Gas Station',
-                    icon: _makeBrandIcon(brand, color),
+                    icon: _makeBrandIcon(brand),
                     optimized: true,
                 });
 
                 // Rich info window with brand logo + fuel status + nav button
-                const brandBadge = brandCfg
-                    ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:${brandCfg.color};color:${brandCfg.textColor};font-weight:bold;font-size:${brandCfg.text.length > 2 ? '10' : '14'}px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.2);">${brandCfg.text}</span>`
-                    : '<span style="font-size:22px;">⛽</span>';
+                const brandBadge = `<img src="${brandCfg?.icon || '/images/brands/default.png'}" style="width:32px;height:32px;border-radius:8px;" onerror="this.outerHTML='⛽'">`;
                 const brandLabel = brandCfg ? `<span style="font-size:11px;color:${brandCfg.color};font-weight:600;">${brandCfg.name}</span>` : '';
 
                 let fuelHtml = '';

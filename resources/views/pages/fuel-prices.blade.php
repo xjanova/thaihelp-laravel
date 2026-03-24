@@ -43,10 +43,10 @@
 
                 {{-- Brand logo & name --}}
                 <div class="flex items-center gap-2 mb-2">
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold"
-                         :class="brandColors[item.brand] || 'bg-slate-700 text-slate-300'"
-                         x-text="brandIcons[item.brand] || item.brand.charAt(0).toUpperCase()">
-                    </div>
+                    <img :src="brandLogos[item.brand] || '/images/brands/default.png'"
+                         :alt="item.brand"
+                         class="w-8 h-8 rounded-lg"
+                         onerror="this.outerHTML='⛽'">
                     <div>
                         <p class="text-[11px] font-bold text-white leading-tight" x-text="brandNames[item.brand] || item.brand"></p>
                         <p class="text-[9px] text-slate-500" x-text="selectedTypeLabel"></p>
@@ -192,28 +192,16 @@ function fuelPricesPage() {
             'irpc': 'IRPC',
         },
 
-        brandIcons: {
-            'ptt': '&#9981;',
-            'bcp': 'B',
-            'shell': 'S',
-            'esso': 'E',
-            'caltex': 'C',
-            'pt': 'P',
-            'susco': 'S',
-            'pure': 'P',
-            'irpc': 'I',
-        },
-
-        brandColors: {
-            'ptt': 'bg-blue-600/80 text-yellow-300',
-            'bcp': 'bg-green-600/80 text-white',
-            'shell': 'bg-yellow-500/80 text-red-600',
-            'esso': 'bg-red-600/80 text-white',
-            'caltex': 'bg-red-700/80 text-white',
-            'pt': 'bg-orange-500/80 text-white',
-            'susco': 'bg-purple-600/80 text-white',
-            'pure': 'bg-sky-500/80 text-white',
-            'irpc': 'bg-teal-600/80 text-white',
+        brandLogos: {
+            'ptt': '/images/brands/ptt.png',
+            'bcp': '/images/brands/bangchak.png',
+            'shell': '/images/brands/shell.png',
+            'esso': '/images/brands/esso.png',
+            'caltex': '/images/brands/caltex.png',
+            'pt': '/images/brands/pt.png',
+            'susco': '/images/brands/susco.png',
+            'pure': '/images/brands/default.png',
+            'irpc': '/images/brands/irpc.png',
         },
 
         get selectedTypeLabel() {

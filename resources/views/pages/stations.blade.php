@@ -243,9 +243,7 @@
                 const brandCfg = brandKey ? this.brandConfig[brandKey] : null;
 
                 // Brand logo HTML
-                const brandLogoHtml = brandCfg
-                    ? `<span class="inline-flex items-center justify-center w-12 h-12 rounded-xl font-bold shadow-lg border-2 border-white/20" style="background:${brandCfg.color};color:${brandCfg.textColor};font-size:${brandCfg.text.length > 2 ? '12' : '18'}px;">${brandCfg.text}</span>`
-                    : `<span class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-600 text-2xl">⛽</span>`;
+                const brandLogoHtml = `<img src="${brandCfg?.icon || '/images/brands/default.png'}" alt="${brandCfg?.name || 'ปั๊ม'}" class="w-12 h-12 rounded-xl" onerror="this.outerHTML='<span class=\\'text-3xl\\'>⛽</span>'">`;
 
                 // Fuel reports HTML
                 let fuelsHtml = '';
@@ -313,15 +311,15 @@
 
             // Brand detection helper (matches maps.js detectBrand)
             brandConfig: {
-                ptt:      { name: 'PTT',      color: '#1e3a8a', text: 'PTT',  textColor: '#fbbf24' },
-                shell:    { name: 'Shell',     color: '#dd1d21', text: 'S',    textColor: '#fbbf24' },
-                bangchak: { name: 'Bangchak',  color: '#006838', text: 'BCP',  textColor: '#ffffff' },
-                esso:     { name: 'Esso',      color: '#d62631', text: 'E',    textColor: '#ffffff' },
-                caltex:   { name: 'Caltex',    color: '#c8102e', text: 'C★',   textColor: '#ffffff' },
-                susco:    { name: 'Susco',     color: '#7c3aed', text: 'SS',   textColor: '#ffffff' },
-                pt:       { name: 'PT',        color: '#ea580c', text: 'PT',   textColor: '#ffffff' },
-                pure:     { name: 'PURE',      color: '#0284c7', text: 'P',    textColor: '#ffffff' },
-                irpc:     { name: 'IRPC',      color: '#0d9488', text: 'IR',   textColor: '#ffffff' },
+                ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.png' },
+                shell:    { name: 'Shell',     color: '#dd1d21', icon: '/images/brands/shell.png' },
+                bangchak: { name: 'Bangchak',  color: '#006838', icon: '/images/brands/bangchak.png' },
+                esso:     { name: 'Esso',      color: '#d62631', icon: '/images/brands/esso.png' },
+                caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.png' },
+                susco:    { name: 'Susco',     color: '#7c3aed', icon: '/images/brands/susco.png' },
+                pt:       { name: 'PT',        color: '#ea580c', icon: '/images/brands/pt.png' },
+                pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.png' },
+                irpc:     { name: 'IRPC',      color: '#0d9488', icon: '/images/brands/irpc.png' },
             },
             detectBrand(name) {
                 if (!name) return null;
