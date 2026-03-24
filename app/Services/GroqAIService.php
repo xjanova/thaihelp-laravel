@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SiteSetting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -109,8 +110,9 @@ class GroqAIService
 
         // Round-robin: start from next key index
         $keyCount = count($allKeys);
-        $rrIndex = (int) \Illuminate\Support\Facades\Cache::get('groq_rr_index', 0);
-        \Illuminate\Support\Facades\Cache::put('groq_rr_index', $rrIndex + 1, 3600);
+        // Atomic increment to prevent race conditions under concurrency
+        $rrIndex = (int) Cache::increment('groq_rr_index');
+        if ($rrIndex > 100000) Cache::put('groq_rr_index', 0, 3600); // prevent overflow
 
         $lastError = null;
 

@@ -421,7 +421,7 @@
                     unnotified.forEach(i => {
                         new Notification(`⚠️ ${i.title}`, {
                             body: `${i.category} — ${i.severity}\n📍 ใกล้ตำแหน่งคุณ`,
-                            icon: '/images/ying-avatar.png',
+                            icon: '/images/ying.png',
                             tag: `incident-${i.id}`,
                         });
                     });

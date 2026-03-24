@@ -222,12 +222,19 @@
                 if (emptyEl) emptyEl.classList.add('hidden');
             },
 
+            escHtml(str) {
+                if (!str) return '';
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            },
+
             showStationDetail(station) {
                 const lat = station.latitude || station.lat;
                 const lng = station.longitude || station.lng;
-                const dist = station.distance;
-                const distStr = dist !== undefined && dist !== null
-                    ? (dist >= 1000 ? (dist / 1000).toFixed(1) + ' กม.' : Math.round(dist) + ' เมตร')
+                const distKm = station.distance; // in KM
+                const distStr = distKm !== undefined && distKm !== null
+                    ? (distKm >= 1 ? distKm.toFixed(1) + ' กม.' : Math.round(distKm * 1000) + ' เมตร')
                     : '';
 
                 let fuelsHtml = '<p class="text-slate-500 text-sm">ยังไม่มีรายงานสถานะน้ำมัน</p>';
@@ -255,9 +262,9 @@
                     <div class="relative metal-panel rounded-2xl p-5 w-full max-w-md max-h-[80vh] overflow-y-auto z-10">
                         <div class="flex justify-between items-start mb-3">
                             <div>
-                                <h3 class="text-lg font-bold text-white">${station.name || 'ปั๊มน้ำมัน'}</h3>
-                                <p class="text-sm text-slate-400">${station.brand || ''} ${distStr ? '• ' + distStr : ''}</p>
-                                ${station.vicinity ? `<p class="text-xs text-slate-500 mt-1">${station.vicinity}</p>` : ''}
+                                <h3 class="text-lg font-bold text-white">${this.escHtml(station.name) || 'ปั๊มน้ำมัน'}</h3>
+                                <p class="text-sm text-slate-400">${this.escHtml(station.brand) || ''} ${distStr ? '• ' + distStr : ''}</p>
+                                ${station.vicinity ? `<p class="text-xs text-slate-500 mt-1">${this.escHtml(station.vicinity)}</p>` : ''}
                             </div>
                             <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-white text-xl">✕</button>
                         </div>
@@ -308,17 +315,17 @@
                     card.querySelector('.station-name').textContent = station.name || 'ปั๊มน้ำมัน';
                     card.querySelector('.station-brand').textContent = station.brand || '';
 
-                    const dist = station.distance;
-                    if (dist !== undefined && dist !== null) {
+                    const distKm = station.distance; // distance is in KM from server
+                    if (distKm !== undefined && distKm !== null) {
                         let distStr;
-                        if (dist >= 10000) {
-                            distStr = Math.round(dist / 1000) + ' กม.';
-                        } else if (dist >= 1000) {
-                            distStr = (dist / 1000).toFixed(1) + ' กม.';
-                        } else if (dist >= 100) {
-                            distStr = Math.round(dist / 10) * 10 + ' เมตร';
+                        if (distKm >= 10) {
+                            distStr = Math.round(distKm) + ' กม.';
+                        } else if (distKm >= 1) {
+                            distStr = distKm.toFixed(1) + ' กม.';
+                        } else if (distKm >= 0.1) {
+                            distStr = Math.round(distKm * 1000 / 10) * 10 + ' เมตร';
                         } else {
-                            distStr = Math.round(dist) + ' เมตร';
+                            distStr = Math.round(distKm * 1000) + ' เมตร';
                         }
                         card.querySelector('.station-distance').textContent = distStr;
                     }

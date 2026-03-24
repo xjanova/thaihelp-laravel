@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex flex-col" style="height: calc(100vh - 7.5rem);" x-data="chatApp()">
+<div class="flex flex-col" style="height: calc(100vh - 7.5rem); height: calc(100dvh - 7.5rem); padding-bottom: env(safe-area-inset-bottom, 0px);" x-data="chatApp()">
     {{-- Chat Messages --}}
     <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3" id="chat-messages" x-ref="messages">
         {{-- Welcome Message --}}
         <div class="flex gap-2 items-start">
             <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
-                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.src='/images/ying.png'">
+                <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
             </div>
             <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
                 <p class="text-sm text-slate-200">สวัสดีค่ะ! หญิงเองค่ะ 😊 มีอะไรให้ช่วยไหมคะ?</p>
@@ -22,7 +22,7 @@
                 <template x-if="msg.role === 'assistant'">
                     <div class="flex gap-2 items-start">
                         <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
-                            <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.src='/images/ying.png'">
+                            <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
                         </div>
                         <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
                             <p class="text-sm text-slate-200 whitespace-pre-wrap" x-text="msg.content"></p>
@@ -46,7 +46,7 @@
         {{-- Typing Indicator --}}
         <div x-show="isTyping" class="flex gap-2 items-start">
             <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
-                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.src='/images/ying.png'">
+                <img src="/images/ying.png" alt="น้องหญิง" class="w-full h-full object-cover">
             </div>
             <div class="metal-panel rounded-2xl rounded-tl-sm px-4 py-3">
                 <div class="flex gap-1">
@@ -59,7 +59,7 @@
     </div>
 
     {{-- Input Bar --}}
-    <div class="chrome-bar-bottom px-3 py-2">
+    <div class="chrome-bar-bottom px-3 py-2" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem))">
         <div class="flex items-center gap-2">
             {{-- Wake Word Toggle --}}
             <button @click="wakeWordActive ? disableWakeWord() : enableWakeWord()"
@@ -389,7 +389,9 @@
                 try {
                     // Encode Thai text as base64 to bypass Cloudflare WAF
                     const encodedMsg = btoa(unescape(encodeURIComponent(text)));
-                    const encodedHistory = this.messages.filter(m => m.role && m.content).slice(-20).map(m => ({
+                    // Send history EXCLUDING the just-added user message (it's sent as 'message')
+                    const historyMsgs = this.messages.filter(m => m.role && m.content).slice(0, -1).slice(-20);
+                    const encodedHistory = historyMsgs.map(m => ({
                         role: m.role,
                         content: btoa(unescape(encodeURIComponent(m.content))),
                     }));
@@ -421,10 +423,11 @@
                     }
 
                     if (!response.ok) {
-                        // Laravel validation error (422) or other server error
-                        const errMsg = data?.reply || data?.message || data?.errors
-                            ? 'ขอโทษค่ะ ข้อมูลไม่ถูกต้องค่ะ: ' + JSON.stringify(data.errors || data.message).substring(0, 100)
-                            : 'ขอโทษค่ะ เซิร์ฟเวอร์มีปัญหาค่ะ (HTTP ' + response.status + ')';
+                        // Server returned error — but reply field may still have a friendly message
+                        const errMsg = data?.reply
+                            || data?.message
+                            || (data?.errors ? JSON.stringify(data.errors).substring(0, 100) : null)
+                            || 'ขอโทษค่ะ เซิร์ฟเวอร์มีปัญหาค่ะ (HTTP ' + response.status + ')';
                         console.error('[Chat] Server error:', response.status, data);
                         throw new Error(errMsg);
                     }

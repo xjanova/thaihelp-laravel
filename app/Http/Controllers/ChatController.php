@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\GroqAIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
@@ -22,10 +23,10 @@ class ChatController extends Controller
         $validated = $request->validate([
             'message' => ['required_without:messages', 'string', 'max:10000'],
             'messages' => ['required_without:message', 'array'],
-            'messages.*.role' => ['required_with:messages', 'string'],
+            'messages.*.role' => ['required_with:messages', 'string', 'in:user,assistant'],
             'messages.*.content' => ['required_with:messages', 'string'],
             'history' => ['nullable', 'array'],
-            'history.*.role' => ['nullable', 'string'],
+            'history.*.role' => ['nullable', 'string', 'in:user,assistant'],
             'history.*.content' => ['nullable', 'string'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
@@ -66,7 +67,7 @@ class ChatController extends Controller
                 $msgHash = substr(md5($messageText), 0, 6);
                 $cacheKey = "ying_ctx_{$msgHash}_" . round($lat, 2) . "_" . round($lng, 2);
 
-                $locationContext = \Illuminate\Support\Facades\Cache::remember($cacheKey, 180, function () use ($lat, $lng, $request, $messageText) {
+                $locationContext = Cache::remember($cacheKey, 180, function () use ($lat, $lng, $request, $messageText) {
                     return app(\App\Services\YingContextBuilder::class)
                         ->build((float) $lat, (float) $lng, $request->user()?->id, $messageText);
                 });
@@ -80,9 +81,9 @@ class ChatController extends Controller
 
             if (!$groqService->isAvailable()) {
                 return response()->json([
-                    'success' => true,
+                    'success' => false,
                     'reply' => 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาแจ้ง Admin ค่ะ',
-                ]);
+                ], 503);
             }
 
             $reply = $groqService->chat($messages, $locationContext);
@@ -95,9 +96,9 @@ class ChatController extends Controller
             Log::error('Chat API failed', ['error' => $e->getMessage()]);
 
             return response()->json([
-                'success' => true,
-                'reply' => 'ขอโทษค่ะ ระบบขัดข้องชั่วคราวค่ะ ลองใหม่อีกทีนะคะ 🙏',
-            ]);
+                'success' => false,
+                'reply' => 'ขอโทษค่ะ ระบบขัดข้องชั่วคราวค่ะ: ' . class_basename($e) . ' 🙏',
+            ], 500);
         }
     }
 }

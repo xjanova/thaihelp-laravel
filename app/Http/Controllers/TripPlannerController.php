@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Incident;
+use App\Models\SiteSetting;
+use App\Services\ApiKeyPool;
 use App\Services\EVChargingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -100,7 +102,9 @@ class TripPlannerController extends Controller
      */
     private function getRoute(float $oLat, float $oLng, float $dLat, float $dLng): array
     {
-        $apiKey = config('services.google_maps.api_key');
+        $apiKey = ApiKeyPool::getKey('google_maps')
+            ?: SiteSetting::get('google_maps_api_key')
+            ?: config('services.google_maps.api_key');
         if (!$apiKey) {
             return $this->fallbackRoute($oLat, $oLng, $dLat, $dLng);
         }
