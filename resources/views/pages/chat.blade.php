@@ -502,33 +502,50 @@
                         if (lastMsg2) lastMsg2.content = lastMsg2.content.replace(/\[NAVIGATE:.*?\]/g, '').trim();
                     }
 
-                    // Check for fuel report in AI response
-                    const reportMatch = reply.match(/\[FUEL_REPORT:(.*?)\]/);
+                    // Check for fuel report in AI response — auto-submit to /api/stations/report
+                    const reportMatch = reply.match(/\[FUEL_REPORT:([^\]]*)\]/);
                     if (reportMatch) {
                         try {
                             const reportData = JSON.parse(reportMatch[1]);
-                            // Use cached GPS or request fresh
                             const lat = window._userLat;
                             const lng = window._userLng;
                             if (lat && lng) {
-                                const res = await fetch('/api/voice-command', {
+                                const stationName = (reportData.brand || 'ปั๊มน้ำมัน') + (reportData.branch ? ' ' + reportData.branch : '');
+                                const fuelReports = [{
+                                    fuel_type: reportData.fuel_type || 'diesel',
+                                    status: reportData.status || 'available',
+                                    price: reportData.price || null,
+                                }];
+                                const res = await fetch('/api/stations/report', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                                    body: JSON.stringify({ transcript: text, latitude: lat, longitude: lng, fuel_report: reportData, source: 'ai_ying' }),
+                                    body: JSON.stringify({
+                                        placeId: 'ai_ying_' + Date.now(),
+                                        stationName: stationName,
+                                        fuelReports: fuelReports,
+                                        note: 'รายงานผ่านน้องหญิง AI',
+                                        latitude: lat,
+                                        longitude: lng,
+                                        source: 'ai_ying',
+                                    }),
                                 });
                                 const result = await res.json().catch(() => null);
-                                this.messages.push({ role: 'assistant', content: result?.success ? '✅ บันทึกรายงานน้ำมันเรียบร้อยค่ะ!' : '❌ บันทึกไม่สำเร็จค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });
+                                if (result?.success) {
+                                    this.messages.push({ role: 'assistant', content: '✅ บันทึกรายงานน้ำมันเรียบร้อยค่ะ!', time: this.formatTime() });
+                                    if (window.sayText) window.sayText('บันทึกเรียบร้อยค่ะ');
+                                } else {
+                                    this.messages.push({ role: 'assistant', content: '❌ บันทึกไม่สำเร็จค่ะ: ' + (result?.message || 'ลองใหม่นะคะ'), time: this.formatTime() });
+                                }
                             } else {
                                 this.messages.push({ role: 'assistant', content: '📍 ไม่สามารถระบุตำแหน่งได้ค่ะ กรุณาเปิด GPS แล้วลองใหม่นะคะ', time: this.formatTime() });
                             }
                         } catch (e) {
                             console.error('Failed to submit fuel report:', e);
-                            this.messages.push({ role: 'assistant', content: '❌ เกิดข้อผิดพลาดในการบันทึกค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });
                         }
                     }
 
                     // Check for incident report in AI response
-                    const incidentMatch = reply.match(/\[INCIDENT_REPORT:(.*?)\]/);
+                    const incidentMatch = reply.match(/\[INCIDENT_REPORT:([^\]]*)\]/);
                     if (incidentMatch) {
                         try {
                             const incidentData = JSON.parse(incidentMatch[1]);

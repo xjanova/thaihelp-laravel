@@ -102,6 +102,7 @@ class StationController extends Controller
             'fuelReports.*.price' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'facilities' => ['nullable', 'array'],
             'facilities.*' => ['string', 'in:' . implode(',', array_keys(StationReport::FACILITY_TYPES))],
+            'source' => ['nullable', 'string', 'in:user,ai_ying,voice'],
         ]);
 
         try {
@@ -122,6 +123,7 @@ class StationController extends Controller
                 'latitude' => $validated['latitude'] ?? null,
                 'longitude' => $validated['longitude'] ?? null,
                 'facilities' => !empty($facilities) ? $facilities : null,
+                'source' => $validated['source'] ?? 'user',
             ]);
 
             foreach ($validated['fuelReports'] as $fuel) {
