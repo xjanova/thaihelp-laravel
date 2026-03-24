@@ -66,3 +66,37 @@ Route::get('/my-reports', function () {
 
 // Offline
 Route::get('/offline', fn () => view('pages.offline'))->name('offline');
+
+// ─── Admin Tools (auth + admin check) ───
+Route::middleware('auth')->prefix('admin-tools')->group(function () {
+    // Run artisan commands via web (admin only)
+    Route::get('/run/{command}', function (string $command) {
+        $user = auth()->user();
+        if (!$user || !$user->is_admin) {
+            abort(403, 'Admin only');
+        }
+
+        $allowed = [
+            'migrate' => 'migrate --force',
+            'import-phetchabun' => 'import:phetchabun-stations',
+            'cache-clear' => 'cache:clear',
+            'config-clear' => 'config:clear',
+            'view-clear' => 'view:clear',
+            'optimize' => 'optimize:clear',
+        ];
+
+        if (!isset($allowed[$command])) {
+            return response()->json(['error' => 'Unknown command', 'allowed' => array_keys($allowed)], 400);
+        }
+
+        $exitCode = \Illuminate\Support\Facades\Artisan::call($allowed[$command]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+
+        return response()->json([
+            'success' => $exitCode === 0,
+            'command' => $allowed[$command],
+            'exit_code' => $exitCode,
+            'output' => $output,
+        ]);
+    })->name('admin.run');
+});
