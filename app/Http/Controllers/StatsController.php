@@ -18,16 +18,15 @@ class StatsController extends Controller
     public function apiStats(): JsonResponse
     {
         // Overall stats
-        $totalReports = Incident::where('is_demo', false)->count();
-        $totalStationReports = StationReport::where('is_demo', false)->count();
+        $totalReports = Incident::count();
+        $totalStationReports = StationReport::count();
         $totalUsers = User::count();
         $activeUsers = User::where('last_active_at', '>=', now()->subHours(24))->count();
         $pwaInstalls = User::where('pwa_installed', true)->count();
         $breakingNewsCount = BreakingNews::count();
 
         // Reports by category (pie chart data)
-        $reportsByCategory = Incident::where('is_demo', false)
-            ->selectRaw('category, count(*) as total')
+        $reportsByCategory = Incident::selectRaw('category, count(*) as total')
             ->groupBy('category')
             ->pluck('total', 'category')
             ->toArray();
@@ -37,10 +36,8 @@ class StatsController extends Controller
         for ($i = 13; $i >= 0; $i--) {
             $date = now()->subDays($i)->format('Y-m-d');
             $label = now()->subDays($i)->format('d/m');
-            $incidents = Incident::where('is_demo', false)
-                ->whereDate('created_at', $date)->count();
-            $stations = StationReport::where('is_demo', false)
-                ->whereDate('created_at', $date)->count();
+            $incidents = Incident::whereDate('created_at', $date)->count();
+            $stations = StationReport::whereDate('created_at', $date)->count();
             $dailyReports[] = [
                 'date' => $label,
                 'incidents' => $incidents,
@@ -51,7 +48,6 @@ class StatsController extends Controller
 
         // Fuel status distribution (doughnut)
         $fuelStats = \App\Models\FuelReport::selectRaw('status, count(*) as total')
-            ->whereHas('stationReport', fn($q) => $q->where('is_demo', false))
             ->groupBy('status')
             ->pluck('total', 'status')
             ->toArray();
@@ -70,7 +66,7 @@ class StatsController extends Controller
             $hourlyActivity[] = [
                 'hour' => $start->format('H:00'),
                 'count' => Incident::whereBetween('created_at', [$start, $end])->count()
-                    + StationReport::where('is_demo', false)->whereBetween('created_at', [$start, $end])->count(),
+                    + StationReport::whereBetween('created_at', [$start, $end])->count(),
             ];
         }
 

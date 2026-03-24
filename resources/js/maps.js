@@ -207,7 +207,6 @@ function renderIncidentMarkers(incidents) {
     (Array.isArray(incidents) ? incidents : []).forEach(incident => {
         if (!incident.latitude || !incident.longitude) return;
 
-        const isDemo = incident.is_demo;
         const color = CATEGORY_COLORS[incident.category] || CATEGORY_COLORS.other;
 
         const marker = new google.maps.Marker({
@@ -217,17 +216,15 @@ function renderIncidentMarkers(incidents) {
                 path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
                 scale: 6,
                 fillColor: color,
-                fillOpacity: isDemo ? 0.5 : 0.9,
-                strokeColor: isDemo ? '#fbbf24' : '#ffffff',
-                strokeWeight: isDemo ? 2 : 1,
+                fillOpacity: 0.9,
+                strokeColor: '#ffffff',
+                strokeWeight: 1,
             },
-            title: `${isDemo ? '[DEMO] ' : ''}${incident.title}`,
+            title: incident.title,
         });
 
         marker.addListener('click', () => {
-            const badge = isDemo
-                ? '<span style="background:#fbbf24;color:#000;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">DEMO</span>'
-                : '<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">LIVE</span>';
+            const badge = '<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">LIVE</span>';
 
             infoWindow.setContent(`
                 <div style="color:#1a1a2e;max-width:280px;font-family:sans-serif;">
@@ -259,7 +256,6 @@ function renderStationMarkers(stations) {
         const lng = parseFloat(station.lng || station.longitude);
         if (!lat || !lng) return;
 
-        const isDemo = station.is_demo;
         const fuels = station.fuel_reports || [];
 
         // Determine overall color
@@ -281,18 +277,16 @@ function renderStationMarkers(stations) {
                 path: 'M-4,-12 L4,-12 L4,0 L0,4 L-4,0 Z', // gas pump shape
                 scale: 1.8,
                 fillColor: color,
-                fillOpacity: isDemo ? 0.6 : 1,
-                strokeColor: isDemo ? '#fbbf24' : '#ffffff',
-                strokeWeight: isDemo ? 2 : 1.5,
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 1.5,
                 anchor: new google.maps.Point(0, 4),
             },
-            title: `${isDemo ? '[DEMO] ' : ''}${station.name || station.station_name}`,
+            title: station.name || station.station_name,
         });
 
         marker.addListener('click', () => {
-            const badge = isDemo
-                ? '<span style="background:#fbbf24;color:#000;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">DEMO</span>'
-                : '<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">LIVE</span>';
+            const badge = '<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">LIVE</span>';
 
             const verifiedBadge = station.is_verified
                 ? '<span style="background:#3b82f6;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;">✓ ยืนยันแล้ว</span>'

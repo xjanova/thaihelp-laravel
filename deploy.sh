@@ -746,18 +746,6 @@ run_seeders() {
             print_info "Users exist, skipping initial seeding"
         fi
 
-        # Always refresh demo data
-        print_info "Refreshing demo station data..."
-        set +e
-        DEMO_OUTPUT=$(php artisan db:seed --class=DemoStationSeeder --force 2>&1)
-        DEMO_EXIT=$?
-        set -e
-
-        if [ $DEMO_EXIT -ne 0 ]; then
-            print_warning "Demo seeding had issues (non-fatal): $DEMO_OUTPUT"
-        else
-            print_success "Demo data refreshed"
-        fi
     else
         print_info "No seeders found, skipping"
     fi

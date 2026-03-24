@@ -212,8 +212,7 @@ class TripPlannerController extends Controller
         $seenIds = [];
 
         foreach ($waypoints as $wp) {
-            $nearby = \App\Models\StationReport::where('is_demo', false)
-                ->whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) < 5', [
+            $nearby = \App\Models\StationReport::whereRaw('(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) < 5', [
                     $wp['lat'], $wp['lng'], $wp['lat'],
                 ])
                 ->with('fuelReports')

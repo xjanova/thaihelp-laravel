@@ -113,7 +113,6 @@ class YingContextBuilder
             $lngDelta = $radiusKm / (111.0 * cos(deg2rad($lat)));
 
             $dbReports = StationReport::with('fuelReports')
-                ->where('is_demo', false)
                 ->whereBetween('latitude', [$lat - $latDelta, $lat + $latDelta])
                 ->whereBetween('longitude', [$lng - $lngDelta, $lng + $lngDelta])
                 ->where('created_at', '>=', now()->subHours(12))
@@ -202,7 +201,6 @@ class YingContextBuilder
             $lngDelta = $radiusKm / (111.0 * cos(deg2rad($lat)));
 
             $incidents = Incident::active()
-                ->where('is_demo', false)
                 ->whereBetween('latitude', [$lat - $latDelta, $lat + $latDelta])
                 ->whereBetween('longitude', [$lng - $lngDelta, $lng + $lngDelta])
                 ->latest()
@@ -320,8 +318,8 @@ class YingContextBuilder
     private function buildStatsContext(): string
     {
         try {
-            $totalReports = Incident::where('is_demo', false)->count();
-            $activeNow = Incident::active()->where('is_demo', false)->count();
+            $totalReports = Incident::count();
+            $activeNow = Incident::active()->count();
             return "\n═══ สถิติ ═══\nรายงานทั้งหมด: {$totalReports} | กำลังเกิด: {$activeNow}";
         } catch (\Exception $e) {
             return '';

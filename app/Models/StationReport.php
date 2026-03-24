@@ -52,20 +52,6 @@ class StationReport extends Model
     }
 
     /**
-     * Remove demo reports for a place_id when a real report comes in.
-     */
-    public static function replaceDemoWithReal(string $placeId): void
-    {
-        \Illuminate\Support\Facades\DB::transaction(function () use ($placeId) {
-            $demoIds = static::where('place_id', $placeId)->where('is_demo', true)->pluck('id');
-            if ($demoIds->isNotEmpty()) {
-                \App\Models\FuelReport::whereIn('report_id', $demoIds)->delete();
-                static::whereIn('id', $demoIds)->delete();
-            }
-        });
-    }
-
-    /**
      * Confirm this report from an IP address.
      * Returns false if this IP already confirmed.
      */

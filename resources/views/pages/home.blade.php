@@ -448,9 +448,7 @@
                     : incident.status === 'resolved'
                     ? '<span style="background:#6b7280;color:#fff;padding:1px 5px;border-radius:8px;font-size:9px;">คลี่คลาย</span>'
                     : '';
-                const demoBadge = incident.is_demo
-                    ? '<span style="background:#f59e0b;color:#000;padding:1px 5px;border-radius:8px;font-size:9px;">DEMO</span> '
-                    : '';
+                const demoBadge = '';
 
                 const marker = new google.maps.Marker({
                     position: { lat: parseFloat(lat), lng: parseFloat(lng) },

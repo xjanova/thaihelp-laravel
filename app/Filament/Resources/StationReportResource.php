@@ -32,8 +32,7 @@ class StationReportResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         return \Illuminate\Support\Facades\Cache::remember('admin_station_badge', 60, function () {
-            return static::getModel()::where('is_demo', false)
-                ->where('created_at', '>=', now()->subHours(24))
+            return static::getModel()::where('created_at', '>=', now()->subHours(24))
                 ->count() ?: null;
         });
     }
