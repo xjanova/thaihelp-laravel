@@ -390,6 +390,10 @@
                 const text = this.input.trim();
                 if (!text || this.isTyping) return;
 
+                // Prevent duplicate: check if last user message is the same
+                const lastMsg = this.messages[this.messages.length - 1];
+                if (lastMsg && lastMsg.role === 'user' && lastMsg.content === text) return;
+
                 // Add user message
                 this.messages.push({
                     role: 'user',
@@ -630,90 +634,87 @@
                 }
             },
 
+            // ─── Mic button: tap to talk, auto-send when done ───
             toggleMic() {
                 if (!this.isRecording) {
-                    // Check if speech is supported before trying
                     if (!window.startListening || !(window.SpeechRecognition || window.webkitSpeechRecognition)) {
-                        // No speech support — focus text input instead
                         this.speechSupported = false;
                         const inputEl = this.$el.querySelector('input[type="text"]');
-                        if (inputEl) {
-                            inputEl.focus();
-                            inputEl.placeholder = 'พิมพ์ข้อความที่นี่ค่ะ (ไมค์ไม่พร้อมใช้งาน)';
-                        }
+                        if (inputEl) { inputEl.focus(); inputEl.placeholder = 'พิมพ์ข้อความที่นี่ (ไมค์ไม่พร้อมใช้งาน)'; }
                         return;
                     }
 
                     this.isRecording = true;
+                    this.input = '';
+                    let hasSent = false; // prevent double-send
+
                     window.startListening({
                         onResult: (transcript) => {
-                            this.input = transcript;
+                            if (hasSent) return; // guard against duplicate final results
+                            hasSent = true;
                             this.isRecording = false;
-                            this.send();
+                            this.input = transcript;
+                            // Auto-send immediately — user doesn't need to press send
+                            this.$nextTick(() => this.send());
                         },
                         onInterim: (text) => {
-                            this.input = text + '...';
+                            // Show what user is saying (without ... to avoid sending it)
+                            this.input = text;
                         },
                         onError: (err) => {
                             console.error('Speech error:', err);
                             this.isRecording = false;
-
-                            // If speech failed (e.g. iOS permission), focus text input
                             if (err.message === 'speech_not_supported' || err.message === 'not-allowed') {
                                 this.speechSupported = false;
-                                const inputEl = this.$el.querySelector('input[type="text"]');
-                                if (inputEl) {
-                                    inputEl.focus();
-                                    inputEl.placeholder = 'พิมพ์ข้อความที่นี่ค่ะ (ไมค์ไม่พร้อมใช้งาน)';
-                                }
                             }
                         }
                     });
                 } else {
+                    // User pressed mic again → stop recording
                     this.isRecording = false;
-                    if (window.stopListening) {
-                        window.stopListening();
-                    }
+                    this.input = ''; // clear interim text
+                    if (window.stopListening) window.stopListening();
                 }
             },
 
-            // Wake word - uses speech.js global wake word listener
+            // ─── Wake Word mode: continuous conversation with น้องหญิง ───
             enableWakeWord() {
                 this.wakeWordActive = true;
 
-                // Set callback: when wake word detected, start recording
                 window.onWakeWordDetected = () => {
+                    if (this.isTyping) return; // don't interrupt while AI is responding
                     this.isRecording = true;
+                    this.input = '';
 
-                    // Listen for the actual command after wake word
+                    // Listen for the actual command after wake word acknowledgment
                     setTimeout(() => {
+                        let hasSent = false;
                         window.startListening({
                             onResult: async (command) => {
+                                if (hasSent) return;
+                                hasSent = true;
                                 this.isRecording = false;
                                 this.input = command;
                                 await this.send();
+                                // After AI responds, wake word listener auto-resumes via speech.js onend
                             },
                             onInterim: (text) => {
-                                this.input = text + '...';
+                                this.input = text;
                             },
                             onError: () => {
                                 this.isRecording = false;
                             }
                         });
-                    }, 1500);
+                    }, 800); // shorter delay — user is ready
                 };
 
-                if (window.startWakeWordListener) {
-                    window.startWakeWordListener();
-                }
+                if (window.startWakeWordListener) window.startWakeWordListener();
             },
 
             disableWakeWord() {
                 this.wakeWordActive = false;
                 window.onWakeWordDetected = null;
-                if (window.stopWakeWordListener) {
-                    window.stopWakeWordListener();
-                }
+                if (window.stopWakeWordListener) window.stopWakeWordListener();
             },
         };
     }
