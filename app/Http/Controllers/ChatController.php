@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\GooglePlacesService;
 use App\Services\GroqAIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,12 +16,11 @@ class ChatController extends Controller
 
     /**
      * API: Send a chat message with location context.
-     * Fetches nearby stations from Google Places and injects into AI context.
      */
     public function apiChat(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'message' => ['required_without:messages', 'string', 'max:10000'], // base64 ยาวกว่า plaintext ~33%
+            'message' => ['required_without:messages', 'string', 'max:10000'],
             'messages' => ['required_without:message', 'array'],
             'messages.*.role' => ['required_with:messages', 'string'],
             'messages.*.content' => ['required_with:messages', 'string'],
@@ -38,6 +36,7 @@ class ChatController extends Controller
         $isBase64 = ($validated['encoding'] ?? null) === 'base64';
 
         // Build messages array
+        $messageText = '';
         if (isset($validated['message'])) {
             $messageText = $isBase64 ? base64_decode($validated['message']) : $validated['message'];
             $messages = [];
@@ -50,23 +49,29 @@ class ChatController extends Controller
             $messages[] = ['role' => 'user', 'content' => $messageText];
         } else {
             $messages = $validated['messages'];
+            // Extract last user message for smart context
+            $lastUser = collect($messages)->where('role', 'user')->last();
+            $messageText = $lastUser['content'] ?? '';
         }
 
-        // Build location context if GPS available (won't throw — all try-catched inside)
+        // Build location context if GPS available
         $locationContext = '';
         $lat = $validated['latitude'] ?? null;
         $lng = $validated['longitude'] ?? null;
 
-        if ($lat && $lng) {
+        // Fix: use !== null instead of truthiness (lat=0.0 is valid at equator)
+        if ($lat !== null && $lng !== null) {
             try {
-                $cacheKey = "ying_ctx_" . round($lat, 2) . "_" . round($lng, 2);
-                $locationContext = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($lat, $lng, $request) {
+                // Cache key includes message keywords hash for smart loading
+                $msgHash = substr(md5($messageText), 0, 6);
+                $cacheKey = "ying_ctx_{$msgHash}_" . round($lat, 2) . "_" . round($lng, 2);
+
+                $locationContext = \Illuminate\Support\Facades\Cache::remember($cacheKey, 180, function () use ($lat, $lng, $request, $messageText) {
                     return app(\App\Services\YingContextBuilder::class)
-                        ->build((float) $lat, (float) $lng, $request->user()?->id);
+                        ->build((float) $lat, (float) $lng, $request->user()?->id, $messageText);
                 });
             } catch (\Exception $e) {
-                Log::warning('YingContextBuilder failed, continuing without context', ['error' => $e->getMessage()]);
-                // Continue without context — don't break chat
+                Log::warning('YingContextBuilder failed', ['error' => $e->getMessage()]);
             }
         }
 
@@ -74,10 +79,9 @@ class ChatController extends Controller
             $groqService = app(GroqAIService::class);
 
             if (!$groqService->isAvailable()) {
-                Log::error('Chat: No Groq API key configured');
                 return response()->json([
                     'success' => true,
-                    'reply' => 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาแจ้ง Admin ตั้งค่าในหลังบ้านก่อนนะคะ',
+                    'reply' => 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาแจ้ง Admin ค่ะ',
                 ]);
             }
 
@@ -88,18 +92,12 @@ class ChatController extends Controller
                 'reply' => $reply,
             ]);
         } catch (\Exception $e) {
-            Log::error('Chat API failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            Log::error('Chat API failed', ['error' => $e->getMessage()]);
 
-            // Return 200 with error message so frontend shows it in chat bubble
             return response()->json([
                 'success' => true,
                 'reply' => 'ขอโทษค่ะ ระบบขัดข้องชั่วคราวค่ะ ลองใหม่อีกทีนะคะ 🙏',
             ]);
         }
     }
-
-    // buildLocationContext() removed — replaced by YingContextBuilder service
 }

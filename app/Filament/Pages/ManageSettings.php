@@ -79,6 +79,8 @@ class ManageSettings extends Page
             'enable_fuel_reports'      => ['default' => true, 'group' => 'features'],
             'incident_expire_hours'    => ['default' => 4, 'group' => 'features'],
             'max_upload_size_mb'       => ['default' => 5, 'group' => 'features'],
+            'search_radius_km'        => ['default' => 10, 'group' => 'features'],
+            'ying_max_context_chars'   => ['default' => 3000, 'group' => 'features'],
 
             // TTS Voice
             'tts_voice'                => ['default' => 'th-TH-PremwadeeNeural', 'group' => 'tts'],
@@ -407,22 +409,38 @@ class ManageSettings extends Page
                     ->columns(2)
                     ->schema([
                         TextInput::make('incident_expire_hours')
-                            ->label('ชั่วโมงหมดอายุเหตุการณ์ (Incident Expire Hours)')
+                            ->label('ชั่วโมงหมดอายุเหตุการณ์')
                             ->numeric()
                             ->default(4)
                             ->minValue(1)
                             ->maxValue(168)
-                            ->suffix('ชั่วโมง')
-                            ->helperText('เหตุการณ์จะหมดอายุหลังจากเวลาที่กำหนด'),
+                            ->suffix('ชั่วโมง'),
 
                         TextInput::make('max_upload_size_mb')
-                            ->label('ขนาดไฟล์สูงสุด (Max Upload Size)')
+                            ->label('ขนาดไฟล์สูงสุด')
                             ->numeric()
                             ->default(5)
                             ->minValue(1)
                             ->maxValue(50)
-                            ->suffix('MB')
-                            ->helperText('ขนาดไฟล์สูงสุดที่อนุญาตให้อัปโหลด'),
+                            ->suffix('MB'),
+
+                        TextInput::make('search_radius_km')
+                            ->label('รัศมีค้นหาปั๊ม/เหตุการณ์')
+                            ->numeric()
+                            ->default(10)
+                            ->minValue(1)
+                            ->maxValue(30)
+                            ->suffix('กม.')
+                            ->helperText('รัศมีที่น้องหญิงจะค้นหาปั๊มและเหตุการณ์รอบตัวผู้ใช้ (สูงสุด 30 กม.)'),
+
+                        TextInput::make('ying_max_context_chars')
+                            ->label('ขนาด Context สูงสุด')
+                            ->numeric()
+                            ->default(3000)
+                            ->minValue(500)
+                            ->maxValue(8000)
+                            ->suffix('ตัวอักษร')
+                            ->helperText('จำกัดข้อมูลที่ส่งให้ AI เพื่อประหยัด token (แนะนำ 3000)'),
                     ]),
             ]);
     }
@@ -511,7 +529,8 @@ class ManageSettings extends Page
             SiteSetting::set($key, (string) $value, $meta['group']);
         }
 
-        // Clear config cache so new API keys take effect immediately
+        // Clear caches so new settings take effect immediately
+        SiteSetting::clearCache();
         try {
             Artisan::call('config:clear');
         } catch (\Throwable $e) {

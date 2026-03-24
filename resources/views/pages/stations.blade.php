@@ -222,6 +222,61 @@
                 if (emptyEl) emptyEl.classList.add('hidden');
             },
 
+            showStationDetail(station) {
+                const lat = station.latitude || station.lat;
+                const lng = station.longitude || station.lng;
+                const dist = station.distance;
+                const distStr = dist !== undefined && dist !== null
+                    ? (dist >= 1000 ? (dist / 1000).toFixed(1) + ' กม.' : Math.round(dist) + ' เมตร')
+                    : '';
+
+                let fuelsHtml = '<p class="text-slate-500 text-sm">ยังไม่มีรายงานสถานะน้ำมัน</p>';
+                if (station.fuel_reports && station.fuel_reports.length > 0) {
+                    fuelsHtml = '<div class="grid grid-cols-2 gap-2">' + station.fuel_reports.map(f => {
+                        const statusColor = f.status === 'available' ? 'text-green-400' : f.status === 'low' ? 'text-yellow-400' : 'text-red-400';
+                        const statusText = f.status === 'available' ? 'มี' : f.status === 'low' ? 'เหลือน้อย' : 'หมด';
+                        return `<div class="metal-panel rounded-lg p-2">
+                            <div class="text-xs text-slate-400">${f.fuel_type}</div>
+                            <div class="text-sm font-semibold ${statusColor}">${statusText}</div>
+                            ${f.price ? `<div class="text-xs text-orange-400">${f.price} บ.</div>` : ''}
+                        </div>`;
+                    }).join('') + '</div>';
+                }
+
+                const facilitiesHtml = station.facilities ? Object.keys(station.facilities).map(f => {
+                    const labels = {air:'ที่เติมลม',toilet:'ห้องน้ำ',convenience_store:'ร้านสะดวกซื้อ',car_wash:'ล้างรถ',coffee:'ร้านกาแฟ',wifi:'WiFi'};
+                    return `<span class="metal-btn px-2 py-1 rounded text-xs text-slate-300">${labels[f] || f}</span>`;
+                }).join(' ') : '';
+
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="fixed inset-0 bg-black/60" onclick="this.parentElement.remove()"></div>
+                    <div class="relative metal-panel rounded-2xl p-5 w-full max-w-md max-h-[80vh] overflow-y-auto z-10">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-lg font-bold text-white">${station.name || 'ปั๊มน้ำมัน'}</h3>
+                                <p class="text-sm text-slate-400">${station.brand || ''} ${distStr ? '• ' + distStr : ''}</p>
+                                ${station.vicinity ? `<p class="text-xs text-slate-500 mt-1">${station.vicinity}</p>` : ''}
+                            </div>
+                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-white text-xl">✕</button>
+                        </div>
+                        <div class="mb-3">
+                            <h4 class="text-xs font-semibold text-slate-400 mb-2">สถานะน้ำมัน</h4>
+                            ${fuelsHtml}
+                        </div>
+                        ${facilitiesHtml ? `<div class="mb-3"><h4 class="text-xs font-semibold text-slate-400 mb-2">สิ่งอำนวยความสะดวก</h4><div class="flex flex-wrap gap-1">${facilitiesHtml}</div></div>` : ''}
+                        ${station.last_report_at ? `<p class="text-xs text-slate-500 mb-3">รายงานล่าสุด: ${new Date(station.last_report_at).toLocaleString('th-TH')}</p>` : ''}
+                        ${station.is_verified ? '<p class="text-xs text-green-400 mb-3">✅ ยืนยันแล้ว</p>' : ''}
+                        <div class="flex gap-2">
+                            ${lat && lng ? `<button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}','_blank')" class="metal-btn-accent flex-1 py-2.5 rounded-lg text-sm text-white font-medium">🗺️ นำทาง</button>` : ''}
+                            <button onclick="window.location.href='/report'" class="metal-btn flex-1 py-2.5 rounded-lg text-sm text-slate-300">📝 รายงานปั๊มนี้</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            },
+
             renderStations() {
                 const list = document.getElementById('station-list');
                 const loadingEl = document.getElementById('station-loading');
@@ -255,8 +310,17 @@
 
                     const dist = station.distance;
                     if (dist !== undefined && dist !== null) {
-                        const distKm = dist >= 1000 ? (dist / 1000).toFixed(1) + ' กม.' : Math.round(dist) + ' ม.';
-                        card.querySelector('.station-distance').textContent = distKm;
+                        let distStr;
+                        if (dist >= 10000) {
+                            distStr = Math.round(dist / 1000) + ' กม.';
+                        } else if (dist >= 1000) {
+                            distStr = (dist / 1000).toFixed(1) + ' กม.';
+                        } else if (dist >= 100) {
+                            distStr = Math.round(dist / 10) * 10 + ' เมตร';
+                        } else {
+                            distStr = Math.round(dist) + ' เมตร';
+                        }
+                        card.querySelector('.station-distance').textContent = distStr;
                     }
 
                     // Fuel prices
@@ -281,6 +345,12 @@
                         if (lat && lng) {
                             window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
                         }
+                    });
+
+                    // Detail button — show modal
+                    const detailBtn = card.querySelector('.btn-detail');
+                    detailBtn.addEventListener('click', () => {
+                        this.showStationDetail(station);
                     });
 
                     list.appendChild(card);

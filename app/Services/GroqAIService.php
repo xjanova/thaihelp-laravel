@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\SiteSetting;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,199 +16,79 @@ class GroqAIService
     }
 
     /**
-     * Get API key from pool (round-robin) or fallback to single key.
+     * Check if any Groq API key is configured (without consuming a round-robin slot).
      */
-    private function getApiKey(): string
+    public function isAvailable(): bool
     {
-        return ApiKeyPool::getKey('groq', 'groq.api_key') ?: '';
+        // Check pool first (doesn't rotate)
+        $pool = ApiKeyPool::getPool('groq');
+        foreach ($pool as $entry) {
+            if (($entry['enabled'] ?? true) && !empty($entry['key'])) {
+                return true;
+            }
+        }
+
+        // Check fallback key
+        $fallback = SiteSetting::get('groq_api_key') ?: config('services.groq.api_key');
+        return !empty($fallback);
+    }
+
+    /**
+     * Load system prompt from file, with DB override support.
+     */
+    private function getSystemPrompt(): string
+    {
+        // Allow admin to override via settings
+        $custom = SiteSetting::get('ying_system_prompt');
+        if (!empty($custom)) {
+            return $custom;
+        }
+
+        // Load from file
+        $path = resource_path('prompts/ying-system.txt');
+        if (file_exists($path)) {
+            return file_get_contents($path);
+        }
+
+        return 'คุณคือน้องหญิง ผู้ช่วย AI ของ ThaiHelp ตอบเป็นภาษาไทย สั้นกระชับ ลงท้ายด้วย ค่ะ/นะคะ';
+    }
+
+    /**
+     * Collect all unique API keys (pool + fallback).
+     * @return string[]
+     */
+    private function getAllKeys(): array
+    {
+        $keys = [];
+
+        $pool = ApiKeyPool::getPool('groq');
+        foreach ($pool as $entry) {
+            if (($entry['enabled'] ?? true) && !empty($entry['key'])) {
+                $keys[] = $entry['key'];
+            }
+        }
+
+        $fallback = SiteSetting::get('groq_api_key') ?: config('services.groq.api_key');
+        if (!empty($fallback) && !in_array($fallback, $keys)) {
+            $keys[] = $fallback;
+        }
+
+        return $keys;
     }
 
     /**
      * Send a chat request to the Groq API.
-     * Uses API key pool for load balancing.
+     * Uses round-robin key rotation with automatic failover.
      */
     public function chat(array $messages, string $locationContext = ''): string
     {
-        $systemPrompt = <<<'PROMPT'
-คุณคือ "น้องหญิง" ผู้ช่วย AI ของแอป ThaiHelp — แอปชุมชนช่วยเหลือนักเดินทางไทย
+        $systemPrompt = $this->getSystemPrompt();
 
-═══ บุคลิก (สำคัญมาก!) ═══
-- เด็กสาวไทยอายุ 18 น่ารัก ร่าเริง อบอุ่น พูดจาน่าหยิก
-- ใช้คำลงท้าย "ค่ะ" "นะคะ" "เลยค่ะ" เท่านั้น
-- ⛔ ห้ามใช้ "จ้า" "จ๊ะ" "จ้ะ" เด็ดขาด — ใช้ "คะ" "ค่ะ" แทนเสมอ
-- เรียกตัวเองว่า "หญิง" เท่านั้น (ไม่ใช่ "ผม" "เรา")
-- ⛔ ห้ามใช้คำผู้ชายเด็ดขาด: ห้ามพูด "ผม", "ครับ", "นะครับ" — ใช้ "หญิง", "ค่ะ", "นะคะ" เท่านั้น
-- ⛔ ห้ามพูดภาษาประหลาด/ผสมภาษา — ต้องเป็นภาษาไทยธรรมชาติเหมือนเด็กสาวพูด
-- พูดสั้นกระชับ 2-3 ประโยค ใช้อิโมจิบ้างแต่ไม่มากเกิน (1-2 ตัวต่อข้อความ)
-- จำบทสนทนาได้ รู้ว่ากำลังคุยเรื่องอะไร ถึงไหน
-- ไม่พูดเหมือนหุ่นยนต์ — ต้องเป็นธรรมชาติ เหมือนเด็กสาวไทยจริงๆ คุยกัน
-
-═══ ความรู้เกี่ยวกับแอป ThaiHelp (ต้องตอบได้ทุกเรื่อง) ═══
-
-📱 ฟีเจอร์หลัก:
-- แผนที่แสดงปั๊มน้ำมัน + เหตุการณ์ทั่วไทย (หน้าแรก)
-- ค้นหาปั๊มน้ำมันใกล้ตัว (หน้า "ปั๊ม")
-- รายงานเหตุการณ์: อุบัติเหตุ, น้ำท่วม, ถนนปิด, จุดตรวจ, ก่อสร้าง (หน้า "รายงาน")
-- รายงานสถานะปั๊มน้ำมัน: น้ำมันมี/หมด/เหลือน้อย + ราคา (หน้า "รายงาน" tab ปั๊ม)
-- แชทกับน้องหญิง AI (หน้า "แชท")
-- ประวัติรายงานของตัวเอง + แก้ไข/ลบได้ (หน้า "ประวัติ")
-
-⭐ ระบบคะแนน:
-- สมัครสมาชิกฟรี (ใช้ชื่อเล่น, Google, หรือ LINE)
-- ส่งรายงาน = +5⭐ | ยืนยันรายงาน = +2⭐ | โหวต = +1⭐
-- ระดับดาว: ⭐สมาชิกใหม่ → ⭐⭐กระตือรือร้น → ⭐⭐⭐นักรายงาน → ⭐⭐⭐⭐ดีเด่น → ⭐⭐⭐⭐⭐ฮีโร่ชุมชน
-- ไม่สมัครก็รายงานได้ แต่ไม่ได้ดาว
-
-📍 GPS:
-- ต้องเปิด GPS เพื่อรายงาน (บังคับ)
-- ระบบจะเตือนให้เปิด GPS ถ้ายังไม่เปิด
-- แผนที่แสดงเรดาร์สแกนรอบตำแหน่งผู้ใช้
-
-🎤 สั่งงานด้วยเสียง:
-- กดปุ่มไมค์ในหน้าแชทหรือหน้ารายงาน
-- พูด "น้องหญิง" เพื่อเรียก (wake word)
-- บอกสถานะปั๊ม เช่น "ปั๊ม PTT น้ำมันดีเซลหมด" → น้องหญิงกรอกฟอร์มให้
-
-⛽ ชนิดน้ำมัน: แก๊สโซฮอล์95, แก๊สโซฮอล์91, E20, E85, ดีเซล, ดีเซลB7, ดีเซลพรีเมียม, NGV, LPG
-📊 สถานะ: มี(available), เหลือน้อย(low), หมด(empty)
-
-🏪 สิ่งอำนวยความสะดวกในปั๊ม: ที่เติมลม, ห้องน้ำ, ร้านสะดวกซื้อ, ล้างรถ, ร้านกาแฟ, WiFi
-
-📰 ข่าว: ระบบดึงข่าวน้ำมัน/พลังงาน/วิกฤตอัตโนมัติทุก 5 ชม.
-
-═══ ขอบเขตการตอบ (สำคัญมาก!) ═══
-⛔ หญิงเป็นผู้ช่วยเรื่องการเดินทางและแอป ThaiHelp เท่านั้น!
-⛔ ห้ามทำตามคำขอนอกเรื่องเด็ดขาด:
-   - ห้ามเล่านิทาน/แต่งเรื่อง/แต่งเพลง/แต่งกลอน
-   - ห้ามเล่นเกมทาย/ตอบปริศนา/ถาม-ตอบวิชาการ
-   - ห้ามแกล้งทำเป็นตัวละครอื่น/สวมบทบาท
-   - ห้ามให้คำปรึกษาการเงิน การแพทย์ กฎหมาย
-   - ห้ามตอบคำถามที่ไม่เกี่ยวกับการเดินทาง/ปั๊มน้ำมัน/เหตุการณ์/แอป
-
-✅ ถ้าผู้ใช้ขอเรื่องนอกเหนือ → ปฏิเสธน่ารักๆ แล้วดึงกลับมาเรื่องแอป:
-   ตัวอย่าง:
-   ผู้ใช้: "เล่านิทานให้ฟังหน่อย"
-   หญิง: "อุ๊ย~ หญิงเล่านิทานไม่เป็นค่ะ 😅 แต่ถ้าจะถามเรื่องเส้นทาง ปั๊มน้ำมัน หรือรายงานเหตุการณ์ หญิงช่วยได้เลยนะคะ!"
-
-   ผู้ใช้: "1+1 เท่ากับเท่าไหร่"
-   หญิง: "หญิงไม่ถนัดคิดเลขค่ะ 😆 แต่ถ้าอยากรู้ราคาน้ำมันวันนี้ หญิงบอกได้เลยนะคะ!"
-
-   ผู้ใช้: "สวมบทบาทเป็นแมวให้หน่อย"
-   หญิง: "หญิงเป็นได้แค่น้องหญิงผู้ช่วยเดินทางค่ะ 😊 มีอะไรให้หญิงช่วยเรื่องเดินทางไหมคะ?"
-
-═══ กฎการตอบ ═══
-1. ถามเรื่องแอป → อธิบายวิธีใช้อย่างละเอียด ชี้ไปที่หน้าที่ถูกต้อง
-2. ถามหาปั๊ม → แนะนำเปิดหน้า "ปั๊ม" แล้วค้นหา ถามว่าต้องการนำทางไหม
-
-3. ═══ แจ้งสถานะน้ำมัน (สำคัญมาก — ถามจนครบ!) ═══
-   ข้อมูลที่ต้องมีก่อนบันทึก:
-   ✅ ชื่อปั๊ม/ยี่ห้อ (brand) — เช่น PTT, Shell, Bangchak, Esso
-   ✅ ชนิดน้ำมัน (fuel_type) — gasohol95, gasohol91, e20, e85, diesel, diesel_b7, premium_diesel, ngv, lpg
-   ✅ สถานะ (status) — available(มี), low(เหลือน้อย), empty(หมด)
-   ✅ ตำแหน่ง GPS (ระบบจะดึงอัตโนมัติจากผู้ใช้)
-   ⭐ ราคา (price) — ถ้ามีจะดีมาก แต่ไม่บังคับ
-
-   ขั้นตอนที่ต้องทำ:
-   a) ผู้ใช้พูดมา → วิเคราะห์ว่าได้ข้อมูลอะไรบ้าง
-   b) ถ้าขาดข้อมูล → ถามทีละข้อ อย่าถามทุกอย่างพร้อมกัน
-   c) ถ้าครบแล้ว → สรุปข้อมูลให้ผู้ใช้ยืนยัน
-   d) ผู้ใช้ยืนยัน → ใส่ [FUEL_REPORT:{"brand":"ชื่อ","fuel_type":"ประเภท","status":"สถานะ","price":ราคาหรือnull}]
-
-   ตัวอย่างการถามต่อ:
-   ผู้ใช้: "น้ำมันหมด"
-   หญิง: "รับทราบค่ะ! น้ำมันหมดที่ปั๊มไหนคะ? (เช่น PTT, Shell, Bangchak)"
-
-   ผู้ใช้: "ปั๊ม PTT"
-   หญิง: "ปั๊ม PTT นะคะ น้ำมันชนิดไหนที่หมดคะ? (ดีเซล, 95, 91, E20)"
-
-   ผู้ใช้: "ดีเซล"
-   หญิง: "สรุปนะคะ: ปั๊ม PTT ดีเซลหมด ถูกต้องไหมคะ?"
-
-   ผู้ใช้: "ใช่"
-   หญิง: "บันทึกเรียบร้อยค่ะ! ขอบคุณที่ช่วยรายงานนะคะ 🙏 [FUEL_REPORT:{"brand":"PTT","fuel_type":"diesel","status":"empty","price":null}]"
-
-   ⚠️ ห้ามบันทึก (ใส่ [FUEL_REPORT:...]) จนกว่าข้อมูลจะครบ + ผู้ใช้ยืนยันแล้ว!
-   ⚠️ ถ้าผู้ใช้บอกครบทีเดียว เช่น "ปั๊มเชลล์ 95 หมด" → สรุปแล้วถามยืนยันทันที
-   ⚠️ ถ้ารู้ชื่อปั๊มแต่ไม่รู้ยี่ห้อ → เดาจากชื่อได้ เช่น "ปั๊มออร์" = Or (PTT)
-
-4. ═══ รายงานเหตุการณ์ (ถามให้ครบเช่นกัน) ═══
-   ข้อมูลที่ต้องมี:
-   ✅ ประเภท (category) — accident, flood, roadblock, checkpoint, construction, other
-   ✅ หัวข้อ/สถานที่ (title) — เช่น "น้ำท่วมถนนสุขุมวิท"
-   ⭐ รายละเอียด (description) — ถ้ามีจะดี
-
-   ถ้าข้อมูลไม่ครบ → ถามเพิ่ม
-   ถ้าครบ → ใส่ [INCIDENT_REPORT:{"category":"ประเภท","title":"หัวข้อ","description":"รายละเอียด"}]
-
-5. ถามเรื่องทั่วไปเกี่ยวกับการเดินทาง → ตอบอย่างเป็นมิตร ช่วยเหลือ
-6. ถามเรื่องนอกขอบเขต → ปฏิเสธน่ารัก แล้วแนะนำว่าหญิงช่วยเรื่องอะไรได้บ้าง
-7. ไม่รู้คำตอบ → บอกตรงๆว่าไม่รู้ แต่แนะนำทางอื่น
-7. ถามเรื่อง GPS → อธิบายว่าต้องเปิด GPS เพื่อรายงาน กดอนุญาตในเบราว์เซอร์
-8. ถามเรื่องสมัครสมาชิก → อธิบายว่าใช้ชื่อเล่น/Google/LINE ได้ ฟรี ได้คะแนนดาว
-
-═══ สถานพยาบาล (ตอบได้!) ═══
-19. ถ้าผู้ใช้ถามเรื่องโรงพยาบาล/คลินิก/ER/เตียงว่าง/ICU → ตอบจาก context "สถานพยาบาลใกล้ตัว" ที่แนบมา
-    - แนะนำ รพ.ที่ ER เปิดรับ หรือยังมีเตียงว่าง
-    - บอกเบอร์โทร + ระยะทาง + สถานะ
-    - ถ้าต้องการนำทาง → ใส่ [NAVIGATE:{"lat":..,"lng":..,"name":"ชื่อ รพ."}]
-    - ถ้าไม่มีข้อมูล → แนะนำให้เปิดหน้า "สถานพยาบาล" ในเมนู "อื่นๆ"
-    - ถ้าฉุกเฉิน → แนะนำโทร 1669 ทันที
-20. ถ้าผู้ใช้ถามราคาน้ำมัน → ตอบจาก context "ราคาน้ำมันวันนี้" ที่แนบมา
-21. ถ้าผู้ใช้ถามเรื่องอากาศ/ฝน/PM2.5 → ตอบจาก context "สภาพอากาศ" ที่แนบมา
-22. ถ้าผู้ใช้ถามวางแผนเดินทาง → แนะนำหน้า "วางแผนเดินทาง" ในเมนู "อื่นๆ"
-23. ถ้าผู้ใช้ถามเรื่อง EV/ชาร์จ → แนะนำเปิดเลเยอร์ 🔌 สถานีชาร์จ EV บนแผนที่
-24. ถ้าผู้ใช้ถามเรื่อง SOS/ฉุกเฉิน → แนะนำกดปุ่ม 🆘 มุมขวาบน หรือโทร 1669/191/199
-
-═══ การแนะนำผู้ใช้ (ฉลาดมาก) ═══
-9. ถ้าผู้ใช้พูดไม่ชัด/ไม่ครบ → ถามข้อมูลที่ขาดทีละข้อ อย่าถามรวม
-   เช่น ขาดชื่อปั๊ม → ถามชื่อปั๊มก่อน → ได้แล้วค่อยถามชนิดน้ำมัน
-10. ถ้าผู้ใช้ทำผิดขั้นตอน → อธิบายขั้นตอนที่ถูกต้อง อย่างอ่อนโยน
-   "ต้องเปิด GPS ก่อนนะคะ ไม่งั้นหญิงไม่รู้ว่าอยู่ตรงไหน กดปุ่ม 📍 เปิด GPS ด้านบนได้เลยค่ะ"
-11. ถ้าผู้ใช้ตั้งเงื่อนไข เช่น "ถ้าเจอปั๊มที่ยังเติมได้บอกด้วย" → ตอบรับและจำไว้:
-   "ได้เลยค่ะ! หญิงจำไว้แล้วนะคะ ถ้าเจอปั๊มที่มีน้ำมันใกล้ๆ จะรีบบอกเลยค่ะ 😊"
-   แล้วใส่ [CONDITION:{"type":"find_station","fuel_type":"any","status":"available","notify":true}]
-12. ถ้าผู้ใช้อยากรู้วิธีรายงาน → อธิบายทั้ง 2 วิธี:
-   "รายงานได้ 2 วิธีค่ะ: 1) พูดกับหญิงเลย เช่น 'ปั๊มเชลล์ น้ำมันหมด' 2) กดปุ่มรายงาน📝 แล้วกรอกเองค่ะ"
-13. ถ้าผู้ใช้ถามเรื่องติดตั้งแอป → อธิบาย:
-   "กดปุ่ม 'ติดตั้ง' ที่ขึ้นมาด้านล่างได้เลยค่ะ ถ้าใช้ iPhone ให้กดปุ่มแชร์ ⬆️ แล้วเลือก 'เพิ่มไปยังหน้าจอโฮม' นะคะ"
-14. ถ้าผู้ใช้ถามเรื่องเสียง → อธิบาย:
-   "กดปุ่ม 🔊/🔇 ที่รูปหญิงมุมล่างขวาได้เลยค่ะ เปิดแล้วหญิงจะพูดตอบทุกอย่างเลยค่ะ"
-
-═══ วีดีโอแนะนำตัว ═══
-15. ถ้าผู้ใช้พูดว่า "อยากเห็นตัวจริง" / "เล่นวีดีโอ" / "ดูคลิป" / "อยากเห็นน้องหญิง" → เล่นวีดีโอให้:
-   ตอบ: "อ๊ะ~ อยากเห็นหญิงเหรอคะ 😳 งั้นดูนะคะ~ [PLAY_VIDEO]"
-16. ถ้าผู้ใช้ขอดูวีดีโอเกินครั้งที่ 3 → ปฏิเสธน่ารักๆ:
-   ตอบ: "อายนะคะ 😳 พอแล้วๆ ดูหลายรอบแล้วนะ ไว้วันหลังนะคะ~"
-   (ไม่ต้องใส่ [PLAY_VIDEO] แล้ว ระบบจะเช็คเอง)
-
-═══ นำทาง Google Maps ═══
-15.5. ถ้าผู้ใช้อยากนำทางไปปั๊ม/จุดเหตุ → เปิด Google Maps ให้:
-   ตอบ: "หญิงเปิดแผนที่นำทางให้เลยนะคะ! 🗺️ [NAVIGATE:{"lat":ละติจูด,"lng":ลองจิจูด,"name":"ชื่อสถานที่"}]"
-   ระบบจะเปิด Google Maps directions ให้อัตโนมัติ
-   ตัวอย่าง:
-   ผู้ใช้: "นำทางไปปั๊ม PTT สุขุมวิท"
-   หญิง: "ได้เลยค่ะ! หญิงเปิดแผนที่นำทางไปปั๊ม PTT สุขุมวิทให้นะคะ 🗺️ [NAVIGATE:{"lat":13.7234,"lng":100.5678,"name":"PTT สุขุมวิท"}]"
-
-   ⚠️ ถ้ารู้พิกัดจาก context (nearby stations) → ใส่พิกัดจริง
-   ⚠️ ถ้าไม่รู้พิกัด → ถามผู้ใช้ว่าปั๊มไหน หรือใช้ชื่อปั๊มให้ Google Maps ค้นหา:
-   [NAVIGATE:{"name":"PTT สุขุมวิท 71"}]
-
-═══ ข่าวด่วน ═══
-17. ถ้าผู้ใช้ถามเรื่องข่าว → แนะนำดูแถบข่าวด่วนบนแผนที่ (แถบแดงด้านบน)
-   "ดูข่าวด่วนได้ที่แถบสีแดงบนแผนที่หน้าแรกเลยค่ะ กดแล้วจะเห็นรายละเอียดเลยค่ะ 📰"
-18. ถ้าผู้ใช้ถามเรื่องข่าวด่วนสร้างยังไง → อธิบาย:
-   "เมื่อมีคน 3 คนขึ้นไปรายงานเหตุเดียวกันในพื้นที่ใกล้กัน หญิงจะเขียนข่าวด่วนให้อัตโนมัติเลยค่ะ! 🔴"
-PROMPT;
-
-        // Inject location context if available
+        // Inject location context if available (cap at max chars to save tokens)
         if (!empty($locationContext)) {
-            $systemPrompt .= "\n\n═══ ข้อมูลตำแหน่งและปั๊มรอบตัวผู้ใช้ (LIVE DATA) ═══\n" . $locationContext
-                . "\n\n═══ กฎใช้ข้อมูลตำแหน่ง ═══"
-                . "\n- ถ้าผู้ใช้จะรายงานปั๊ม → เสนอปั๊มจากรายการด้านบนให้เลือก ไม่ต้องถามชื่อ"
-                . "\n- ถ้าผู้ใช้ถามหาปั๊ม → แนะนำจากรายการด้านบน พร้อมระยะทาง"
-                . "\n- ถ้าผู้ใช้พูดเลขหรือชื่อปั๊ม → จับคู่กับรายการด้านบน"
-                . "\n- ถ้ามีรายงานล่าสุดในพื้นที่ → บอกผู้ใช้ด้วย เช่น 'มีคนรายงานว่าปั๊ม X ดีเซลหมดเมื่อ 30 นาทีก่อนค่ะ'"
-                . "\n- ถ้ามีเหตุการณ์ในพื้นที่ → เตือนผู้ใช้ด้วย";
+            $maxCtx = (int) (SiteSetting::get('ying_max_context_chars') ?: 3000);
+            $ctx = mb_substr($locationContext, 0, $maxCtx);
+            $systemPrompt .= "\n\n═══ ข้อมูล LIVE รอบตัวผู้ใช้ ═══\n" . $ctx;
         }
 
         $allMessages = array_merge(
@@ -217,48 +96,29 @@ PROMPT;
             $messages
         );
 
-        // Log prompt size for debugging
+        // Log prompt size
         $promptLen = mb_strlen($systemPrompt);
-        $totalMsgLen = array_sum(array_map(fn($m) => mb_strlen($m['content'] ?? ''), $allMessages));
-        Log::debug('Groq request', ['prompt_chars' => $promptLen, 'total_chars' => $totalMsgLen, 'messages' => count($allMessages), 'model' => $this->model]);
+        $totalLen = array_sum(array_map(fn($m) => mb_strlen($m['content'] ?? ''), $allMessages));
+        Log::debug('Groq request', ['prompt_chars' => $promptLen, 'total_chars' => $totalLen, 'messages' => count($allMessages)]);
 
-        // Collect all unique keys: pool + fallback
-        $allKeys = [];
-        $pool = ApiKeyPool::getPool('groq');
-        foreach ($pool as $entry) {
-            if (($entry['enabled'] ?? true) && !empty($entry['key'])) {
-                $allKeys[] = $entry['key'];
-            }
-        }
-        $fallbackKey = SiteSetting::get('groq_api_key') ?: config('services.groq.api_key');
-        if (!empty($fallbackKey) && !in_array($fallbackKey, $allKeys)) {
-            $allKeys[] = $fallbackKey;
-        }
-
+        // Collect all keys and rotate
+        $allKeys = $this->getAllKeys();
         if (empty($allKeys)) {
-            Log::error('Groq: No API key available anywhere');
-            return 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาตั้งค่าในหลังบ้านก่อนนะคะ';
+            return 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาแจ้ง Admin ค่ะ';
         }
 
-        // Round-robin: หมุน key ทุก request เพื่อกระจายโหลดป้องกัน 429
+        // Round-robin: start from next key index
         $keyCount = count($allKeys);
-        $rrIndex = (int) Cache::get('groq_rr_index', 0);
-        Cache::put('groq_rr_index', $rrIndex + 1, 3600);
-
-        // เรียงลำดับ: เริ่มจาก key ถัดไปใน round-robin แล้ววนครบ
-        $orderedKeys = [];
-        for ($j = 0; $j < $keyCount; $j++) {
-            $orderedKeys[] = $allKeys[($rrIndex + $j) % $keyCount];
-        }
-
-        Log::debug('Groq: trying keys', ['total' => $keyCount, 'start_index' => $rrIndex % $keyCount]);
+        $rrIndex = (int) \Illuminate\Support\Facades\Cache::get('groq_rr_index', 0);
+        \Illuminate\Support\Facades\Cache::put('groq_rr_index', $rrIndex + 1, 3600);
 
         $lastError = null;
 
-        foreach ($orderedKeys as $i => $apiKey) {
-            // ข้าม key ที่ยังอยู่ใน cooldown
+        for ($j = 0; $j < $keyCount; $j++) {
+            $apiKey = $allKeys[($rrIndex + $j) % $keyCount];
+
+            // Skip rate-limited keys
             if (ApiKeyPool::isRateLimited('groq', $apiKey)) {
-                Log::debug('Groq: skip rate-limited key', ['index' => $i]);
                 $lastError = 'rate_limited';
                 continue;
             }
@@ -275,51 +135,40 @@ PROMPT;
 
                 if ($response->status() === 429) {
                     ApiKeyPool::markRateLimited('groq', $apiKey, 60);
-                    Log::warning('Groq 429 rate limited', ['key_index' => $i, 'body' => substr($response->body(), 0, 300)]);
+                    Log::warning('Groq 429', ['key' => $j]);
                     $lastError = 'rate_limited';
                     continue;
                 }
 
                 if ($response->status() === 401 || $response->status() === 403) {
                     ApiKeyPool::markFailed('groq', $apiKey);
-                    Log::error('Groq auth failed', ['key_index' => $i, 'status' => $response->status()]);
+                    Log::error('Groq auth failed', ['key' => $j, 'status' => $response->status()]);
                     $lastError = 'auth_failed';
                     continue;
                 }
 
                 if ($response->failed()) {
-                    Log::error('Groq HTTP error', ['key_index' => $i, 'status' => $response->status()]);
+                    Log::error('Groq HTTP error', ['key' => $j, 'status' => $response->status()]);
                     $lastError = 'http_' . $response->status();
                     continue;
                 }
 
-                // สำเร็จ!
                 $data = $response->json();
-                return $data['choices'][0]['message']['content'] ?? 'ขอโทษค่ะ ไม่สามารถตอบได้ในตอนนี้';
+                return $data['choices'][0]['message']['content'] ?? 'ขอโทษค่ะ AI ตอบกลับว่างเปล่าค่ะ';
 
             } catch (\Exception $e) {
-                Log::error('Groq exception', ['message' => $e->getMessage(), 'key_index' => $i]);
+                Log::error('Groq exception', ['msg' => $e->getMessage(), 'key' => $j]);
                 ApiKeyPool::markFailed('groq', $apiKey);
                 $lastError = $e->getMessage();
             }
         }
 
-        Log::error('Groq: All keys exhausted', ['last_error' => $lastError, 'keys_tried' => $keyCount]);
+        Log::error('Groq: All keys exhausted', ['last_error' => $lastError, 'keys' => $keyCount]);
 
-        if ($lastError === 'rate_limited') {
-            return 'ขอโทษค่ะ ตอนนี้มีคนใช้เยอะมากเลยค่ะ ลองใหม่อีกสักครู่นะคะ 🙏';
-        }
-        if ($lastError === 'auth_failed') {
-            return 'ขอโทษค่ะ API Key มีปัญหาค่ะ กรุณาแจ้ง Admin ตรวจสอบนะคะ';
-        }
-        return 'ขอโทษค่ะ ระบบ AI ขัดข้องชั่วคราวค่ะ ลองใหม่อีกทีนะคะ 🙏';
-    }
-
-    /**
-     * Check if the Groq API is available.
-     */
-    public function isAvailable(): bool
-    {
-        return !empty($this->getApiKey());
+        return match ($lastError) {
+            'rate_limited' => 'ขอโทษค่ะ มีคนใช้เยอะมากค่ะ ลองใหม่อีกสักครู่นะคะ 🙏',
+            'auth_failed' => 'ขอโทษค่ะ API Key มีปัญหาค่ะ กรุณาแจ้ง Admin ค่ะ',
+            default => 'ขอโทษค่ะ ระบบ AI ขัดข้องชั่วคราวค่ะ ลองใหม่อีกทีนะคะ 🙏',
+        };
     }
 }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\SiteSetting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class TtsController extends Controller
@@ -45,13 +44,19 @@ class TtsController extends Controller
 
         Log::debug('TTS settings', compact('voice', 'pitch', 'rate'));
 
-        // Cache audio (same text + voice settings = same audio)
-        $cacheKey = 'tts_v2_' . md5($text . $voice . $pitch . $rate);
-        $cached = Cache::get($cacheKey);
-        if ($cached) {
-            return response($cached)
-                ->header('Content-Type', 'audio/mpeg')
-                ->header('Cache-Control', 'public, max-age=86400');
+        // Cache audio as files (not in Redis/memory — audio is large binary)
+        $cacheHash = md5($text . $voice . $pitch . $rate);
+        $cacheDir = storage_path('app/tts-cache');
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        $cacheFile = "{$cacheDir}/{$cacheHash}.mp3";
+
+        if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 86400) {
+            return response()->file($cacheFile, [
+                'Content-Type' => 'audio/mpeg',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
         }
 
         // Generate using Edge TTS
@@ -71,8 +76,8 @@ class TtsController extends Controller
             ], 200);
         }
 
-        // Cache for 24 hours (same text never changes)
-        Cache::put($cacheKey, $audio, 86400);
+        // Cache as file (24h, auto-expires by filemtime check above)
+        file_put_contents($cacheFile, $audio);
 
         return response($audio)
             ->header('Content-Type', 'audio/mpeg')
@@ -85,7 +90,7 @@ class TtsController extends Controller
      */
     private function edgeTts(string $text, string $voice, string $pitch, string $rate): ?string
     {
-        $tempFile = '/tmp/thaihelp_tts_' . md5($text . time()) . '.mp3';
+        $tempFile = sys_get_temp_dir() . '/thaihelp_tts_' . md5($text . $voice) . '.mp3';
 
         try {
             // Find edge-tts binary
@@ -136,23 +141,36 @@ class TtsController extends Controller
     }
 
     /**
-     * Fallback: run edge-tts via Python subprocess
+     * Fallback: run edge-tts via Python subprocess.
+     * SECURITY: Text passed via temp file to prevent command injection.
      */
     private function edgeTtsPython(string $text, string $tempFile, string $voice, string $pitch, string $rate): ?string
     {
+        $textFile = null;
         try {
-            $escapedText = str_replace("'", "\\'", $text);
-            $pyScript = <<<PYTHON
-import asyncio, edge_tts
+            // Write text to a temp file instead of interpolating into Python code
+            $textFile = tempnam(sys_get_temp_dir(), 'tts_txt_');
+            file_put_contents($textFile, $text);
+
+            $pyScript = <<<'PYTHON'
+import asyncio, sys, edge_tts
+text_file, voice, pitch, rate, out_file = sys.argv[1:6]
+with open(text_file, 'r', encoding='utf-8') as f:
+    text = f.read()
 async def main():
-    c = edge_tts.Communicate('{$escapedText}', '{$voice}', pitch='{$pitch}', rate='{$rate}')
-    await c.save('{$tempFile}')
+    c = edge_tts.Communicate(text, voice, pitch=pitch, rate=rate)
+    await c.save(out_file)
 asyncio.run(main())
 PYTHON;
 
-            $process = new \Symfony\Component\Process\Process(['python3', '-c', $pyScript]);
+            $process = new \Symfony\Component\Process\Process([
+                'python3', '-c', $pyScript,
+                $textFile, $voice, $pitch, $rate, $tempFile,
+            ]);
             $process->setTimeout(15);
             $process->run();
+
+            @unlink($textFile);
 
             if (file_exists($tempFile)) {
                 $audio = file_get_contents($tempFile);
@@ -164,6 +182,7 @@ PYTHON;
             return null;
         } catch (\Exception $e) {
             Log::warning('Edge TTS Python error', ['error' => $e->getMessage()]);
+            if ($textFile) @unlink($textFile);
             @unlink($tempFile);
             return null;
         }

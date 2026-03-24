@@ -3,6 +3,7 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/app/tts-cache/*.mp3
 /vendor
 .env
 .env.backup
