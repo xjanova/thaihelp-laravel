@@ -45,7 +45,7 @@
                     <div class="relative">
                         <div class="absolute inset-0 rounded-full {{ Request::is('chat*') ? 'bg-orange-500/30 animate-pulse' : 'bg-slate-600/20' }}" style="margin: -3px;"></div>
                         <div class="relative w-12 h-12 rounded-full border-2 {{ Request::is('chat*') ? 'border-orange-500 shadow-lg shadow-orange-500/30' : 'border-slate-600' }} overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800">
-                            <img src="/images/ying.webp"
+                            <img src="/images/ying.png"
                                  alt="น้องหญิง"
                                  class="w-full h-full object-cover"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">

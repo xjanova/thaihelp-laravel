@@ -67,7 +67,7 @@
         {{-- น้องหญิงสรุป --}}
         <div class="metal-panel rounded-xl p-3 border-l-4 border-pink-500" x-show="result?.ying_summary">
             <div class="flex items-start gap-2">
-                <img src="/images/ying-avatar.png" class="w-8 h-8 rounded-full" onerror="this.src='/images/default-avatar.svg'">
+                <img src="/images/ying.png" class="w-8 h-8 rounded-full object-cover" onerror="this.style.display='none'">
                 <div>
                     <p class="text-[10px] text-pink-400 font-medium">น้องหญิง สรุปให้ค่ะ</p>
                     <p class="text-xs text-slate-300 whitespace-pre-line mt-1" x-text="result?.ying_summary"></p>
@@ -78,7 +78,7 @@
         {{-- Summary Cards --}}
         <div class="grid grid-cols-3 gap-2" x-show="result?.summary">
             <div class="metal-panel rounded-xl p-2 text-center">
-                <p class="text-lg font-bold text-white" x-text="result?.summary?.distance_km + ' km'"></p>
+                <p class="text-lg font-bold text-white" x-text="(result?.summary?.distance_km || 0) + ' กม.'"></p>
                 <p class="text-[10px] text-slate-500">ระยะทาง</p>
             </div>
             <div class="metal-panel rounded-xl p-2 text-center">
@@ -155,7 +155,7 @@
 </div>
 
 @push('scripts')
-<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.api_key') }}&libraries=places&language=th"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ \App\Models\SiteSetting::get('google_maps_api_key') ?: config('services.google_maps.api_key') }}&libraries=places&language=th"></script>
 <script>
 function tripPlanner() {
     return {
@@ -230,7 +230,7 @@ function tripPlanner() {
             try {
                 const res = await fetch('/api/trip/plan', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
                     body: JSON.stringify({
                         origin_lat: this.origin.lat,
                         origin_lng: this.origin.lng,

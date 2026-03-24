@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex flex-col" style="height: calc(100vh - 7.5rem); height: calc(100dvh - 7.5rem); padding-bottom: env(safe-area-inset-bottom, 0px);" x-data="chatApp()">
+<div class="flex flex-col" style="height: calc(100vh - 8rem); height: calc(100dvh - 8rem);" x-data="chatApp()">
     {{-- Chat Messages --}}
     <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3" id="chat-messages" x-ref="messages">
         {{-- Welcome Message --}}
@@ -59,7 +59,7 @@
     </div>
 
     {{-- Input Bar --}}
-    <div class="chrome-bar-bottom px-3 py-2" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem))">
+    <div class="chrome-bar-bottom px-3 py-2 flex-shrink-0" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem))">
         <div class="flex items-center gap-2">
             {{-- Wake Word Toggle --}}
             <button @click="wakeWordActive ? disableWakeWord() : enableWakeWord()"
