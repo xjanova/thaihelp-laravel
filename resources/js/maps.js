@@ -52,16 +52,16 @@ const STATUS_COLORS = {
  * Brand configuration — local PNG icons at /images/brands/
  */
 const BRAND_CONFIG = {
-    ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.png' },
-    shell:    { name: 'Shell',    color: '#dd1d21', icon: '/images/brands/shell.png' },
-    bangchak: { name: 'Bangchak', color: '#006838', icon: '/images/brands/bangchak.png' },
-    bcp:      { name: 'Bangchak', color: '#006838', icon: '/images/brands/bangchak.png' },
-    esso:     { name: 'Esso',     color: '#d62631', icon: '/images/brands/esso.png' },
-    caltex:   { name: 'Caltex',   color: '#c8102e', icon: '/images/brands/caltex.png' },
-    susco:    { name: 'Susco',    color: '#7c3aed', icon: '/images/brands/susco.png' },
-    pt:       { name: 'PT',       color: '#ea580c', icon: '/images/brands/pt.png' },
-    pure:     { name: 'PURE',     color: '#0284c7', icon: '/images/brands/default.png' },
-    irpc:     { name: 'IRPC',     color: '#0d9488', icon: '/images/brands/irpc.png' },
+    ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.webp' },
+    shell:    { name: 'Shell',    color: '#dd1d21', icon: '/images/brands/shell.webp' },
+    bangchak: { name: 'Bangchak', color: '#006838', icon: '/images/brands/bangchak.webp' },
+    bcp:      { name: 'Bangchak', color: '#006838', icon: '/images/brands/bangchak.webp' },
+    esso:     { name: 'Esso',     color: '#d62631', icon: '/images/brands/esso.webp' },
+    caltex:   { name: 'Caltex',   color: '#c8102e', icon: '/images/brands/caltex.webp' },
+    susco:    { name: 'Susco',    color: '#7c3aed', icon: '/images/brands/susco.webp' },
+    pt:       { name: 'PT',       color: '#ea580c', icon: '/images/brands/pt.webp' },
+    pure:     { name: 'PURE',     color: '#0284c7', icon: '/images/brands/default.webp' },
+    irpc:     { name: 'IRPC',     color: '#0d9488', icon: '/images/brands/irpc.webp' },
 };
 
 /** Detect brand from station name */
@@ -84,7 +84,7 @@ function detectBrand(name) {
 function createBrandMarkerIcon(brand) {
     const cfg = brand ? BRAND_CONFIG[brand] : null;
     return {
-        url: cfg?.icon || '/images/brands/default.png',
+        url: cfg?.icon || '/images/brands/default.webp',
         scaledSize: new google.maps.Size(36, 36),
         anchor: new google.maps.Point(18, 18),
     };
@@ -93,7 +93,7 @@ function createBrandMarkerIcon(brand) {
 /** Generate brand badge HTML for InfoWindow */
 function brandBadgeHtml(brand) {
     const cfg = brand ? BRAND_CONFIG[brand] : null;
-    return `<img src="${cfg?.icon || '/images/brands/default.png'}" style="width:28px;height:28px;border-radius:6px;" onerror="this.outerHTML='⛽'">`;
+    return `<img src="${cfg?.icon || '/images/brands/default.webp'}" style="width:28px;height:28px;border-radius:6px;" onerror="this.outerHTML='⛽'">`;
 
     if (cfg.logo) {
         return `<img src="${cfg.logo}" alt="${cfg.name}" style="width:28px;height:28px;border-radius:6px;object-fit:contain;background:#fff;padding:2px;border:1px solid #e5e7eb;" onerror="this.outerHTML='⛽'">`;

@@ -243,7 +243,7 @@
                 const brandCfg = brandKey ? this.brandConfig[brandKey] : null;
 
                 // Brand logo HTML
-                const brandLogoHtml = `<img src="${brandCfg?.icon || '/images/brands/default.png'}" alt="${brandCfg?.name || 'ปั๊ม'}" class="w-12 h-12 rounded-xl" onerror="this.outerHTML='<span class=\\'text-3xl\\'>⛽</span>'">`;
+                const brandLogoHtml = `<img src="${brandCfg?.icon || '/images/brands/default.webp'}" alt="${brandCfg?.name || 'ปั๊ม'}" class="w-12 h-12 rounded-xl" onerror="this.outerHTML='<span class=\\'text-3xl\\'>⛽</span>'">`;
 
                 // Fuel reports HTML
                 let fuelsHtml = '';
@@ -311,15 +311,15 @@
 
             // Brand detection helper (matches maps.js detectBrand)
             brandConfig: {
-                ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.png' },
-                shell:    { name: 'Shell',     color: '#dd1d21', icon: '/images/brands/shell.png' },
-                bangchak: { name: 'Bangchak',  color: '#006838', icon: '/images/brands/bangchak.png' },
-                esso:     { name: 'Esso',      color: '#d62631', icon: '/images/brands/esso.png' },
-                caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.png' },
-                susco:    { name: 'Susco',     color: '#7c3aed', icon: '/images/brands/susco.png' },
-                pt:       { name: 'PT',        color: '#ea580c', icon: '/images/brands/pt.png' },
-                pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.png' },
-                irpc:     { name: 'IRPC',      color: '#0d9488', icon: '/images/brands/irpc.png' },
+                ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.webp' },
+                shell:    { name: 'Shell',     color: '#dd1d21', icon: '/images/brands/shell.webp' },
+                bangchak: { name: 'Bangchak',  color: '#006838', icon: '/images/brands/bangchak.webp' },
+                esso:     { name: 'Esso',      color: '#d62631', icon: '/images/brands/esso.webp' },
+                caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.webp' },
+                susco:    { name: 'Susco',     color: '#7c3aed', icon: '/images/brands/susco.webp' },
+                pt:       { name: 'PT',        color: '#ea580c', icon: '/images/brands/pt.webp' },
+                pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.webp' },
+                irpc:     { name: 'IRPC',      color: '#0d9488', icon: '/images/brands/irpc.webp' },
             },
             detectBrand(name) {
                 if (!name) return null;

@@ -43,7 +43,7 @@
 
                 {{-- Brand logo & name --}}
                 <div class="flex items-center gap-2 mb-2">
-                    <img :src="brandLogos[item.brand] || '/images/brands/default.png'"
+                    <img :src="brandLogos[item.brand] || '/images/brands/default.webp'"
                          :alt="item.brand"
                          class="w-8 h-8 rounded-lg"
                          onerror="this.outerHTML='⛽'">
@@ -193,15 +193,15 @@ function fuelPricesPage() {
         },
 
         brandLogos: {
-            'ptt': '/images/brands/ptt.png',
-            'bcp': '/images/brands/bangchak.png',
-            'shell': '/images/brands/shell.png',
-            'esso': '/images/brands/esso.png',
-            'caltex': '/images/brands/caltex.png',
-            'pt': '/images/brands/pt.png',
-            'susco': '/images/brands/susco.png',
-            'pure': '/images/brands/default.png',
-            'irpc': '/images/brands/irpc.png',
+            'ptt': '/images/brands/ptt.webp',
+            'bcp': '/images/brands/bangchak.webp',
+            'shell': '/images/brands/shell.webp',
+            'esso': '/images/brands/esso.webp',
+            'caltex': '/images/brands/caltex.webp',
+            'pt': '/images/brands/pt.webp',
+            'susco': '/images/brands/susco.webp',
+            'pure': '/images/brands/default.webp',
+            'irpc': '/images/brands/irpc.webp',
         },
 
         get selectedTypeLabel() {

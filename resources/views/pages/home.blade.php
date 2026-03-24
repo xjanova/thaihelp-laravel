@@ -22,9 +22,7 @@
 
         {{-- Display Options --}}
         <div class="flex gap-2">
-            <button onclick="toggleBalloons()" id="btn-balloons" class="metal-btn px-2.5 py-1 rounded-full text-[10px] text-slate-400">
-                🎈 บอลลูน
-            </button>
+            {{-- Balloon button removed — using brand logos instead --}}
             <button onclick="toggleLabels()" id="btn-labels" class="metal-btn-accent px-2.5 py-1 rounded-full text-[10px] text-white">
                 📌 ป้าย
             </button>
@@ -282,41 +280,43 @@
 
 @push('scripts')
 <script>
-    // ─── Brand Configuration — real PNG icons at /images/brands/ ───
+    // ─── Brand Configuration — real WebP icons at /images/brands/ ───
     const _BRAND_CFG = {
-        ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.png' },
-        shell:    { name: 'Shell',     color: '#dd1d21', icon: '/images/brands/shell.png' },
-        bangchak: { name: 'Bangchak',  color: '#006838', icon: '/images/brands/bangchak.png' },
-        esso:     { name: 'Esso',      color: '#d62631', icon: '/images/brands/esso.png' },
-        caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.png' },
-        susco:    { name: 'Susco',     color: '#7c3aed', icon: '/images/brands/susco.png' },
-        pt:       { name: 'PT',        color: '#ea580c', icon: '/images/brands/pt.png' },
-        pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.png' },
-        irpc:     { name: 'IRPC',      color: '#0d9488', icon: '/images/brands/irpc.png' },
+        ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.webp' },
+        shell:    { name: 'Shell',     color: '#dd1d21', icon: '/images/brands/shell.webp' },
+        bangchak: { name: 'Bangchak',  color: '#006838', icon: '/images/brands/bangchak.webp' },
+        esso:     { name: 'Esso',      color: '#d62631', icon: '/images/brands/esso.webp' },
+        caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.webp' },
+        susco:    { name: 'Susco',     color: '#f59e0b', icon: '/images/brands/susco.webp' },
+        pt:       { name: 'PT',        color: '#16a34a', icon: '/images/brands/pt.webp' },
+        pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.webp' },
+        irpc:     { name: 'IRPC',      color: '#1e40af', icon: '/images/brands/irpc.webp' },
+        lpg:      { name: 'LPG',       color: '#15803d', icon: '/images/brands/lpg.webp' },
     };
 
-    /** Create Google Maps marker icon from brand PNG */
+    /** Create Google Maps marker icon from brand WebP */
     function _makeBrandIcon(brand) {
         const cfg = brand ? _BRAND_CFG[brand] : null;
         return {
-            url: cfg?.icon || '/images/brands/default.png',
-            scaledSize: new google.maps.Size(36, 36),
-            anchor: new google.maps.Point(18, 18),
+            url: cfg?.icon || '/images/brands/default.webp',
+            scaledSize: new google.maps.Size(40, 40),
+            anchor: new google.maps.Point(20, 20),
         };
     }
 
     function _detectBrand(name) {
         if (!name) return null;
         const n = name.toLowerCase();
-        if (n.includes('ptt') || n.includes('ปตท'))             return 'ptt';
-        if (n.includes('shell') || n.includes('เชลล์'))         return 'shell';
-        if (n.includes('bangchak') || n.includes('บางจาก'))     return 'bangchak';
-        if (n.includes('esso') || n.includes('เอสโซ'))         return 'esso';
-        if (n.includes('caltex') || n.includes('คาลเท็กซ์'))   return 'caltex';
-        if (n.includes('susco') || n.includes('ซัสโก้'))       return 'susco';
-        if (n.includes('pt ') || n === 'pt')                     return 'pt';
-        if (n.includes('pure') || n.includes('เพียว'))           return 'pure';
-        if (n.includes('irpc'))                                  return 'irpc';
+        if (n.includes('ptt') || n.includes('ปตท'))               return 'ptt';
+        if (n.includes('shell') || n.includes('เชลล์'))           return 'shell';
+        if (n.includes('bangchak') || n.includes('บางจาก'))       return 'bangchak';
+        if (n.includes('esso') || n.includes('เอสโซ'))           return 'esso';
+        if (n.includes('caltex') || n.includes('คาลเท็กซ์'))     return 'caltex';
+        if (n.includes('susco') || n.includes('ซัสโก้'))         return 'susco';
+        if (n.includes('pt ') || n === 'pt' || n.includes('พีที')) return 'pt';
+        if (n.includes('pure') || n.includes('เพียว'))             return 'pure';
+        if (n.includes('irpc') || n.includes('ไออาร์พีซี'))       return 'irpc';
+        if (n.includes('lpg'))                                     return 'lpg';
         return null;
     }
 
@@ -428,7 +428,7 @@
                 });
 
                 // Rich info window with brand logo + fuel status + nav button
-                const brandBadge = `<img src="${brandCfg?.icon || '/images/brands/default.png'}" style="width:32px;height:32px;border-radius:8px;" onerror="this.outerHTML='⛽'">`;
+                const brandBadge = `<img src="${brandCfg?.icon || '/images/brands/default.webp'}" style="width:32px;height:32px;border-radius:8px;" onerror="this.outerHTML='⛽'">`;
                 const brandLabel = brandCfg ? `<span style="font-size:11px;color:${brandCfg.color};font-weight:600;">${brandCfg.name}</span>` : '';
 
                 let fuelHtml = '';
@@ -585,16 +585,6 @@
         } catch (err) {
             console.error('Failed to load incidents:', err);
         }
-
-        // Add balloon labels for stations with fuel
-        balloonLabels.forEach(l => l.setMap(null));
-        balloonLabels = [];
-        stationMarkers.forEach((marker, idx) => {
-            const title = marker.getTitle() || '';
-            if (title && marker.getVisible()) {
-                addBalloonLabel(marker.getPosition(), title, '#22c55e');
-            }
-        });
 
         // Load breaking news
         loadBreakingNews();
