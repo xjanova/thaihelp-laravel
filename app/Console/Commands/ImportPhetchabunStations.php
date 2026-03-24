@@ -183,13 +183,13 @@ class ImportPhetchabunStations extends Command
 
             // Create fuel reports
             FuelReport::create([
-                'station_report_id' => $report->id,
+                'report_id' => $report->id,
                 'fuel_type' => 'diesel',
                 'status' => $station['diesel'],
             ]);
 
             FuelReport::create([
-                'station_report_id' => $report->id,
+                'report_id' => $report->id,
                 'fuel_type' => 'gasohol95',
                 'status' => $station['benzin'],
             ]);
