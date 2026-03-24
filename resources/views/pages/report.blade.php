@@ -171,12 +171,14 @@
             <input type="text" x-model="fuel.stationName" maxlength="255"
                    class="metal-input w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-slate-500"
                    placeholder="เช่น PTT สุขุมวิท 39">
-            {{-- Quick brand buttons --}}
+            {{-- Quick brand buttons with real logos --}}
             <div class="flex gap-1.5 mt-2 flex-wrap">
-                <template x-for="brand in ['PTT', 'Shell', 'Bangchak', 'Esso', 'Caltex', 'Susco']" :key="brand">
-                    <button type="button" @click="fuel.stationName = brand + ' '"
-                            class="metal-btn px-2.5 py-1 rounded-lg text-[10px] text-slate-300 hover:text-white">
-                        <span x-text="brand"></span>
+                <template x-for="b in brandList" :key="b.id">
+                    <button type="button" @click="fuel.stationName = b.name + ' '"
+                            :class="fuel.stationName.toLowerCase().startsWith(b.id) ? 'ring-2 ring-orange-500 bg-orange-500/10' : ''"
+                            class="metal-btn px-2 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-white/5">
+                        <img :src="'/images/brands/' + b.id + '.webp'" class="w-5 h-5 rounded" :alt="b.name" onerror="this.style.display='none'">
+                        <span class="text-[10px] text-slate-300" x-text="b.name"></span>
                     </button>
                 </template>
             </div>
@@ -304,6 +306,18 @@ function reportPage() {
         voiceTranscript: '',
         voiceProcessing: false,
         voiceReply: '',
+
+        brandList: [
+            { id: 'ptt', name: 'PTT' },
+            { id: 'shell', name: 'Shell' },
+            { id: 'bangchak', name: 'Bangchak' },
+            { id: 'esso', name: 'Esso' },
+            { id: 'caltex', name: 'Caltex' },
+            { id: 'susco', name: 'Susco' },
+            { id: 'pt', name: 'PT' },
+            { id: 'irpc', name: 'IRPC' },
+            { id: 'lpg', name: 'LPG' },
+        ],
 
         incident: { category: '', severity: 'medium', title: '', description: '' },
         incidentSubmitting: false,

@@ -192,6 +192,22 @@ class IncidentResource extends Resource
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('เปิด'),
 
+                Tables\Columns\TextColumn::make('report_source')
+                    ->label('แหล่ง')
+                    ->badge()
+                    ->color(fn (?string $state) => match ($state) {
+                        'ai_ying' => 'warning',
+                        'voice' => 'info',
+                        'discord' => 'danger',
+                        default => 'success',
+                    })
+                    ->formatStateUsing(fn (?string $state) => match ($state) {
+                        'ai_ying' => '🤖 AI',
+                        'voice' => '🎤 เสียง',
+                        'discord' => '💬 Discord',
+                        default => '👤 แอป',
+                    }),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('เมื่อ')
                     ->dateTime('d M H:i')

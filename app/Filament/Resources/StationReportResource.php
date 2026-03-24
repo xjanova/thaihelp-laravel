@@ -155,11 +155,39 @@ class StationReportResource extends Resource
                     ->sortable()
                     ->width('50px'),
 
+                Tables\Columns\ImageColumn::make('brand_logo')
+                    ->label('')
+                    ->width(28)
+                    ->height(28)
+                    ->circular()
+                    ->getStateUsing(function ($record) {
+                        $name = strtolower($record->station_name ?? '');
+                        $brands = ['ptt', 'shell', 'bangchak', 'esso', 'caltex', 'susco', 'pt', 'irpc', 'lpg'];
+                        foreach ($brands as $b) {
+                            if (str_contains($name, $b)) return "/images/brands/{$b}.webp";
+                        }
+                        return '/images/brands/default.webp';
+                    }),
+
                 Tables\Columns\TextColumn::make('station_name')
                     ->label('ชื่อปั๊ม')
                     ->searchable()
                     ->limit(30)
                     ->tooltip(fn ($record) => $record->note),
+
+                Tables\Columns\TextColumn::make('source')
+                    ->label('แหล่ง')
+                    ->badge()
+                    ->color(fn (string $state) => match ($state) {
+                        'ai_ying' => 'warning',
+                        'voice' => 'info',
+                        default => 'success',
+                    })
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'ai_ying' => '🤖 น้องหญิง',
+                        'voice' => '🎤 เสียง',
+                        default => '👤 ผู้ใช้',
+                    }),
 
                 Tables\Columns\TextColumn::make('reporter_name')
                     ->label('ผู้รายงาน')
@@ -185,15 +213,6 @@ class StationReportResource extends Resource
                     ->boolean()
                     ->alignCenter(),
 
-                Tables\Columns\IconColumn::make('is_demo')
-                    ->label('Demo')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-beaker')
-                    ->trueColor('warning')
-                    ->falseIcon('heroicon-o-signal')
-                    ->falseColor('success')
-                    ->alignCenter(),
-
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('เมื่อ')
                     ->dateTime('d M H:i')
@@ -206,10 +225,13 @@ class StationReportResource extends Resource
                     ->trueLabel('ยืนยันแล้ว')
                     ->falseLabel('ยังไม่ยืนยัน'),
 
-                Tables\Filters\TernaryFilter::make('is_demo')
-                    ->label('ข้อมูล Demo')
-                    ->trueLabel('Demo เท่านั้น')
-                    ->falseLabel('ข้อมูลจริงเท่านั้น'),
+                Tables\Filters\SelectFilter::make('source')
+                    ->label('แหล่งรายงาน')
+                    ->options([
+                        'user' => '👤 ผู้ใช้',
+                        'ai_ying' => '🤖 น้องหญิง',
+                        'voice' => '🎤 เสียง',
+                    ]),
 
                 Tables\Filters\Filter::make('recent')
                     ->label('24 ชม. ล่าสุด')
