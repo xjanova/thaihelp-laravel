@@ -140,10 +140,10 @@ class StationController extends Controller
                 $request->user()->incrementReports();
             }
 
-            // Send Discord notification
+            // Send Discord notification (non-blocking — never fail the report)
             try {
                 app(DiscordService::class)->notifyNewStationReport($stationReport);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 Log::warning('Discord notification failed', ['error' => $e->getMessage()]);
             }
 

@@ -51,7 +51,7 @@ class GroqAIService
             return file_get_contents($path);
         }
 
-        return 'คุณคือน้องหญิง ผู้ช่วย AI ของ ThaiHelp ตอบเป็นภาษาไทย สั้นกระชับ ลงท้ายด้วย ค่ะ/นะคะ';
+        return 'คุณคือน้องหญิง ผู้ช่วย AI ของ ThaiHelp ตอบเป็นภาษาไทย สั้นกระชับ ลงท้ายแค่ท้ายข้อความด้วย ค่ะ หรือ นะคะ อย่าเบิ้ลทุกประโยค';
     }
 
     /**
@@ -105,7 +105,7 @@ class GroqAIService
         // Collect all keys and rotate
         $allKeys = $this->getAllKeys();
         if (empty($allKeys)) {
-            return 'ขอโทษค่ะ ยังไม่ได้ตั้งค่า API Key นะคะ กรุณาแจ้ง Admin ค่ะ';
+            return 'ขอโทษนะคะ ยังไม่ได้ตั้งค่า API Key กรุณาแจ้ง Admin ค่ะ';
         }
 
         // Round-robin: start from next key index
@@ -156,7 +156,7 @@ class GroqAIService
                 }
 
                 $data = $response->json();
-                return $data['choices'][0]['message']['content'] ?? 'ขอโทษค่ะ AI ตอบกลับว่างเปล่าค่ะ';
+                return $data['choices'][0]['message']['content'] ?? 'ขอโทษนะคะ AI ตอบกลับว่างเปล่า ลองใหม่นะคะ';
 
             } catch (\Exception $e) {
                 Log::error('Groq exception', ['msg' => $e->getMessage(), 'key' => $j]);
@@ -168,9 +168,9 @@ class GroqAIService
         Log::error('Groq: All keys exhausted', ['last_error' => $lastError, 'keys' => $keyCount]);
 
         return match ($lastError) {
-            'rate_limited' => 'ขอโทษค่ะ มีคนใช้เยอะมากค่ะ ลองใหม่อีกสักครู่นะคะ 🙏',
-            'auth_failed' => 'ขอโทษค่ะ API Key มีปัญหาค่ะ กรุณาแจ้ง Admin ค่ะ',
-            default => 'ขอโทษค่ะ ระบบ AI ขัดข้องชั่วคราวค่ะ ลองใหม่อีกทีนะคะ 🙏',
+            'rate_limited' => 'มีคนใช้เยอะมาก ลองใหม่อีกสักครู่นะคะ 🙏',
+            'auth_failed' => 'API Key มีปัญหา กรุณาแจ้ง Admin นะคะ',
+            default => 'ระบบ AI ขัดข้องชั่วคราว ลองใหม่อีกทีนะคะ 🙏',
         };
     }
 }

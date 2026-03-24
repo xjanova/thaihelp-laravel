@@ -135,10 +135,10 @@ class IncidentController extends Controller
                 $request->user()->incrementReports();
             }
 
-            // Discord notification
+            // Discord notification (non-blocking)
             try {
                 app(DiscordService::class)->notifyNewIncident($incident);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 Log::warning('Discord notification failed', ['error' => $e->getMessage()]);
             }
 

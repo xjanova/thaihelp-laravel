@@ -30,27 +30,27 @@ class DiscordService
 
     private function token(): string
     {
-        return config('services.discord.bot_token', '');
+        return (string) (config('services.discord.bot_token') ?? '');
     }
 
     private function appId(): string
     {
-        return config('services.discord.application_id', '');
+        return (string) (config('services.discord.application_id') ?? '');
     }
 
     private function notifyChannel(): string
     {
-        return config('services.discord.notification_channel_id', '');
+        return (string) (config('services.discord.notification_channel_id') ?? '');
     }
 
     private function adminChannel(): string
     {
-        return config('services.discord.admin_channel_id', '');
+        return (string) (config('services.discord.admin_channel_id') ?? '');
     }
 
     private function webhookUrl(): string
     {
-        return config('services.discord.webhook_url', '');
+        return (string) (config('services.discord.webhook_url') ?? '');
     }
 
     public function isConfigured(): bool
