@@ -76,7 +76,7 @@ class Incident extends Model
         'expired' => 'หมดอายุ',
     ];
 
-    public const REPORT_SOURCES = ['app', 'voice', 'discord', 'auto'];
+    public const REPORT_SOURCES = ['app', 'voice', 'discord', 'auto', 'ai_ying', 'government', 'admin'];
 
     protected $fillable = [
         'user_id',

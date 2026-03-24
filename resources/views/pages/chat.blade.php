@@ -433,9 +433,25 @@
                     }
 
                     const reply = data.reply || 'ขอโทษค่ะ AI ตอบกลับว่างเปล่าค่ะ ลองใหม่นะคะ';
+
+                    // Clean ALL command tags before displaying to user
+                    const cleanReply = reply
+                        .replace(/\[FUEL_REPORT:.*?\]/g, '')
+                        .replace(/\[INCIDENT_REPORT:.*?\]/g, '')
+                        .replace(/\[CONDITION:.*?\]/g, '')
+                        .replace(/\[NAVIGATE:.*?\]/g, '')
+                        .replace(/\[PLAY_VIDEO\]/g, '')
+                        .replace(/\[OPEN_STATIONS\]/g, '')
+                        .replace(/\[OPEN_TRIP\]/g, '')
+                        .replace(/\[OPEN_HOSPITALS\]/g, '')
+                        .replace(/\[CALL_SOS\]/g, '')
+                        .replace(/\s*ค่ะ\s*$/, ' ค่ะ') // fix trailing whitespace before ค่ะ
+                        .replace(/\s{2,}/g, ' ')
+                        .trim();
+
                     this.messages.push({
                         role: 'assistant',
-                        content: reply,
+                        content: cleanReply,
                         time: this.formatTime(),
                     });
 
@@ -496,7 +512,7 @@
                                 const res = await fetch('/api/voice-command', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                                    body: JSON.stringify({ transcript: text, latitude: lat, longitude: lng, fuel_report: reportData }),
+                                    body: JSON.stringify({ transcript: text, latitude: lat, longitude: lng, fuel_report: reportData, source: 'ai_ying' }),
                                 });
                                 const result = await res.json().catch(() => null);
                                 this.messages.push({ role: 'assistant', content: result?.success ? '✅ บันทึกรายงานน้ำมันเรียบร้อยค่ะ!' : '❌ บันทึกไม่สำเร็จค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });
@@ -520,7 +536,7 @@
                                 const res = await fetch('/api/incidents', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                                    body: JSON.stringify({ category: incidentData.category || 'other', title: incidentData.title || 'รายงานจากน้องหญิง', description: incidentData.description || '', latitude: lat, longitude: lng }),
+                                    body: JSON.stringify({ category: incidentData.category || 'other', title: incidentData.title || 'รายงานจากน้องหญิง', description: incidentData.description || '', latitude: lat, longitude: lng, report_source: 'ai_ying' }),
                                 });
                                 const result = await res.json().catch(() => null);
                                 this.messages.push({ role: 'assistant', content: result?.success ? '✅ บันทึกรายงานเหตุการณ์เรียบร้อยค่ะ!' : '❌ บันทึกไม่สำเร็จค่ะ ลองรายงานผ่านหน้า "แจ้งเหตุ" นะคะ', time: this.formatTime() });

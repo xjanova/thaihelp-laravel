@@ -26,6 +26,7 @@ class StationReport extends Model
         'is_verified',
         'is_demo',
         'facilities',
+        'source',
     ];
 
     public const FACILITY_TYPES = [
