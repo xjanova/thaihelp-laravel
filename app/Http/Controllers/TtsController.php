@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SiteSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class TtsController extends Controller
@@ -59,12 +60,44 @@ class TtsController extends Controller
             ]);
         }
 
+        // Concurrency protection: only 1 TTS process at a time per text
+        // Prevents fork-bomb when 100+ users request same text simultaneously
+        $lockKey = "tts_lock_{$cacheHash}";
+        if (Cache::has($lockKey)) {
+            // Another process is generating this audio — tell client to use browser TTS
+            return response()->json([
+                'success' => false,
+                'fallback' => true,
+                'message' => 'กำลังสร้างเสียง กรุณารอสักครู่ค่ะ',
+            ], 200);
+        }
+        Cache::put($lockKey, true, 30); // lock for max 30s
+
+        // Global concurrent TTS limit (prevent too many subprocesses)
+        $concurrentKey = 'tts_concurrent_count';
+        $maxConcurrent = 5; // max 5 TTS processes at once
+        $concurrent = (int) Cache::get($concurrentKey, 0);
+        if ($concurrent >= $maxConcurrent) {
+            Cache::forget($lockKey);
+            return response()->json([
+                'success' => false,
+                'fallback' => true,
+                'message' => 'ระบบเสียงมีคนใช้เยอะค่ะ ใช้เสียงเบราว์เซอร์แทนนะคะ',
+            ], 200);
+        }
+        Cache::put($concurrentKey, $concurrent + 1, 60);
+
         // Generate using Edge TTS
         $audio = null;
         try {
             $audio = $this->edgeTts($text, $voice, $pitch, $rate);
         } catch (\Exception $e) {
             Log::error('TTS synthesize exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        } finally {
+            // Release locks
+            Cache::forget($lockKey);
+            $cur = (int) Cache::get($concurrentKey, 1);
+            Cache::put($concurrentKey, max(0, $cur - 1), 60);
         }
 
         if (!$audio) {

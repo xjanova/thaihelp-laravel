@@ -775,7 +775,8 @@ optimize_application() {
 
     set +e
     php artisan config:cache 2>&1 || print_warning "config:cache had issues"
-    php artisan route:cache 2>&1 || print_warning "route:cache had issues"
+    # NOTE: route:cache skipped — api.php uses Closure routes (incompatible with route caching)
+    # php artisan route:cache 2>&1 || print_warning "route:cache had issues"
     php artisan view:cache 2>&1 || print_warning "view:cache had issues"
     php artisan event:cache 2>&1 || print_warning "event:cache had issues"
     php artisan filament:cache-components 2>&1 || true
