@@ -67,7 +67,7 @@
         {{-- น้องหญิงสรุป --}}
         <div class="metal-panel rounded-xl p-3 border-l-4 border-pink-500" x-show="result?.ying_summary">
             <div class="flex items-start gap-2">
-                <img src="/images/ying.png" class="w-8 h-8 rounded-full object-cover" onerror="this.style.display='none'">
+                <img src="/images/ying.webp" class="w-8 h-8 rounded-full object-cover" onerror="this.style.display='none'">
                 <div>
                     <p class="text-[10px] text-pink-400 font-medium">น้องหญิง สรุปให้ค่ะ</p>
                     <p class="text-xs text-slate-300 whitespace-pre-line mt-1" x-text="result?.ying_summary"></p>

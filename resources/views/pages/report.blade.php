@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen px-4 py-4" x-data="reportPage()">
+<div class="min-h-screen px-4 py-4 pb-24" x-data="reportPage()">
 
     {{-- Toast --}}
     <div x-show="toast.show" x-transition
@@ -9,6 +9,20 @@
          class="fixed top-4 left-4 right-4 z-50 rounded-xl px-4 py-3 text-white text-sm shadow-xl flex items-center justify-between">
         <span x-text="toast.message"></span>
         <button @click="toast.show = false" class="ml-2 text-white/70 hover:text-white">&times;</button>
+    </div>
+
+    {{-- Success Overlay --}}
+    <div x-show="successOverlay" x-transition class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6">
+        <div class="metal-panel rounded-2xl p-6 max-w-sm w-full text-center">
+            <div class="text-5xl mb-3">✅</div>
+            <h3 class="text-lg font-bold text-white mb-2">รายงานสำเร็จ!</h3>
+            <p class="text-sm text-slate-300 mb-1">ขอบคุณที่ช่วยรายงานค่ะ</p>
+            <p class="text-orange-400 font-bold mb-4">+5 ⭐</p>
+            <div class="flex gap-2">
+                <button @click="successOverlay = false" class="flex-1 metal-btn py-2.5 rounded-xl text-sm">รายงานอีก</button>
+                <a href="/" class="flex-1 metal-btn-accent py-2.5 rounded-xl text-sm text-center">กลับแผนที่</a>
+            </div>
+        </div>
     </div>
 
     {{-- Header --}}
@@ -23,7 +37,7 @@
     <div class="metal-panel rounded-xl p-3 mb-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full overflow-hidden ring-2 ring-orange-500/50">
-                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover">
+                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.style.display='none'">
             </div>
             <div>
                 <p class="text-sm font-medium text-white">พูดกับน้องหญิง</p>
@@ -69,7 +83,7 @@
 
         {{-- Category Grid --}}
         <div class="mb-4">
-            <label class="text-xs text-slate-400 mb-2 block">ประเภทเหตุการณ์</label>
+            <label class="text-xs text-slate-400 mb-2 block">ประเภทเหตุการณ์ <span class="text-red-400">*</span></label>
             <div class="grid grid-cols-3 gap-2">
                 @foreach($categories as $cat)
                 <button type="button"
@@ -80,6 +94,17 @@
                     <div class="text-[11px] text-slate-300">{{ $categoryLabels[$cat] ?? $cat }}</div>
                 </button>
                 @endforeach
+            </div>
+        </div>
+
+        {{-- Severity --}}
+        <div class="mb-3">
+            <label class="text-xs text-slate-400 mb-2 block">ความรุนแรง</label>
+            <div class="flex gap-2">
+                <button @click="incident.severity = 'low'" :class="incident.severity === 'low' ? 'ring-2 ring-green-500 bg-green-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🟢 เล็กน้อย</button>
+                <button @click="incident.severity = 'medium'" :class="incident.severity === 'medium' ? 'ring-2 ring-yellow-500 bg-yellow-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🟡 ปานกลาง</button>
+                <button @click="incident.severity = 'high'" :class="incident.severity === 'high' ? 'ring-2 ring-orange-500 bg-orange-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🟠 รุนแรง</button>
+                <button @click="incident.severity = 'critical'" :class="incident.severity === 'critical' ? 'ring-2 ring-red-500 bg-red-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🔴 วิกฤต</button>
             </div>
         </div>
 
@@ -97,14 +122,6 @@
             <textarea x-model="incident.description" rows="3" maxlength="2000"
                       class="metal-input w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-slate-500 resize-none"
                       placeholder="อธิบายเพิ่มเติม..."></textarea>
-        </div>
-
-        {{-- Image URL --}}
-        <div class="mb-3">
-            <label class="text-xs text-slate-400 mb-1 block">รูปภาพ (URL)</label>
-            <input type="url" x-model="incident.imageUrl"
-                   class="metal-input w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-slate-500"
-                   placeholder="https://...">
         </div>
 
         {{-- Location --}}
@@ -128,7 +145,6 @@
             </div>
         </div>
 
-        {{-- Star info for non-logged-in --}}
         @guest
         <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3 text-xs text-blue-300">
             💡 <a href="/login" class="underline text-orange-400">เข้าสู่ระบบ</a> เพื่อรับ ⭐ คะแนนจากการรายงาน
@@ -155,11 +171,28 @@
             <input type="text" x-model="fuel.stationName" maxlength="255"
                    class="metal-input w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-slate-500"
                    placeholder="เช่น PTT สุขุมวิท 39">
+            {{-- Quick brand buttons --}}
+            <div class="flex gap-1.5 mt-2 flex-wrap">
+                <template x-for="brand in ['PTT', 'Shell', 'Bangchak', 'Esso', 'Caltex', 'Susco']" :key="brand">
+                    <button type="button" @click="fuel.stationName = brand + ' '"
+                            class="metal-btn px-2.5 py-1 rounded-lg text-[10px] text-slate-300 hover:text-white">
+                        <span x-text="brand"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        {{-- Reporter Name --}}
+        <div class="mb-3">
+            <label class="text-xs text-slate-400 mb-1 block">ชื่อผู้รายงาน</label>
+            <input type="text" x-model="fuel.reporterName" maxlength="100"
+                   class="metal-input w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-slate-500"
+                   placeholder="{{ auth()->user()?->nickname ?? auth()->user()?->name ?? 'ไม่ระบุชื่อ' }}">
         </div>
 
         {{-- Fuel Types --}}
         <div class="mb-4">
-            <label class="text-xs text-slate-400 mb-2 block">ชนิดน้ำมัน (เลือกที่มีข้อมูล)</label>
+            <label class="text-xs text-slate-400 mb-2 block">ชนิดน้ำมัน <span class="text-red-400">*</span> (เลือกที่มีข้อมูล)</label>
             <div class="grid grid-cols-3 gap-2 mb-3">
                 <template x-for="ft in fuelTypes" :key="ft.key">
                     <button type="button" @click="toggleFuel(ft.key)"
@@ -189,7 +222,7 @@
                            :value="fuel.fuelData[ft.key]?.price || ''"
                            @input="setFuelPrice(ft.key, $event.target.value)"
                            class="metal-input w-full px-3 py-2 rounded-lg text-xs text-white placeholder-slate-500"
-                           placeholder="ราคา (บาท/ลิตร)">
+                           placeholder="ราคา (บาท/ลิตร) — ไม่บังคับ">
                 </div>
             </template>
         </div>
@@ -224,6 +257,9 @@
                 <button @click="refreshLocation()" class="text-xs text-orange-400 hover:text-orange-300">🔄 รีเฟรช</button>
             </div>
             <p class="text-sm text-slate-300" x-text="locationName || 'กำลังหาตำแหน่ง...'"></p>
+            <p class="text-[10px] text-slate-500 mt-1" x-show="lat">
+                <span x-text="lat?.toFixed(6)"></span>, <span x-text="lng?.toFixed(6)"></span>
+            </p>
         </div>
 
         {{-- GPS Warning --}}
@@ -251,8 +287,6 @@
             <span x-text="fuelSubmitting ? 'กำลังส่ง...' : '📤 ส่งรายงานปั๊ม'"></span>
         </button>
     </div>
-
-    <div class="h-8"></div>
 </div>
 @endsection
 
@@ -265,16 +299,18 @@ function reportPage() {
         lng: null,
         locationName: '',
         toast: { show: false, type: 'success', message: '' },
+        successOverlay: false,
         listening: false,
         voiceTranscript: '',
         voiceProcessing: false,
         voiceReply: '',
 
-        incident: { category: '', title: '', description: '', imageUrl: '' },
+        incident: { category: '', severity: 'medium', title: '', description: '' },
         incidentSubmitting: false,
 
         fuel: {
             stationName: '',
+            reporterName: '',
             selectedFuels: {},
             fuelData: {},
             selectedFacilities: {},
@@ -307,7 +343,7 @@ function reportPage() {
             this.refreshLocation();
         },
 
-        // ─── Location ───
+        // ─── Location with reverse geocode ───
         refreshLocation() {
             if (!navigator.geolocation) {
                 this.locationName = 'เบราว์เซอร์ไม่รองรับ GPS';
@@ -315,12 +351,27 @@ function reportPage() {
             }
             this.locationName = 'กำลังหาตำแหน่ง...';
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
+                async (pos) => {
                     this.lat = pos.coords.latitude;
                     this.lng = pos.coords.longitude;
                     this.locationName = `${this.lat.toFixed(4)}, ${this.lng.toFixed(4)}`;
+
+                    // Try reverse geocode
+                    try {
+                        if (window.google?.maps?.Geocoder) {
+                            const geocoder = new google.maps.Geocoder();
+                            geocoder.geocode({ location: { lat: this.lat, lng: this.lng } }, (results, status) => {
+                                if (status === 'OK' && results[0]) {
+                                    this.locationName = results[0].formatted_address;
+                                }
+                            });
+                        }
+                    } catch (e) { /* keep lat/lng as fallback */ }
                 },
-                () => { this.locationName = 'ไม่สามารถหาตำแหน่งได้'; }
+                (err) => {
+                    this.locationName = 'ไม่สามารถหาตำแหน่งได้ — กรุณาเปิด GPS';
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
             );
         },
 
@@ -348,7 +399,7 @@ function reportPage() {
                     },
                     onError: () => {
                         this.listening = false;
-                        this.showToast('error', 'ไม่สามารถฟังเสียงได้');
+                        this.showToast('error', 'ไม่สามารถฟังเสียงได้ กรุณาอนุญาตใช้ไมโครโฟน');
                     }
                 });
             } else {
@@ -359,12 +410,11 @@ function reportPage() {
 
         async processVoiceCommand(transcript) {
             this.voiceProcessing = true;
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
             try {
                 const res = await fetch('/api/voice-command', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
                     body: JSON.stringify({
                         transcript: transcript,
                         latitude: this.lat,
@@ -379,19 +429,14 @@ function reportPage() {
                     const { reply, action, fuelType, fuelStatus } = data.data;
                     this.voiceReply = reply || '';
 
-                    // TTS: น้องหญิงพูดตอบ
-                    if (reply && window.sayText) {
-                        window.sayText(reply);
-                    }
+                    if (reply && window.sayText) window.sayText(reply);
 
-                    // Auto-populate form based on action
                     if (action === 'FUEL_REPORT' || action === 'FIND_DIESEL' || action === 'FIND_GASOHOL') {
                         this.activeTab = 'fuel';
                         if (fuelType) {
                             this.fuel.selectedFuels = { ...this.fuel.selectedFuels, [fuelType]: true };
                             this.fuel.fuelData = { ...this.fuel.fuelData, [fuelType]: { status: fuelStatus || 'available', price: '' } };
                         }
-                        // Try to extract station name from transcript
                         const stationMatch = transcript.match(/(PTT|Shell|Bangchak|Esso|Caltex|ปตท|เชลล์|บางจาก|เอสโซ่|คาลเท็กซ์|ซัสโก้|Susco)[\w\s]*/i);
                         if (stationMatch) {
                             this.fuel.stationName = stationMatch[0].trim().substring(0, 50);
@@ -401,7 +446,12 @@ function reportPage() {
                         this.activeTab = 'incident';
                         this.incident.title = transcript.substring(0, 100);
                         this.incident.description = transcript;
-                        this.showToast('success', 'น้องหญิงกรอกให้แล้ว เลือกประเภทแล้วกดส่งค่ะ');
+                        // Auto-detect category
+                        const catMap = { 'อุบัติเหตุ': 'accident', 'ชน': 'accident', 'น้ำท่วม': 'flood', 'ถนนปิด': 'roadblock', 'จุดตรวจ': 'checkpoint', 'ก่อสร้าง': 'construction' };
+                        for (const [kw, cat] of Object.entries(catMap)) {
+                            if (transcript.includes(kw)) { this.incident.category = cat; break; }
+                        }
+                        this.showToast('success', 'น้องหญิงกรอกให้แล้ว ตรวจสอบแล้วกดส่งค่ะ');
                     }
                 } else {
                     this.voiceReply = data.message || 'ไม่เข้าใจค่ะ ลองพูดใหม่นะคะ';
@@ -445,19 +495,18 @@ function reportPage() {
         async submitIncident() {
             if (!this.canSubmitIncident()) return;
             this.incidentSubmitting = true;
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
             try {
                 const res = await fetch('/api/incidents', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
                     body: JSON.stringify({
                         category: this.incident.category,
                         title: this.incident.title.trim(),
                         description: this.incident.description.trim() || null,
+                        severity: this.incident.severity,
                         latitude: this.lat,
                         longitude: this.lng,
-                        image_url: this.incident.imageUrl || null,
                     }),
                 });
 
@@ -465,15 +514,15 @@ function reportPage() {
                 this.incidentSubmitting = false;
 
                 if (data.success) {
-                    this.showToast('success', 'รายงานสำเร็จ! +5⭐');
                     if (window.sayText) window.sayText('รายงานเรียบร้อยค่ะ ขอบคุณนะคะ');
-                    this.incident = { category: '', title: '', description: '', imageUrl: '' };
+                    this.incident = { category: '', severity: 'medium', title: '', description: '' };
+                    this.successOverlay = true;
                 } else {
-                    this.showToast('error', data.message || 'ส่งไม่สำเร็จ');
+                    this.showToast('error', data.message || 'ส่งไม่สำเร็จ กรุณาลองใหม่');
                 }
             } catch (e) {
                 this.incidentSubmitting = false;
-                this.showToast('error', 'เกิดข้อผิดพลาด ลองใหม่');
+                this.showToast('error', 'เกิดข้อผิดพลาด กรุณาลองใหม่');
             }
         },
 
@@ -481,9 +530,7 @@ function reportPage() {
         async submitFuel() {
             if (!this.canSubmitFuel()) return;
             this.fuelSubmitting = true;
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
-            // Build fuelReports array
             const fuelReports = [];
             for (const [key, selected] of Object.entries(this.fuel.selectedFuels)) {
                 if (!selected) continue;
@@ -495,7 +542,6 @@ function reportPage() {
                 });
             }
 
-            // Build facilities array
             const facilities = Object.entries(this.fuel.selectedFacilities)
                 .filter(([k, v]) => v)
                 .map(([k]) => k);
@@ -503,10 +549,11 @@ function reportPage() {
             try {
                 const res = await fetch('/api/stations/report', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
                     body: JSON.stringify({
                         placeId: 'user_report_' + Date.now(),
                         stationName: this.fuel.stationName.trim(),
+                        reporterName: this.fuel.reporterName.trim() || null,
                         fuelReports: fuelReports,
                         facilities: facilities.length > 0 ? facilities : null,
                         note: this.fuel.note.trim() || null,
@@ -519,15 +566,15 @@ function reportPage() {
                 this.fuelSubmitting = false;
 
                 if (data.success) {
-                    this.showToast('success', 'รายงานปั๊มสำเร็จ! +5⭐');
                     if (window.sayText) window.sayText('บันทึกข้อมูลปั๊มเรียบร้อยค่ะ ขอบคุณนะคะ');
-                    this.fuel = { stationName: '', selectedFuels: {}, fuelData: {}, selectedFacilities: {}, note: '' };
+                    this.fuel = { stationName: '', reporterName: '', selectedFuels: {}, fuelData: {}, selectedFacilities: {}, note: '' };
+                    this.successOverlay = true;
                 } else {
-                    this.showToast('error', data.message || 'ส่งไม่สำเร็จ');
+                    this.showToast('error', data.message || 'ส่งไม่สำเร็จ กรุณาลองใหม่');
                 }
             } catch (e) {
                 this.fuelSubmitting = false;
-                this.showToast('error', 'เกิดข้อผิดพลาด ลองใหม่');
+                this.showToast('error', 'เกิดข้อผิดพลาด กรุณาลองใหม่');
             }
         },
 

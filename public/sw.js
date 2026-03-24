@@ -4,7 +4,7 @@ const PRECACHE_URLS = [
     '/',
     '/offline.html',
     '/images/logo.png',
-    '/images/ying.png',
+    '/images/ying.webp',
     '/manifest.json',
 ];
 
