@@ -151,15 +151,27 @@ class TripPlannerController extends Controller
      */
     private function fallbackRoute(float $oLat, float $oLng, float $dLat, float $dLng): array
     {
-        $dist = $this->haversine($oLat, $oLng, $dLat, $dLng);
+        $straightLineDist = $this->haversine($oLat, $oLng, $dLat, $dLng);
+        // Road distance is typically 1.3-1.4x straight-line distance
+        $roadDist = round($straightLineDist * 1.35, 1);
+        $durationMin = max(1, round($roadDist / 60 * 60)); // ~60 km/h average
+
+        Log::debug('Trip fallback route', [
+            'origin' => [$oLat, $oLng],
+            'dest' => [$dLat, $dLng],
+            'straight_km' => $straightLineDist,
+            'road_km' => $roadDist,
+        ]);
+
         return [
             'polyline' => null,
-            'distance_km' => round($dist, 1),
-            'duration_min' => round($dist / 60 * 60), // ~60 km/h average
+            'distance_km' => $roadDist,
+            'duration_min' => $durationMin,
             'start_address' => "{$oLat}, {$oLng}",
             'end_address' => "{$dLat}, {$dLng}",
             'steps' => [],
             'alternatives' => 0,
+            'is_fallback' => true,
         ];
     }
 

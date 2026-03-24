@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex flex-col" style="height: calc(100vh - 8rem); height: calc(100dvh - 8rem);" x-data="chatApp()">
+<div class="flex flex-col" style="height: calc(100vh - 8rem); height: calc(100dvh - 8rem); padding-bottom: env(safe-area-inset-bottom, 0px);" x-data="chatApp()">
     {{-- Chat Messages --}}
     <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3" id="chat-messages" x-ref="messages">
         {{-- Welcome Message --}}

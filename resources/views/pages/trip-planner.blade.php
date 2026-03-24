@@ -75,6 +75,11 @@
             </div>
         </div>
 
+        {{-- Fallback notice --}}
+        <div x-show="result?.route?.is_fallback" class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-2 text-xs text-yellow-300 text-center">
+            📏 ระยะทางเป็นค่าประมาณ (เส้นตรง x1.35) — เปิดใน Google Maps เพื่อดูเส้นทางจริง
+        </div>
+
         {{-- Summary Cards --}}
         <div class="grid grid-cols-3 gap-2" x-show="result?.summary">
             <div class="metal-panel rounded-xl p-2 text-center">
@@ -82,7 +87,7 @@
                 <p class="text-[10px] text-slate-500">ระยะทาง</p>
             </div>
             <div class="metal-panel rounded-xl p-2 text-center">
-                <p class="text-lg font-bold text-white" x-text="Math.round(result?.summary?.duration_min / 60 * 10) / 10 + ' ชม.'"></p>
+                <p class="text-lg font-bold text-white" x-text="result?.summary?.duration_min >= 60 ? (Math.round(result?.summary?.duration_min / 60 * 10) / 10 + ' ชม.') : (result?.summary?.duration_min + ' นาที')"></p>
                 <p class="text-[10px] text-slate-500">เวลา</p>
             </div>
             <div class="metal-panel rounded-xl p-2 text-center">

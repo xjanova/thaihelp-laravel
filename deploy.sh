@@ -755,12 +755,19 @@ run_seeders() {
 optimize_application() {
     print_step "Clearing and Rebuilding Caches"
 
+    # IMPORTANT: Optimize autoloader FIRST (before config:cache)
+    # config:cache serializes class references — autoloader must be ready!
+    print_info "Optimizing autoloader..."
+    composer dump-autoload --optimize 2>&1
+    print_success "Autoloader optimized"
+
     # Clear all caches first
     print_info "Clearing caches..."
     php artisan config:clear 2>&1
     php artisan route:clear 2>&1
     php artisan view:clear 2>&1
     php artisan event:clear 2>&1
+    php artisan cache:clear 2>&1 || true
     print_success "Caches cleared"
 
     # Rebuild caches for production
@@ -776,11 +783,6 @@ optimize_application() {
     set -e
 
     print_success "Application optimized for production"
-
-    # Optimize composer autoload
-    print_info "Optimizing autoloader..."
-    composer dump-autoload --optimize 2>&1
-    print_success "Autoloader optimized"
 }
 
 # Fix permissions
