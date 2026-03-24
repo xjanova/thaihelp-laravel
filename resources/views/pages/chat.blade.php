@@ -435,17 +435,19 @@
                     const reply = data.reply || 'ขอโทษค่ะ AI ตอบกลับว่างเปล่าค่ะ ลองใหม่นะคะ';
 
                     // Clean ALL command tags before displaying to user
+                    // Use greedy catch-all: any [UPPERCASE_TAG...] pattern
                     const cleanReply = reply
-                        .replace(/\[FUEL_REPORT:.*?\]/g, '')
-                        .replace(/\[INCIDENT_REPORT:.*?\]/g, '')
-                        .replace(/\[CONDITION:.*?\]/g, '')
-                        .replace(/\[NAVIGATE:.*?\]/g, '')
-                        .replace(/\[PLAY_VIDEO\]/g, '')
-                        .replace(/\[OPEN_STATIONS\]/g, '')
-                        .replace(/\[OPEN_TRIP\]/g, '')
-                        .replace(/\[OPEN_HOSPITALS\]/g, '')
-                        .replace(/\[CALL_SOS\]/g, '')
-                        .replace(/\s*ค่ะ\s*$/, ' ค่ะ') // fix trailing whitespace before ค่ะ
+                        .replace(/\[FUEL_REPORT:[^\]]*\]/gi, '')
+                        .replace(/\[INCIDENT_REPORT:[^\]]*\]/gi, '')
+                        .replace(/\[CONDITION:[^\]]*\]/gi, '')
+                        .replace(/\[NAVIGATE:[^\]]*\]/gi, '')
+                        .replace(/\[PLAY_VIDEO\]/gi, '')
+                        .replace(/\[OPEN_STATIONS\]/gi, '')
+                        .replace(/\[OPEN_TRIP\]/gi, '')
+                        .replace(/\[OPEN_HOSPITALS\]/gi, '')
+                        .replace(/\[CALL_SOS\]/gi, '')
+                        .replace(/\[[A-Z_]{3,}(?::[^\]]*)?\]/g, '') // catch-all for any remaining command tags
+                        .replace(/\s*ค่ะ\s*$/, ' ค่ะ')
                         .replace(/\s{2,}/g, ' ')
                         .trim();
 
@@ -455,9 +457,9 @@
                         time: this.formatTime(),
                     });
 
-                    // Auto-play AI response with TTS
+                    // Auto-play AI response with TTS (use clean version without tags)
                     if (window.sayText) {
-                        window.sayText(reply);
+                        window.sayText(cleanReply);
                     }
 
                     // Check for video replay command from AI
