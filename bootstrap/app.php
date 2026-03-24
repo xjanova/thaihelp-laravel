@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\CheckSetup::class,
         ]);
+
+        // Abuse protection on all API routes
+        $middleware->api(prepend: [
+            \App\Http\Middleware\AbuseProtection::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

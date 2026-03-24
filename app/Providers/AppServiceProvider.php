@@ -5,7 +5,10 @@ namespace App\Providers;
 use App\Models\SiteSetting;
 use App\Services\GooglePlacesService;
 use App\Services\GroqAIService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 
@@ -35,8 +38,45 @@ class AppServiceProvider extends ServiceProvider
             $socialiteWasCalled->extendSocialite('line', \SocialiteProviders\Line\Provider::class);
         });
 
+        // Smart rate limiters: auth users get more, anon gets less
+        $this->configureRateLimiting();
+
         // Override config with DB settings for OAuth providers
         $this->overrideConfigFromDatabase();
+    }
+
+    /**
+     * Configure smart rate limiting — auth users get higher limits.
+     */
+    private function configureRateLimiting(): void
+    {
+        // Chat: 6/min anon, 15/min auth
+        RateLimiter::for('chat', function (Request $request) {
+            return $request->user()
+                ? Limit::perMinute(15)->by('user_' . $request->user()->id)
+                : Limit::perMinute(6)->by('ip_' . $request->ip());
+        });
+
+        // TTS: 20/min anon, 60/min auth
+        RateLimiter::for('tts', function (Request $request) {
+            return $request->user()
+                ? Limit::perMinute(60)->by('user_' . $request->user()->id)
+                : Limit::perMinute(20)->by('ip_' . $request->ip());
+        });
+
+        // Report submit: 3/min (prevent spam reports)
+        RateLimiter::for('report', function (Request $request) {
+            return Limit::perMinute(3)->by(
+                $request->user() ? 'user_' . $request->user()->id : 'ip_' . $request->ip()
+            );
+        });
+
+        // General API: 60/min anon, 120/min auth
+        RateLimiter::for('api', function (Request $request) {
+            return $request->user()
+                ? Limit::perMinute(120)->by('user_' . $request->user()->id)
+                : Limit::perMinute(60)->by('ip_' . $request->ip());
+        });
     }
 
     /**

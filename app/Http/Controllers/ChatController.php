@@ -63,13 +63,15 @@ class ChatController extends Controller
         // Fix: use !== null instead of truthiness (lat=0.0 is valid at equator)
         if ($lat !== null && $lng !== null) {
             try {
-                // Cache key includes message keywords hash for smart loading
-                $msgHash = substr(md5($messageText), 0, 6);
-                $cacheKey = "ying_ctx_{$msgHash}_" . round($lat, 2) . "_" . round($lng, 2);
+                // Cache by location only (0.01° ≈ 1.1km grid) — NOT per-message!
+                // Smart loading still works inside build(), but cache is shared for same area
+                $locKey = round($lat, 2) . '_' . round($lng, 2);
+                $userId = $request->user()?->id;
+                $cacheKey = "ying_ctx_{$locKey}" . ($userId ? "_{$userId}" : '');
 
-                $locationContext = Cache::remember($cacheKey, 180, function () use ($lat, $lng, $request, $messageText) {
+                $locationContext = Cache::remember($cacheKey, 120, function () use ($lat, $lng, $userId, $messageText) {
                     return app(\App\Services\YingContextBuilder::class)
-                        ->build((float) $lat, (float) $lng, $request->user()?->id, $messageText);
+                        ->build((float) $lat, (float) $lng, $userId, $messageText);
                 });
             } catch (\Exception $e) {
                 Log::warning('YingContextBuilder failed', ['error' => $e->getMessage()]);

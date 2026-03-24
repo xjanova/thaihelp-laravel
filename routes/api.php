@@ -11,7 +11,7 @@ Route::get('/incidents', [IncidentController::class, 'apiIndex'])
     ->middleware('throttle:30,1');
 
 Route::post('/incidents', [IncidentController::class, 'apiStore'])
-    ->middleware('throttle:3,1');
+    ->middleware('throttle:report');
 
 Route::post('/incidents/{incident}/vote', [IncidentController::class, 'vote'])
     ->middleware('throttle:10,1');
@@ -104,7 +104,7 @@ Route::get('/stations', [StationController::class, 'apiSearch'])
     ->middleware('throttle:20,1');
 
 Route::post('/stations/report', [StationController::class, 'apiReport'])
-    ->middleware('throttle:3,1');
+    ->middleware('throttle:report');
 
 Route::post('/stations/report/{report}/confirm', [StationController::class, 'apiConfirm'])
     ->middleware('throttle:10,1');
@@ -118,18 +118,8 @@ Route::get('/news', function () {
         ->limit(15)
         ->get();
 
-    // If no news yet, trigger first scrape
-    if ($news->isEmpty()) {
-        try {
-            app(\App\Services\NewsScraperService::class)->scrapeAll();
-            $news = \App\Models\News::recent()
-                ->orderByDesc('published_at')
-                ->limit(15)
-                ->get();
-        } catch (\Exception $e) {
-            // Silent fail
-        }
-    }
+    // If no news, return empty — don't block the request with sync scraping
+    // News scraping should happen via scheduled command (php artisan schedule:run)
 
     return response()->json([
         'success' => true,
@@ -138,28 +128,29 @@ Route::get('/news', function () {
     ]);
 })->middleware('throttle:20,1');
 
-// Chat
+// Chat — smart rate limit: 15/min auth, 6/min anon
 Route::post('/chat', [ChatController::class, 'apiChat'])
-    ->middleware('throttle:10,1');
+    ->middleware('throttle:chat');
 
 // Voice Command
 Route::post('/voice-command', [VoiceCommandController::class, 'process'])
     ->middleware('throttle:15,1');
 
-// Text-to-Speech (server-side Thai female voice)
+// Text-to-Speech — smart rate limit: 60/min auth, 20/min anon
 Route::match(['get', 'post'], '/tts', [\App\Http\Controllers\TtsController::class, 'synthesize'])
-    ->middleware('throttle:30,1');
+    ->middleware('throttle:tts');
 
 // My reports (auth required)
 Route::middleware('auth')->group(function () {
     Route::get('/my-reports', function (\Illuminate\Http\Request $request) {
-        $incidents = $request->user()->incidents()->with('votes')->latest()->get()
+        $limit = min((int) $request->query('limit', 20), 50);
+        $incidents = $request->user()->incidents()->with('votes')->latest()->limit($limit)->get()
             ->map(fn($i) => array_merge($i->toArray(), ['type' => 'incident']));
-        $stations = $request->user()->stationReports()->with('fuelReports')->latest()->get()
+        $stations = $request->user()->stationReports()->with('fuelReports')->latest()->limit($limit)->get()
             ->map(fn($s) => array_merge($s->toArray(), ['type' => 'station']));
         return response()->json([
             'success' => true,
-            'data' => $incidents->concat($stations)->sortByDesc('created_at')->values(),
+            'data' => $incidents->concat($stations)->sortByDesc('created_at')->values()->take($limit),
         ]);
     });
 
@@ -207,13 +198,19 @@ Route::post('/pwa/installed', function (\Illuminate\Http\Request $request) {
     return response()->json(['success' => true]);
 })->middleware('throttle:5,1');
 
-// Track user activity (heartbeat)
+// Track user activity (heartbeat) — cached to avoid DB write storm
+// Only writes to DB once every 5 minutes per user
 Route::post('/heartbeat', function (\Illuminate\Http\Request $request) {
     if ($request->user()) {
-        $request->user()->update(['last_active_at' => now()]);
+        $userId = $request->user()->id;
+        $cacheKey = "heartbeat_{$userId}";
+        if (!\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            $request->user()->update(['last_active_at' => now()]);
+            \Illuminate\Support\Facades\Cache::put($cacheKey, true, 300); // 5 min
+        }
     }
     return response()->json(['ok' => true]);
-})->middleware(['auth', 'throttle:10,1']);
+})->middleware(['auth', 'throttle:6,1']);
 
 // Discord Bot Interactions
 Route::post('/discord/interactions', [\App\Http\Controllers\DiscordInteractionController::class, 'handle'])
