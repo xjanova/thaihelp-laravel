@@ -46,12 +46,23 @@ class AbuseProtection
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Wrap everything in try-catch — middleware must NEVER crash the app
+        try {
+            return $this->doHandle($request, $next);
+        } catch (\Throwable $e) {
+            // If abuse protection fails, let the request through (fail-open)
+            Log::error('AbuseProtection error: ' . $e->getMessage());
+            return $next($request);
+        }
+    }
+
+    private function doHandle(Request $request, Closure $next): Response
+    {
         $ip = $request->ip();
         $ua = strtolower($request->userAgent() ?? '');
 
         // Layer 1: Block known malicious bots (allow search engines)
         if ($this->isBlockedBot($ua)) {
-            Log::info('AbuseProtection: blocked bot', ['ip' => $ip, 'ua' => substr($ua, 0, 100)]);
             return response()->json(['error' => 'Access denied'], 403);
         }
 
@@ -59,7 +70,6 @@ class AbuseProtection
         $burstKey = "abuse_burst_{$ip}";
         $burstCount = (int) Cache::get($burstKey, 0);
         if ($burstCount >= self::BURST_LIMIT) {
-            Log::warning('AbuseProtection: burst limit exceeded', ['ip' => $ip, 'count' => $burstCount]);
             return response()->json([
                 'error' => 'Too many requests. Please slow down.',
                 'retry_after' => self::BURST_WINDOW,
