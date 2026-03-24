@@ -282,6 +282,33 @@
 
 @push('scripts')
 <script>
+    // ─── Brand Configuration (real logos via Clearbit) ───
+    const _BRAND_CFG = {
+        ptt:      { name: 'PTT Station',  color: '#1e3a8a', logo: 'https://logo.clearbit.com/pttor.com' },
+        shell:    { name: 'Shell',         color: '#dd1d21', logo: 'https://logo.clearbit.com/shell.com' },
+        bangchak: { name: 'Bangchak',      color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
+        esso:     { name: 'Esso',          color: '#d62631', logo: 'https://logo.clearbit.com/esso.com' },
+        caltex:   { name: 'Caltex',        color: '#c8102e', logo: 'https://logo.clearbit.com/caltex.com' },
+        susco:    { name: 'Susco',         color: '#7c3aed', logo: 'https://logo.clearbit.com/susco.co.th' },
+        pt:       { name: 'PT',            color: '#ea580c', logo: 'https://logo.clearbit.com/pt.co.th' },
+        pure:     { name: 'PURE',          color: '#0284c7', logo: null },
+        irpc:     { name: 'IRPC',          color: '#0d9488', logo: 'https://logo.clearbit.com/irpc.co.th' },
+    };
+    function _detectBrand(name) {
+        if (!name) return null;
+        const n = name.toLowerCase();
+        if (n.includes('ptt') || n.includes('ปตท'))             return 'ptt';
+        if (n.includes('shell') || n.includes('เชลล์'))         return 'shell';
+        if (n.includes('bangchak') || n.includes('บางจาก'))     return 'bangchak';
+        if (n.includes('esso') || n.includes('เอสโซ'))         return 'esso';
+        if (n.includes('caltex') || n.includes('คาลเท็กซ์'))   return 'caltex';
+        if (n.includes('susco') || n.includes('ซัสโก้'))       return 'susco';
+        if (n.includes('pt ') || n === 'pt')                     return 'pt';
+        if (n.includes('pure') || n.includes('เพียว'))           return 'pure';
+        if (n.includes('irpc'))                                  return 'irpc';
+        return null;
+    }
+
     let map;
     let currentFilter = 'all';
     let stationMarkers = [];
@@ -376,43 +403,92 @@
                     else if (hasAvailable) color = '#22c55e'; // green
                 }
 
-                const marker = new google.maps.Marker({
+                // Detect brand for logo marker
+                const stName = station.name || station.station_name || '';
+                const brand = _detectBrand(stName);
+                const brandCfg = brand ? _BRAND_CFG[brand] : null;
+
+                const markerOpts = {
                     position: { lat: parseFloat(lat), lng: parseFloat(lng) },
                     map: map,
-                    title: station.name || 'Gas Station',
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 8,
-                        fillColor: color,
-                        fillOpacity: 0.9,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 2,
-                    },
-                });
+                    title: stName || 'Gas Station',
+                    optimized: true,
+                };
 
-                // Rich info window with fuel status
-                let fuelHtml = '';
-                if (fuels.length > 0) {
-                    fuelHtml = '<div style="margin-top:6px">';
-                    fuels.forEach(f => {
-                        const emoji = f.status === 'available' ? '🟢' : f.status === 'low' ? '🟡' : '🔴';
-                        const price = f.price ? ` ฿${f.price}` : '';
-                        fuelHtml += `<div>${emoji} ${f.fuel_type}${price}</div>`;
-                    });
-                    fuelHtml += '</div>';
+                // Use brand logo as marker icon, or colored circle fallback
+                if (brandCfg?.logo) {
+                    markerOpts.icon = {
+                        url: brandCfg.logo,
+                        scaledSize: new google.maps.Size(32, 32),
+                        anchor: new google.maps.Point(16, 16),
+                    };
+                } else {
+                    markerOpts.icon = {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 14,
+                        fillColor: brandCfg?.color || color,
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2.5,
+                    };
+                    if (brandCfg) {
+                        markerOpts.label = {
+                            text: brandCfg.name.charAt(0),
+                            color: '#ffffff',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                        };
+                    }
                 }
 
+                const marker = new google.maps.Marker(markerOpts);
+
+                // Rich info window with brand logo + fuel status + nav button
+                const brandBadge = brandCfg?.logo
+                    ? `<img src="${brandCfg.logo}" style="width:28px;height:28px;border-radius:6px;object-fit:contain;background:#fff;padding:2px;border:1px solid #e5e7eb;" onerror="this.outerHTML='⛽'">`
+                    : (brandCfg ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:${brandCfg.color};color:#fff;font-weight:bold;font-size:13px;">${brandCfg.name.charAt(0)}</span>` : '<span style="font-size:20px;">⛽</span>');
+                const brandLabel = brandCfg ? `<span style="font-size:11px;color:${brandCfg.color};font-weight:600;">${brandCfg.name}</span>` : '';
+
+                let fuelHtml = '';
+                if (fuels.length > 0) {
+                    fuelHtml = '<div style="margin:6px 0;">';
+                    const fuelLabels = {gasohol95:'แก๊สโซฮอล์ 95',gasohol91:'แก๊สโซฮอล์ 91',e20:'E20',e85:'E85',diesel:'ดีเซล',diesel_b7:'ดีเซล B7',premium_diesel:'ดีเซลพรีเมียม',ngv:'NGV',lpg:'LPG'};
+                    fuels.forEach(f => {
+                        const emoji = f.status === 'available' ? '🟢' : f.status === 'low' ? '🟡' : '🔴';
+                        const statusText = f.status === 'available' ? 'มี' : f.status === 'low' ? 'น้อย' : 'หมด';
+                        const price = f.price ? `<span style="color:#ea580c;font-size:11px;">฿${parseFloat(f.price).toFixed(2)}</span>` : '';
+                        fuelHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #eee;font-size:12px;">
+                            <span>${emoji} ${fuelLabels[f.fuel_type] || f.fuel_type}</span>
+                            <span>${price} <b>${statusText}</b></span>
+                        </div>`;
+                    });
+                    fuelHtml += '</div>';
+                } else {
+                    fuelHtml = `<div style="margin:8px 0;padding:8px;background:#f3f4f6;border-radius:6px;text-align:center;font-size:12px;color:#6b7280;">📋 ยังไม่มีรายงาน</div>`;
+                }
+
+                const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
                 const infoWindow = new google.maps.InfoWindow({
-                    content: `<div style="color:#000;font-size:13px;min-width:150px">
-                        <strong>${station.name || 'ปั๊มน้ำมัน'}</strong>
-                        <div style="color:#666;font-size:11px">${station.brand || ''} ${station.vicinity || ''}</div>
+                    content: `<div style="color:#1a1a2e;max-width:280px;font-family:sans-serif;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                            ${brandBadge}
+                            <div>
+                                <div style="font-weight:bold;font-size:14px;">${stName || 'ปั๊มน้ำมัน'}</div>
+                                <div style="display:flex;gap:4px;align-items:center;">${brandLabel}</div>
+                            </div>
+                        </div>
+                        ${station.vicinity ? `<div style="font-size:11px;color:#666;margin-bottom:4px;">📍 ${station.vicinity}</div>` : ''}
                         ${fuelHtml}
-                        ${station.last_report_at ? '<div style="color:#999;font-size:10px;margin-top:4px">อัพเดท: ' + new Date(station.last_report_at).toLocaleString('th-TH') + '</div>' : ''}
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                            <span style="font-size:10px;color:#999;">${station.last_report_at ? '🕐 ' + new Date(station.last_report_at).toLocaleString('th-TH') : ''}</span>
+                            <a href="${navUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;background:#3b82f6;color:#fff;border-radius:6px;font-size:11px;text-decoration:none;">🧭 นำทาง</a>
+                        </div>
                     </div>`
                 });
                 marker.addListener('click', () => {
                     infoWindow.open(map, marker);
-                    setTimeout(() => infoWindow.close(), 7000);
+                    setTimeout(() => infoWindow.close(), 15000);
                 });
                 stationMarkers.push(marker);
             });
