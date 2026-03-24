@@ -49,6 +49,78 @@ const STATUS_COLORS = {
 };
 
 /**
+ * Brand configuration — official colors + logo URLs from public CDN
+ * Uses brand's actual logo images as map markers for instant recognition
+ */
+const BRAND_CONFIG = {
+    ptt:      { name: 'PTT Station',  color: '#1e3a8a', logo: 'https://logo.clearbit.com/pttor.com' },
+    shell:    { name: 'Shell',        color: '#dd1d21', logo: 'https://logo.clearbit.com/shell.com' },
+    bangchak: { name: 'Bangchak',     color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
+    bcp:      { name: 'Bangchak',     color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
+    esso:     { name: 'Esso',         color: '#d62631', logo: 'https://logo.clearbit.com/esso.com' },
+    caltex:   { name: 'Caltex',       color: '#c8102e', logo: 'https://logo.clearbit.com/caltex.com' },
+    susco:    { name: 'Susco',        color: '#7c3aed', logo: 'https://logo.clearbit.com/susco.co.th' },
+    pt:       { name: 'PT',           color: '#ea580c', logo: 'https://logo.clearbit.com/pt.co.th' },
+    pure:     { name: 'PURE',         color: '#0284c7', logo: null },
+    irpc:     { name: 'IRPC',         color: '#0d9488', logo: 'https://logo.clearbit.com/irpc.co.th' },
+};
+
+/** Detect brand from station name */
+function detectBrand(name) {
+    if (!name) return null;
+    const n = name.toLowerCase();
+    if (n.includes('ptt') || n.includes('ปตท'))                     return 'ptt';
+    if (n.includes('shell') || n.includes('เชลล์'))                 return 'shell';
+    if (n.includes('bangchak') || n.includes('บางจาก'))             return 'bangchak';
+    if (n.includes('esso') || n.includes('เอสโซ'))                  return 'esso';
+    if (n.includes('caltex') || n.includes('คาลเท็กซ์'))           return 'caltex';
+    if (n.includes('susco') || n.includes('ซัสโก้'))               return 'susco';
+    if (n.includes('pt ') || n === 'pt')                             return 'pt';
+    if (n.includes('pure') || n.includes('เพียว'))                   return 'pure';
+    if (n.includes('irpc'))                                          return 'irpc';
+    return null;
+}
+
+/** Create brand marker icon — uses logo image if available, colored pin otherwise */
+function createBrandMarkerIcon(brand, statusColor) {
+    const cfg = brand ? BRAND_CONFIG[brand] : null;
+
+    if (cfg?.logo) {
+        // Use actual brand logo as map marker
+        return {
+            url: cfg.logo,
+            scaledSize: new google.maps.Size(32, 32),
+            anchor: new google.maps.Point(16, 16),
+            origin: new google.maps.Point(0, 0),
+        };
+    }
+
+    // Fallback: colored pin with brand color or status color
+    return {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 14,
+        fillColor: cfg?.color || statusColor || '#6b7280',
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2.5,
+        anchor: new google.maps.Point(0, 0),
+        labelOrigin: new google.maps.Point(0, 0),
+    };
+}
+
+/** Generate brand badge HTML for InfoWindow */
+function brandBadgeHtml(brand, stationName) {
+    const cfg = brand ? BRAND_CONFIG[brand] : null;
+    if (!cfg) return `<span style="font-size:18px;">⛽</span>`;
+
+    if (cfg.logo) {
+        return `<img src="${cfg.logo}" alt="${cfg.name}" style="width:28px;height:28px;border-radius:6px;object-fit:contain;background:#fff;padding:2px;border:1px solid #e5e7eb;" onerror="this.outerHTML='⛽'">`;
+    }
+    const initial = cfg.name.charAt(0);
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:${cfg.color};color:#fff;font-weight:bold;font-size:13px;">${initial}</span>`;
+}
+
+/**
  * Initialize Google Map
  */
 function initMap() {
@@ -270,23 +342,39 @@ function renderStationMarkers(stations) {
             else if (hasLow) color = '#eab308'; // yellow
         }
 
-        const marker = new google.maps.Marker({
+        // Detect brand for icon + badge
+        const stationName = station.name || station.station_name || '';
+        const brand = detectBrand(stationName);
+        const brandCfg = brand ? BRAND_CONFIG[brand] : null;
+
+        const markerIcon = createBrandMarkerIcon(brand, color);
+        const markerOpts = {
             position: { lat, lng },
             map: map,
-            icon: {
-                path: 'M-4,-12 L4,-12 L4,0 L0,4 L-4,0 Z', // gas pump shape
-                scale: 1.8,
-                fillColor: color,
-                fillOpacity: 1,
-                strokeColor: '#ffffff',
-                strokeWeight: 1.5,
-                anchor: new google.maps.Point(0, 4),
-            },
-            title: station.name || station.station_name,
-        });
+            icon: markerIcon,
+            title: stationName,
+            optimized: true,
+        };
+
+        // Add brand initial as label for non-logo markers
+        if (!brandCfg?.logo && brandCfg) {
+            markerOpts.label = {
+                text: brandCfg.name.charAt(0),
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: 'bold',
+            };
+        }
+
+        const marker = new google.maps.Marker(markerOpts);
 
         marker.addListener('click', () => {
-            const badge = '<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">LIVE</span>';
+            const brandBadge = brandBadgeHtml(brand, stationName);
+            const brandLabel = brandCfg ? `<span style="font-size:11px;color:${brandCfg.color};font-weight:600;">${brandCfg.name}</span>` : '';
+
+            const liveBadge = fuels.length > 0
+                ? '<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:bold;">LIVE</span>'
+                : '';
 
             const verifiedBadge = station.is_verified
                 ? '<span style="background:#3b82f6;color:#fff;padding:1px 6px;border-radius:9px;font-size:10px;">✓ ยืนยันแล้ว</span>'
@@ -310,21 +398,37 @@ function renderStationMarkers(stations) {
                 });
                 fuelHtml += '</div>';
             } else {
-                fuelHtml = '<p style="font-size:12px;color:#999;margin:6px 0;">ยังไม่มีรายงาน</p>';
+                fuelHtml = `
+                    <div style="margin:8px 0;padding:10px;background:#f8f9fa;border-radius:8px;text-align:center;">
+                        <p style="font-size:12px;color:#6b7280;margin:0 0 4px;">📋 ยังไม่มีรายงานข้อมูลน้ำมัน</p>
+                        <p style="font-size:11px;color:#9ca3af;margin:0;">เป็นคนแรกที่รายงานปั๊มนี้!</p>
+                    </div>
+                `;
             }
+
+            // Navigation button
+            const navBtn = `<a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#3b82f6;color:#fff;border-radius:6px;font-size:11px;text-decoration:none;margin-top:6px;">🧭 นำทาง</a>`;
 
             infoWindow.setContent(`
                 <div style="color:#1a1a2e;max-width:300px;font-family:sans-serif;">
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
-                        ${badge} ${verifiedBadge}
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        ${brandBadge}
+                        <div style="flex:1;">
+                            <h3 style="margin:0;font-size:14px;line-height:1.3;">${stationName}</h3>
+                            <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px;">
+                                ${brandLabel} ${liveBadge} ${verifiedBadge}
+                            </div>
+                        </div>
                     </div>
-                    <h3 style="margin:4px 0;font-size:14px;">⛽ ${station.name || station.station_name}</h3>
-                    ${station.vicinity || station.note ? `<p style="margin:0 0 2px;font-size:11px;color:#666;">${station.vicinity || station.note}</p>` : ''}
+                    ${station.vicinity || station.note ? `<p style="margin:0 0 4px;font-size:11px;color:#666;">📍 ${station.vicinity || station.note}</p>` : ''}
                     ${fuelHtml}
-                    <div style="font-size:11px;color:#888;margin-top:4px;">
-                        ${station.reporter_name ? `📝 ${station.reporter_name}` : ''}
-                        ${station.last_report_at ? ` &bull; ${timeAgo(station.last_report_at)}` : ''}
-                        ${station.confirmation_count ? ` &bull; 👥 ${station.confirmation_count} ยืนยัน` : ''}
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                        <div style="font-size:10px;color:#888;">
+                            ${station.reporter_name ? `📝 ${station.reporter_name}` : ''}
+                            ${station.last_report_at ? ` &bull; ${timeAgo(station.last_report_at)}` : ''}
+                            ${station.confirmation_count ? ` &bull; 👥 ${station.confirmation_count}` : ''}
+                        </div>
+                        ${navBtn}
                     </div>
                 </div>
             `);

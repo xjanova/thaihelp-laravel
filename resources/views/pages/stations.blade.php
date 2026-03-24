@@ -232,27 +232,48 @@
             showStationDetail(station) {
                 const lat = station.latitude || station.lat;
                 const lng = station.longitude || station.lng;
-                const distKm = station.distance; // in KM
+                const distKm = station.distance;
                 const distStr = distKm !== undefined && distKm !== null
                     ? (distKm >= 1 ? distKm.toFixed(1) + ' กม.' : Math.round(distKm * 1000) + ' เมตร')
                     : '';
 
-                let fuelsHtml = '<p class="text-slate-500 text-sm">ยังไม่มีรายงานสถานะน้ำมัน</p>';
+                // Brand detection
+                const stName = station.name || station.station_name || '';
+                const brandKey = this.detectBrand(stName);
+                const brandCfg = brandKey ? this.brandConfig[brandKey] : null;
+
+                // Brand logo HTML
+                const brandLogoHtml = brandCfg?.logo
+                    ? `<img src="${brandCfg.logo}" alt="${brandCfg.name}" class="w-12 h-12 rounded-xl object-contain bg-white p-1 border border-slate-600" onerror="this.outerHTML='<span class=\\'text-3xl\\'>⛽</span>'">`
+                    : `<span class="inline-flex items-center justify-center w-12 h-12 rounded-xl text-white font-bold text-lg" style="background:${brandCfg?.color || '#6b7280'}">${brandCfg ? brandCfg.name.charAt(0) : '⛽'}</span>`;
+
+                // Fuel reports HTML
+                let fuelsHtml = '';
                 if (station.fuel_reports && station.fuel_reports.length > 0) {
                     fuelsHtml = '<div class="grid grid-cols-2 gap-2">' + station.fuel_reports.map(f => {
-                        const statusColor = f.status === 'available' ? 'text-green-400' : f.status === 'low' ? 'text-yellow-400' : 'text-red-400';
+                        const statusColor = f.status === 'available' ? 'text-green-400 border-green-500/30' : f.status === 'low' ? 'text-yellow-400 border-yellow-500/30' : 'text-red-400 border-red-500/30';
+                        const statusIcon = f.status === 'available' ? '🟢' : f.status === 'low' ? '🟡' : '🔴';
                         const statusText = f.status === 'available' ? 'มี' : f.status === 'low' ? 'เหลือน้อย' : 'หมด';
-                        return `<div class="metal-panel rounded-lg p-2">
-                            <div class="text-xs text-slate-400">${f.fuel_type}</div>
-                            <div class="text-sm font-semibold ${statusColor}">${statusText}</div>
-                            ${f.price ? `<div class="text-xs text-orange-400">${f.price} บ.</div>` : ''}
+                        const fuelLabels = {gasohol95:'แก๊สโซฮอล์ 95',gasohol91:'แก๊สโซฮอล์ 91',e20:'E20',e85:'E85',diesel:'ดีเซล',diesel_b7:'ดีเซล B7',premium_diesel:'ดีเซลพรีเมียม',ngv:'NGV',lpg:'LPG'};
+                        return `<div class="metal-panel rounded-lg p-2.5 border ${statusColor.split(' ')[1] || ''}">
+                            <div class="text-xs text-slate-400 mb-0.5">${fuelLabels[f.fuel_type] || f.fuel_type}</div>
+                            <div class="text-sm font-semibold ${statusColor.split(' ')[0]}">${statusIcon} ${statusText}</div>
+                            ${f.price ? `<div class="text-xs text-orange-400 mt-0.5">฿${parseFloat(f.price).toFixed(2)}</div>` : ''}
                         </div>`;
                     }).join('') + '</div>';
+                } else {
+                    fuelsHtml = `
+                        <div class="metal-panel rounded-xl p-4 text-center border border-dashed border-slate-600">
+                            <p class="text-2xl mb-2">📋</p>
+                            <p class="text-sm text-slate-400 font-medium">ยังไม่มีรายงานข้อมูลน้ำมัน</p>
+                            <p class="text-xs text-slate-500 mt-1">เป็นคนแรกที่รายงานปั๊มนี้!</p>
+                        </div>
+                    `;
                 }
 
                 const facilitiesHtml = station.facilities ? Object.keys(station.facilities).map(f => {
-                    const labels = {air:'ที่เติมลม',toilet:'ห้องน้ำ',convenience_store:'ร้านสะดวกซื้อ',car_wash:'ล้างรถ',coffee:'ร้านกาแฟ',wifi:'WiFi'};
-                    return `<span class="metal-btn px-2 py-1 rounded text-xs text-slate-300">${labels[f] || f}</span>`;
+                    const labels = {air_pump:'🌀 ที่เติมลม',restroom:'🚻 ห้องน้ำ',convenience:'🏪 ร้านสะดวกซื้อ',car_wash:'🚿 ล้างรถ',coffee:'☕ ร้านกาแฟ',wifi:'📶 WiFi',atm:'🏧 ATM',ev_charger:'🔌 ชาร์จ EV'};
+                    return `<span class="metal-btn px-2.5 py-1 rounded-lg text-xs text-slate-300">${labels[f] || f}</span>`;
                 }).join(' ') : '';
 
                 const modal = document.createElement('div');
@@ -260,28 +281,61 @@
                 modal.innerHTML = `
                     <div class="fixed inset-0 bg-black/60" onclick="this.parentElement.remove()"></div>
                     <div class="relative metal-panel rounded-2xl p-5 w-full max-w-md max-h-[80vh] overflow-y-auto z-10">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 class="text-lg font-bold text-white">${this.escHtml(station.name) || 'ปั๊มน้ำมัน'}</h3>
-                                <p class="text-sm text-slate-400">${this.escHtml(station.brand) || ''} ${distStr ? '• ' + distStr : ''}</p>
-                                ${station.vicinity ? `<p class="text-xs text-slate-500 mt-1">${this.escHtml(station.vicinity)}</p>` : ''}
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                ${brandLogoHtml}
+                                <div>
+                                    <h3 class="text-lg font-bold text-white">${this.escHtml(stName) || 'ปั๊มน้ำมัน'}</h3>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        ${brandCfg ? `<span class="text-xs font-medium" style="color:${brandCfg.color}">${brandCfg.name}</span>` : ''}
+                                        ${distStr ? `<span class="text-xs text-slate-500">${distStr}</span>` : ''}
+                                        ${station.is_verified ? '<span class="text-xs text-blue-400">✅ ยืนยันแล้ว</span>' : ''}
+                                    </div>
+                                    ${station.vicinity ? `<p class="text-xs text-slate-500 mt-0.5">📍 ${this.escHtml(station.vicinity)}</p>` : ''}
+                                </div>
                             </div>
-                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-white text-xl">✕</button>
+                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-white text-xl leading-none">✕</button>
                         </div>
-                        <div class="mb-3">
-                            <h4 class="text-xs font-semibold text-slate-400 mb-2">สถานะน้ำมัน</h4>
+                        <div class="mb-4">
+                            <h4 class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">สถานะน้ำมัน</h4>
                             ${fuelsHtml}
                         </div>
-                        ${facilitiesHtml ? `<div class="mb-3"><h4 class="text-xs font-semibold text-slate-400 mb-2">สิ่งอำนวยความสะดวก</h4><div class="flex flex-wrap gap-1">${facilitiesHtml}</div></div>` : ''}
-                        ${station.last_report_at ? `<p class="text-xs text-slate-500 mb-3">รายงานล่าสุด: ${new Date(station.last_report_at).toLocaleString('th-TH')}</p>` : ''}
-                        ${station.is_verified ? '<p class="text-xs text-green-400 mb-3">✅ ยืนยันแล้ว</p>' : ''}
+                        ${facilitiesHtml ? `<div class="mb-4"><h4 class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">สิ่งอำนวยความสะดวก</h4><div class="flex flex-wrap gap-1.5">${facilitiesHtml}</div></div>` : ''}
+                        ${station.last_report_at ? `<p class="text-xs text-slate-500 mb-3">🕐 รายงานล่าสุด: ${new Date(station.last_report_at).toLocaleString('th-TH')}</p>` : ''}
                         <div class="flex gap-2">
-                            ${lat && lng ? `<button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}','_blank')" class="metal-btn-accent flex-1 py-2.5 rounded-lg text-sm text-white font-medium">🗺️ นำทาง</button>` : ''}
-                            <button onclick="window.location.href='/report'" class="metal-btn flex-1 py-2.5 rounded-lg text-sm text-slate-300">📝 รายงานปั๊มนี้</button>
+                            ${lat && lng ? `<button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}','_blank')" class="metal-btn-accent flex-1 py-2.5 rounded-xl text-sm text-white font-medium">🧭 นำทาง</button>` : ''}
+                            <button onclick="window.location.href='/report'" class="metal-btn flex-1 py-2.5 rounded-xl text-sm text-slate-300">📝 รายงาน</button>
                         </div>
                     </div>
                 `;
                 document.body.appendChild(modal);
+            },
+
+            // Brand detection helper (matches maps.js detectBrand)
+            brandConfig: {
+                ptt:      { name: 'PTT Station',  color: '#1e3a8a', logo: 'https://logo.clearbit.com/pttor.com' },
+                shell:    { name: 'Shell',         color: '#dd1d21', logo: 'https://logo.clearbit.com/shell.com' },
+                bangchak: { name: 'Bangchak',      color: '#006838', logo: 'https://logo.clearbit.com/bangchak.co.th' },
+                esso:     { name: 'Esso',          color: '#d62631', logo: 'https://logo.clearbit.com/esso.com' },
+                caltex:   { name: 'Caltex',        color: '#c8102e', logo: 'https://logo.clearbit.com/caltex.com' },
+                susco:    { name: 'Susco',         color: '#7c3aed', logo: 'https://logo.clearbit.com/susco.co.th' },
+                pt:       { name: 'PT',            color: '#ea580c', logo: 'https://logo.clearbit.com/pt.co.th' },
+                pure:     { name: 'PURE',          color: '#0284c7', logo: null },
+                irpc:     { name: 'IRPC',          color: '#0d9488', logo: 'https://logo.clearbit.com/irpc.co.th' },
+            },
+            detectBrand(name) {
+                if (!name) return null;
+                const n = name.toLowerCase();
+                if (n.includes('ptt') || n.includes('ปตท'))             return 'ptt';
+                if (n.includes('shell') || n.includes('เชลล์'))         return 'shell';
+                if (n.includes('bangchak') || n.includes('บางจาก'))     return 'bangchak';
+                if (n.includes('esso') || n.includes('เอสโซ'))         return 'esso';
+                if (n.includes('caltex') || n.includes('คาลเท็กซ์'))   return 'caltex';
+                if (n.includes('susco') || n.includes('ซัสโก้'))       return 'susco';
+                if (n.includes('pt ') || n === 'pt')                     return 'pt';
+                if (n.includes('pure') || n.includes('เพียว'))           return 'pure';
+                if (n.includes('irpc'))                                  return 'irpc';
+                return null;
             },
 
             renderStations() {
