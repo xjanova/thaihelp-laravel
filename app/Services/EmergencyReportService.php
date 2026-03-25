@@ -180,7 +180,7 @@ class EmergencyReportService
                 $payload['content'] .= "\n📞 **โทรแจ้ง:** `1669` (การแพทย์ฉุกเฉิน) | `191` (ตำรวจ) | `199` (ดับเพลิง)";
             }
 
-            $response = Http::post($webhookUrl, $payload);
+            $response = Http::timeout(10)->post($webhookUrl, $payload);
             return $response->successful();
         } catch (\Exception $e) {
             Log::warning('Discord emergency report failed', ['error' => $e->getMessage()]);
@@ -254,6 +254,7 @@ class EmergencyReportService
             ];
 
             $response = Http::withToken($channelToken)
+                ->timeout(10)
                 ->post('https://api.line.me/v2/bot/message/push', $payload);
 
             return $response->successful();
@@ -315,7 +316,7 @@ class EmergencyReportService
             'high' => 0xf97316,
             'medium' => 0xeab308,
             'low' => 0x22c55e,
-            null, default => 0xeab308,
+            default => 0xeab308,
         };
     }
 }

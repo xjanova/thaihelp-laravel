@@ -51,7 +51,7 @@ class NewsScraperService
 
                 if (!$response->ok()) continue;
 
-                $xml = simplexml_load_string($response->body());
+                $xml = simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NONET);
                 if (!$xml || !isset($xml->channel->item)) continue;
 
                 foreach ($xml->channel->item as $item) {
@@ -106,7 +106,7 @@ class NewsScraperService
 
             if (!$response->ok()) return 0;
 
-            $xml = @simplexml_load_string($response->body());
+            $xml = @simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NONET);
             if (!$xml || !isset($xml->channel->item)) return 0;
 
             foreach ($xml->channel->item as $item) {
@@ -158,7 +158,7 @@ class NewsScraperService
 
                 if (!$response->ok()) continue;
 
-                $xml = @simplexml_load_string($response->body());
+                $xml = @simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NONET);
                 if (!$xml) continue;
 
                 $items = $xml->channel->item ?? $xml->entry ?? [];
@@ -230,7 +230,7 @@ class NewsScraperService
 
             if (!$response->ok()) return 0;
 
-            $xml = @simplexml_load_string($response->body());
+            $xml = @simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NONET);
             if (!$xml || !isset($xml->channel->item)) return 0;
 
             $index = 0;

@@ -17,6 +17,10 @@ class BreakingNewsService
      */
     public function checkForBreakingNews(Incident $newIncident): ?BreakingNews
     {
+        if ($newIncident->latitude === null || $newIncident->longitude === null) {
+            return null;
+        }
+
         // Find similar incidents in the same area (last 2 hours)
         $similar = Incident::where('id', '!=', $newIncident->id)
             ->where('category', $newIncident->category)

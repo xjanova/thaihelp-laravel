@@ -76,8 +76,12 @@ class TtsController extends Controller
         // Global concurrent TTS limit (prevent too many subprocesses)
         $concurrentKey = 'tts_concurrent_count';
         $maxConcurrent = 5; // max 5 TTS processes at once
-        $concurrent = (int) Cache::get($concurrentKey, 0);
-        if ($concurrent >= $maxConcurrent) {
+        $concurrent = (int) Cache::increment($concurrentKey);
+        if ($concurrent === 1) {
+            Cache::put($concurrentKey, 1, 60);
+        }
+        if ($concurrent > $maxConcurrent) {
+            Cache::decrement($concurrentKey);
             Cache::forget($lockKey);
             return response()->json([
                 'success' => false,
@@ -85,7 +89,6 @@ class TtsController extends Controller
                 'message' => 'ระบบเสียงมีคนใช้เยอะค่ะ ใช้เสียงเบราว์เซอร์แทนนะคะ',
             ], 200);
         }
-        Cache::put($concurrentKey, $concurrent + 1, 60);
 
         // Generate using Edge TTS
         $audio = null;
@@ -96,8 +99,8 @@ class TtsController extends Controller
         } finally {
             // Release locks
             Cache::forget($lockKey);
-            $cur = (int) Cache::get($concurrentKey, 1);
-            Cache::put($concurrentKey, max(0, $cur - 1), 60);
+            $cur = (int) Cache::decrement($concurrentKey);
+            if ($cur < 0) Cache::put($concurrentKey, 0, 60);
         }
 
         if (!$audio) {

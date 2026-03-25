@@ -66,16 +66,18 @@ class AbuseProtection
             return response()->json(['error' => 'Access denied'], 403);
         }
 
-        // Layer 2: Rapid-fire detection (per IP)
+        // Layer 2: Rapid-fire detection (per IP) — atomic increment
         $burstKey = "abuse_burst_{$ip}";
-        $burstCount = (int) Cache::get($burstKey, 0);
-        if ($burstCount >= self::BURST_LIMIT) {
+        $burstCount = (int) Cache::increment($burstKey);
+        if ($burstCount === 1) {
+            Cache::put($burstKey, 1, self::BURST_WINDOW);
+        }
+        if ($burstCount > self::BURST_LIMIT) {
             return response()->json([
                 'error' => 'Too many requests. Please slow down.',
                 'retry_after' => self::BURST_WINDOW,
             ], 429)->header('Retry-After', self::BURST_WINDOW);
         }
-        Cache::put($burstKey, $burstCount + 1, self::BURST_WINDOW);
 
         // Layer 3: Suspicious request patterns (API endpoints only)
         if ($request->is('api/*') && !$request->is('api/heartbeat')) {
@@ -94,16 +96,18 @@ class AbuseProtection
             }
         }
 
-        // Layer 4: Global circuit breaker
+        // Layer 4: Global circuit breaker — atomic increment
         $globalKey = 'abuse_global_rpm';
-        $globalCount = (int) Cache::get($globalKey, 0);
-        if ($globalCount >= self::GLOBAL_RPM_LIMIT) {
+        $globalCount = (int) Cache::increment($globalKey);
+        if ($globalCount === 1) {
+            Cache::put($globalKey, 1, 60);
+        }
+        if ($globalCount > self::GLOBAL_RPM_LIMIT) {
             return response()->json([
-                'error' => 'ระบบมีผู้ใช้เยอะมากค่ะ กรุณาลองใหม่อีกสักครู่นะคะ 🙏',
+                'error' => 'ระบบมีผู้ใช้เยอะมากค่ะ กรุณาลองใหม่อีกสักครู่นะคะ',
                 'retry_after' => 30,
             ], 503)->header('Retry-After', 30);
         }
-        Cache::put($globalKey, $globalCount + 1, 60);
 
         return $next($request);
     }

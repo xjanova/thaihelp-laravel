@@ -142,15 +142,24 @@ class DiscordInteractionController extends Controller
         try {
             $incident = Incident::create([
                 'category' => $category,
-                'title' => $title,
+                'title' => mb_substr($title, 0, 200),
                 'description' => $description
-                    ? "[Discord: {$username}] {$description}"
+                    ? "[Discord: {$username}] " . mb_substr($description, 0, 2000)
                     : "[แจ้งผ่าน Discord โดย {$username}]",
+                'severity' => 'medium',
+                'status' => 'active',
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'is_active' => true,
+                'report_source' => 'discord',
                 'expires_at' => now()->addHours(24),
             ]);
+
+            // Set non-fillable fields explicitly
+            $incident->reporter_ip = request()->ip();
+            $incident->upvotes = 0;
+            $incident->confirmation_count = 1;
+            $incident->save();
 
             $emoji = Incident::CATEGORY_EMOJI[$category] ?? '⚠️';
             $label = Incident::CATEGORY_LABELS[$category] ?? $category;

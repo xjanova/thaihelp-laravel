@@ -78,7 +78,7 @@ class ExternalDataService
      */
     public function getWeather(float $lat, float $lng): array
     {
-        $cacheKey = "ext_weather_{$lat}_{$lng}";
+        $cacheKey = 'ext_weather_' . round($lat, 2) . '_' . round($lng, 2);
         return Cache::remember($cacheKey, 1800, function () use ($lat, $lng) { // 30 min
             try {
                 $response = Http::timeout(10)->get('https://api.open-meteo.com/v1/forecast', [
@@ -107,18 +107,22 @@ class ExternalDataService
                         'description' => $this->weatherCodeToThai($current['weather_code'] ?? 0),
                         'icon' => $this->weatherCodeToIcon($current['weather_code'] ?? 0),
                     ],
-                    'forecast' => array_map(function ($i) use ($data) {
+                    'forecast' => (function () use ($data) {
                         $daily = $data['daily'] ?? [];
-                        return [
-                            'date' => $daily['time'][$i] ?? null,
-                            'temp_max' => $daily['temperature_2m_max'][$i] ?? null,
-                            'temp_min' => $daily['temperature_2m_min'][$i] ?? null,
-                            'rain_sum' => $daily['precipitation_sum'][$i] ?? 0,
-                            'rain_chance' => $daily['precipitation_probability_max'][$i] ?? 0,
-                            'weather_code' => $daily['weather_code'][$i] ?? 0,
-                            'icon' => $this->weatherCodeToIcon($daily['weather_code'][$i] ?? 0),
-                        ];
-                    }, range(0, min(2, count($data['daily']['time'] ?? []) - 1))),
+                        $days = $daily['time'] ?? [];
+                        if (empty($days)) return [];
+                        return array_map(function ($i) use ($daily) {
+                            return [
+                                'date' => $daily['time'][$i] ?? null,
+                                'temp_max' => $daily['temperature_2m_max'][$i] ?? null,
+                                'temp_min' => $daily['temperature_2m_min'][$i] ?? null,
+                                'rain_sum' => $daily['precipitation_sum'][$i] ?? 0,
+                                'rain_chance' => $daily['precipitation_probability_max'][$i] ?? 0,
+                                'weather_code' => $daily['weather_code'][$i] ?? 0,
+                                'icon' => $this->weatherCodeToIcon($daily['weather_code'][$i] ?? 0),
+                            ];
+                        }, range(0, min(2, count($days) - 1)));
+                    })(),
                 ];
             } catch (\Exception $e) {
                 Log::warning('Weather fetch failed', ['error' => $e->getMessage()]);
@@ -132,7 +136,7 @@ class ExternalDataService
      */
     public function getAirQuality(float $lat, float $lng): array
     {
-        $cacheKey = "ext_aqi_{$lat}_{$lng}";
+        $cacheKey = 'ext_aqi_' . round($lat, 2) . '_' . round($lng, 2);
         return Cache::remember($cacheKey, 1800, function () use ($lat, $lng) { // 30 min
             try {
                 // Use WAQI demo token (limited but free)
@@ -208,7 +212,8 @@ class ExternalDataService
      */
     public function getTrafficAlerts(float $lat, float $lng): array
     {
-        return Cache::remember("ext_traffic_{$lat}_{$lng}", 600, function () use ($lat, $lng) {
+        $cacheKey = 'ext_traffic_' . round($lat, 2) . '_' . round($lng, 2);
+        return Cache::remember($cacheKey, 600, function () use ($lat, $lng) {
             // ดึงจาก incidents ของเราที่เป็น roadblock, accident, checkpoint
             try {
                 $incidents = \App\Models\Incident::active()

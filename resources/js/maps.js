@@ -15,6 +15,14 @@ let currentFilter = 'all';
 let refreshInterval;
 let userPosition = null;
 
+/**
+ * Escape HTML to prevent XSS in InfoWindow innerHTML.
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
 const CATEGORY_COLORS = {
     accident: '#ef4444',
     flood: '#3b82f6',
@@ -285,10 +293,10 @@ function renderIncidentMarkers(incidents) {
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
                         ${badge}
                         <span style="font-size:14px;font-weight:bold;">
-                            ${CATEGORY_EMOJI[incident.category] || '📌'} ${incident.title}
+                            ${CATEGORY_EMOJI[incident.category] || '📌'} ${escapeHtml(incident.title)}
                         </span>
                     </div>
-                    <p style="margin:0 0 6px;font-size:12px;color:#555;">${incident.description || ''}</p>
+                    <p style="margin:0 0 6px;font-size:12px;color:#555;">${escapeHtml(incident.description)}</p>
                     <div style="font-size:11px;color:#888;">
                         👍 ${incident.upvotes || 0} &bull; ${timeAgo(incident.created_at)}
                     </div>
@@ -370,7 +378,7 @@ function renderStationMarkers(stations) {
                     const price = f.price ? `฿${parseFloat(f.price).toFixed(2)}` : '';
                     fuelHtml += `
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #eee;">
-                            <span style="font-size:12px;">${FUEL_LABELS[f.fuel_type] || f.fuel_type}</span>
+                            <span style="font-size:12px;">${FUEL_LABELS[f.fuel_type] || escapeHtml(f.fuel_type)}</span>
                             <div style="display:flex;gap:6px;align-items:center;">
                                 ${price ? `<span style="font-size:11px;color:#666;">${price}</span>` : ''}
                                 <span style="background:${s.bg};color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;">${s.text}</span>
@@ -396,17 +404,17 @@ function renderStationMarkers(stations) {
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                         ${brandBadge}
                         <div style="flex:1;">
-                            <h3 style="margin:0;font-size:14px;line-height:1.3;">${stationName}</h3>
+                            <h3 style="margin:0;font-size:14px;line-height:1.3;">${escapeHtml(stationName)}</h3>
                             <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px;">
                                 ${brandLabel} ${liveBadge} ${verifiedBadge}
                             </div>
                         </div>
                     </div>
-                    ${station.vicinity || station.note ? `<p style="margin:0 0 4px;font-size:11px;color:#666;">📍 ${station.vicinity || station.note}</p>` : ''}
+                    ${station.vicinity || station.note ? `<p style="margin:0 0 4px;font-size:11px;color:#666;">📍 ${escapeHtml(station.vicinity || station.note)}</p>` : ''}
                     ${fuelHtml}
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
                         <div style="font-size:10px;color:#888;">
-                            ${station.reporter_name ? `📝 ${station.reporter_name}` : ''}
+                            ${station.reporter_name ? `📝 ${escapeHtml(station.reporter_name)}` : ''}
                             ${station.last_report_at ? ` &bull; ${timeAgo(station.last_report_at)}` : ''}
                             ${station.confirmation_count ? ` &bull; 👥 ${station.confirmation_count}` : ''}
                         </div>

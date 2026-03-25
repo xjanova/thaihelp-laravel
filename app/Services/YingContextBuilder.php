@@ -105,7 +105,8 @@ class YingContextBuilder
     {
         try {
             // Try to use cached Google Places data first (from /stations page)
-            $cacheKey = 'places_nearby_' . round($lat, 2) . '_' . round($lng, 2);
+            // Match GooglePlacesService cache key format (4 decimal places + radius)
+            $cacheKey = 'places_nearby_' . round($lat, 4) . '_' . round($lng, 4) . "_{$radiusKm}";
             $googleStations = Cache::get($cacheKey, []);
 
             // Also get DB station reports with bounding box pre-filter
@@ -125,7 +126,7 @@ class YingContextBuilder
 
             // Add Google Places stations (if cached)
             foreach (array_slice($googleStations, 0, 10) as $gs) {
-                $dist = $this->haversine($lat, $lng, $gs['lat'] ?? 0, $gs['lng'] ?? 0);
+                $dist = $this->haversine($lat, $lng, $gs['latitude'] ?? 0, $gs['longitude'] ?? 0);
                 if ($dist > $radiusKm) continue;
 
                 $placeId = $gs['place_id'] ?? '';

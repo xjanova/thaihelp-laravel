@@ -41,22 +41,22 @@ class IncidentController extends Controller
             $lng = $request->query('lng');
             $radius = $request->query('radius', 50); // Default 50km
 
-            if ($lat && $lng) {
+            if ($lat !== null && $lng !== null) {
                 $query->withinRadius((float) $lat, (float) $lng, (float) $radius);
             }
 
-            // Category filter
-            if ($request->query('category')) {
+            // Category filter — validate against allowed list
+            if ($request->query('category') && in_array($request->query('category'), Incident::CATEGORIES)) {
                 $query->where('category', $request->query('category'));
             }
 
-            // Severity filter
-            if ($request->query('severity')) {
+            // Severity filter — validate against allowed list
+            if ($request->query('severity') && in_array($request->query('severity'), Incident::SEVERITIES)) {
                 $query->where('severity', $request->query('severity'));
             }
 
-            // Status filter
-            if ($request->query('status')) {
+            // Status filter — validate against allowed list
+            if ($request->query('status') && in_array($request->query('status'), Incident::STATUSES)) {
                 $query->where('status', $request->query('status'));
             }
 
@@ -121,13 +121,16 @@ class IncidentController extends Controller
                 'affected_lanes' => $validated['affected_lanes'] ?? null,
                 'has_injuries' => $validated['has_injuries'] ?? false,
                 'emergency_notified' => $validated['emergency_notified'] ?? false,
-                'reporter_ip' => $request->ip(),
                 'report_source' => $validated['report_source'] ?? 'app',
-                'upvotes' => 0,
-                'confirmation_count' => 1,
                 'is_active' => true,
                 'expires_at' => now()->addHours(8),
             ]);
+
+            // Set non-fillable fields explicitly
+            $incident->reporter_ip = $request->ip();
+            $incident->upvotes = 0;
+            $incident->confirmation_count = 1;
+            $incident->save();
 
             $incident->load('user:id,nickname,avatar_url');
 
@@ -206,13 +209,15 @@ class IncidentController extends Controller
                 $request->user()->increment('total_confirmations');
             }
 
+            $updated = $incident->fresh();
+
             return response()->json([
                 'success' => true,
                 'message' => 'ยืนยันรายงานสำเร็จ!',
                 'data' => [
-                    'upvotes' => $incident->fresh()->upvotes,
-                    'confirmation_count' => $incident->fresh()->confirmation_count,
-                    'status' => $incident->fresh()->status,
+                    'upvotes' => $updated->upvotes,
+                    'confirmation_count' => $updated->confirmation_count,
+                    'status' => $updated->status,
                 ],
             ]);
         } catch (\Exception $e) {

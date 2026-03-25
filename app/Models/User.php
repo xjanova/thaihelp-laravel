@@ -21,7 +21,6 @@ class User extends Authenticatable implements FilamentUser
         'avatar_url',
         'provider',
         'provider_id',
-        'is_admin',
         'reputation_score',
         'total_reports',
         'total_confirmations',

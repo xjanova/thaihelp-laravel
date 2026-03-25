@@ -16,12 +16,12 @@ class HospitalController extends Controller {
         try {
             $lat = $request->query('lat');
             $lng = $request->query('lng');
-            $radius = $request->query('radius', 30);
+            $radius = min((float) $request->query('radius', 30), 100); // cap at 100km
 
             $query = HospitalReport::with('user:id,nickname,avatar_url')
                 ->latest();
 
-            if ($lat && $lng) {
+            if ($lat !== null && $lng !== null) {
                 $query->withinRadius((float)$lat, (float)$lng, (float)$radius);
             }
 

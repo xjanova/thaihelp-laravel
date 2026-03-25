@@ -254,7 +254,7 @@
                         const statusText = f.status === 'available' ? 'มี' : f.status === 'low' ? 'เหลือน้อย' : 'หมด';
                         const fuelLabels = {gasohol95:'แก๊สโซฮอล์ 95',gasohol91:'แก๊สโซฮอล์ 91',e20:'E20',e85:'E85',diesel:'ดีเซล',diesel_b7:'ดีเซล B7',premium_diesel:'ดีเซลพรีเมียม',ngv:'NGV',lpg:'LPG'};
                         return `<div class="metal-panel rounded-lg p-2.5 border ${statusColor.split(' ')[1] || ''}">
-                            <div class="text-xs text-slate-400 mb-0.5">${fuelLabels[f.fuel_type] || f.fuel_type}</div>
+                            <div class="text-xs text-slate-400 mb-0.5">${fuelLabels[f.fuel_type] || this.escHtml(f.fuel_type)}</div>
                             <div class="text-sm font-semibold ${statusColor.split(' ')[0]}">${statusIcon} ${statusText}</div>
                             ${f.price ? `<div class="text-xs text-orange-400 mt-0.5">฿${parseFloat(f.price).toFixed(2)}</div>` : ''}
                         </div>`;
@@ -271,7 +271,7 @@
 
                 const facilitiesHtml = station.facilities ? Object.keys(station.facilities).map(f => {
                     const labels = {air_pump:'🌀 ที่เติมลม',restroom:'🚻 ห้องน้ำ',convenience:'🏪 ร้านสะดวกซื้อ',car_wash:'🚿 ล้างรถ',coffee:'☕ ร้านกาแฟ',wifi:'📶 WiFi',atm:'🏧 ATM',ev_charger:'🔌 ชาร์จ EV'};
-                    return `<span class="metal-btn px-2.5 py-1 rounded-lg text-xs text-slate-300">${labels[f] || f}</span>`;
+                    return `<span class="metal-btn px-2.5 py-1 rounded-lg text-xs text-slate-300">${labels[f] || this.escHtml(f)}</span>`;
                 }).join(' ') : '';
 
                 const modal = document.createElement('div');
@@ -389,7 +389,7 @@
                             const fuelEl = document.createElement('div');
                             fuelEl.className = 'metal-panel rounded-lg p-2 text-center';
                             fuelEl.innerHTML = `
-                                <div class="text-[10px] text-slate-400">${fuel.name || fuel.type || ''}</div>
+                                <div class="text-[10px] text-slate-400">${this.escHtml(fuel.name || fuel.type || '')}</div>
                                 <div class="text-sm font-semibold text-orange-500">${fuel.price ? fuel.price.toFixed(2) : '-'}</div>
                             `;
                             fuelsGrid.appendChild(fuelEl);

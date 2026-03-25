@@ -12,6 +12,8 @@ class AuthController extends Controller
 {
     /**
      * Login with nickname (no password required).
+     * Only creates NEW nickname accounts. Cannot impersonate existing
+     * OAuth (Google/LINE) users or admin accounts.
      */
     public function loginNickname(Request $request)
     {
@@ -21,14 +23,34 @@ class AuthController extends Controller
         ]);
 
         try {
-            $user = User::firstOrCreate(
-                ['nickname' => $validated['nickname']],
-                [
-                    'name' => $validated['nickname'],
-                    'email' => $validated['email'] ?? null,
-                    'provider' => 'nickname',
-                ]
-            );
+            $nickname = $validated['nickname'];
+
+            // Check if nickname is taken by an OAuth or admin user — prevent impersonation
+            $existing = User::where('nickname', $nickname)->first();
+            if ($existing) {
+                // Allow re-login only if it's a nickname-provider account (not OAuth/admin)
+                if ($existing->provider !== 'nickname') {
+                    return back()->withErrors([
+                        'nickname' => 'ชื่อนี้ถูกใช้โดยบัญชี Google/LINE แล้ว กรุณาใช้ชื่ออื่น',
+                    ]);
+                }
+                if ($existing->is_admin) {
+                    return back()->withErrors([
+                        'nickname' => 'ไม่สามารถเข้าสู่ระบบด้วยชื่อนี้ได้',
+                    ]);
+                }
+                // Same nickname-provider user — allow re-login
+                Auth::login($existing, remember: true);
+                return redirect()->intended('/');
+            }
+
+            // Create new nickname account
+            $user = User::create([
+                'nickname' => $nickname,
+                'name' => $nickname,
+                'email' => $validated['email'] ?? null,
+                'provider' => 'nickname',
+            ]);
 
             Auth::login($user, remember: true);
 

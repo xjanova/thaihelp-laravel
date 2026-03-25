@@ -23,24 +23,32 @@ Route::post('/incidents/{incident}/resolve', [IncidentController::class, 'resolv
 
 // External Data (แผ่นดินไหว, อากาศ, AQI, น้ำท่วม, จราจร)
 Route::get('/external-data', function (\Illuminate\Http\Request $request) {
-    $lat = $request->query('lat', 13.7563);
-    $lng = $request->query('lng', 100.5018);
-    $types = $request->query('types', 'all'); // all, earthquakes, weather, air_quality, flood_warnings, traffic
+    $request->validate([
+        'lat' => ['nullable', 'numeric', 'between:-90,90'],
+        'lng' => ['nullable', 'numeric', 'between:-180,180'],
+        'types' => ['nullable', 'string', 'max:200'],
+    ]);
+
+    $lat = (float) $request->query('lat', 13.7563);
+    $lng = (float) $request->query('lng', 100.5018);
+    $types = $request->query('types', 'all');
 
     $service = app(\App\Services\ExternalDataService::class);
+    $allowedTypes = ['earthquakes', 'weather', 'air_quality', 'flood_warnings', 'traffic'];
 
     if ($types === 'all') {
-        $data = $service->getAll((float) $lat, (float) $lng);
+        $data = $service->getAll($lat, $lng);
     } else {
         $data = [];
         foreach (explode(',', $types) as $type) {
             $type = trim($type);
+            if (!in_array($type, $allowedTypes)) continue;
             $data[$type] = match ($type) {
                 'earthquakes' => $service->getEarthquakes(),
-                'weather' => $service->getWeather((float) $lat, (float) $lng),
-                'air_quality' => $service->getAirQuality((float) $lat, (float) $lng),
+                'weather' => $service->getWeather($lat, $lng),
+                'air_quality' => $service->getAirQuality($lat, $lng),
                 'flood_warnings' => $service->getFloodWarnings(),
-                'traffic' => $service->getTrafficAlerts((float) $lat, (float) $lng),
+                'traffic' => $service->getTrafficAlerts($lat, $lng),
                 default => [],
             };
         }

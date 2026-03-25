@@ -351,7 +351,7 @@ function hospitalsPage() {
                 };
                 const res = await fetch('/api/hospitals', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content },
                     body: JSON.stringify(payload),
                 });
                 if (!res.ok) throw new Error('ส่งรายงานไม่สำเร็จ');

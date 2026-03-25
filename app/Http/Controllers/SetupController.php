@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class SetupController extends Controller
@@ -51,9 +52,10 @@ class SetupController extends Controller
                 'tables' => $this->getExistingTables(),
             ]);
         } catch (\Exception $e) {
+            Log::error('Migration failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'Migration failed. Check server logs for details.',
             ], 500);
         }
     }
@@ -86,9 +88,10 @@ class SetupController extends Controller
                     'nickname' => $request->admin_name,
                     'email' => $request->admin_email,
                     'password' => Hash::make($request->admin_password),
-                    'is_admin' => true,
                 ]
             );
+            $admin->is_admin = true;
+            $admin->save();
 
             // Save site settings
             SiteSetting::set('site_name', $request->site_name, 'general');
@@ -97,15 +100,19 @@ class SetupController extends Controller
             SiteSetting::set('default_map_lng', $request->default_map_lng ?? '100.5018', 'map');
             SiteSetting::set('setup_completed', 'true', 'system');
 
+            // Bust the CheckSetup middleware cache so redirect stops immediately
+            \Illuminate\Support\Facades\Cache::forget('setup_completed');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Setup completed!',
                 'admin_id' => $admin->id,
             ]);
         } catch (\Exception $e) {
+            Log::error('Setup configure failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => 'Configuration failed. Check server logs for details.',
             ], 500);
         }
     }
@@ -119,7 +126,8 @@ class SetupController extends Controller
             if (!Schema::hasTable('site_settings')) {
                 return false;
             }
-            return SiteSetting::get('setup_completed') === 'true';
+            $val = SiteSetting::get('setup_completed');
+            return $val === 'true' || $val === '1';
         } catch (\Exception $e) {
             return false;
         }

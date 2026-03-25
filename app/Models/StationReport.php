@@ -21,13 +21,12 @@ class StationReport extends Model
         'note',
         'latitude',
         'longitude',
-        'confirmation_count',
-        'confirmed_ips',
-        'is_verified',
         'is_demo',
         'facilities',
         'source',
     ];
+
+    // confirmation_count, confirmed_ips, is_verified — managed by confirm() only
 
     public const FACILITY_TYPES = [
         'air_pump'      => ['label' => 'ที่เติมลม', 'icon' => '🌀'],
@@ -59,12 +58,13 @@ class StationReport extends Model
     public function confirm(string $ip): bool
     {
         $confirmedIps = $this->confirmed_ips ?? [];
+        $ipHash = hash('sha256', $ip . config('app.key'));
 
-        if (in_array($ip, $confirmedIps, true)) {
+        if (in_array($ipHash, $confirmedIps, true)) {
             return false;
         }
 
-        $confirmedIps[] = $ip;
+        $confirmedIps[] = $ipHash;
 
         $this->confirmed_ips = $confirmedIps;
         $this->confirmation_count = count($confirmedIps);

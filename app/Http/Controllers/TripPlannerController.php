@@ -201,15 +201,15 @@ class TripPlannerController extends Controller
             }
         }
 
-        // If no steps, interpolate between origin and destination
-        if (empty($points)) {
+        // If no steps, use start/end address as coordinates fallback
+        if (empty($points) && !empty($route['start_address']) && !empty($route['end_address'])) {
             $points[] = [
-                'lat' => (float) request('origin_lat'),
-                'lng' => (float) request('origin_lng'),
+                'lat' => (float) request('origin_lat', 0),
+                'lng' => (float) request('origin_lng', 0),
             ];
             $points[] = [
-                'lat' => (float) request('dest_lat'),
-                'lng' => (float) request('dest_lng'),
+                'lat' => (float) request('dest_lat', 0),
+                'lng' => (float) request('dest_lng', 0),
             ];
         }
 

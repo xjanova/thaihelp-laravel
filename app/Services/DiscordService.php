@@ -73,7 +73,7 @@ class DiscordService
                 'embeds' => $embeds ?: null,
             ]);
 
-            return Http::post($this->webhookUrl(), $payload)->successful();
+            return Http::timeout(10)->post($this->webhookUrl(), $payload)->successful();
         } catch (\Exception $e) {
             Log::error('Discord webhook failed', ['error' => $e->getMessage()]);
             return false;
@@ -95,7 +95,7 @@ class DiscordService
                 'embeds' => $embeds ?: null,
             ]);
 
-            return Http::withHeaders([
+            return Http::timeout(10)->withHeaders([
                 'Authorization' => "Bot {$this->token()}",
             ])->post(self::API . "/channels/{$channelId}/messages", $payload)->successful();
         } catch (\Exception $e) {

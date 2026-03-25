@@ -280,6 +280,12 @@
 
 @push('scripts')
 <script>
+    // Escape HTML to prevent XSS in innerHTML
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
     // ─── Brand Configuration — real WebP icons at /images/brands/ ───
     const _BRAND_CFG = {
         ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.webp' },
@@ -456,11 +462,11 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                             ${brandBadge}
                             <div>
-                                <div style="font-weight:bold;font-size:14px;">${stName || 'ปั๊มน้ำมัน'}</div>
+                                <div style="font-weight:bold;font-size:14px;">${escHtml(stName) || 'ปั๊มน้ำมัน'}</div>
                                 <div style="display:flex;gap:4px;align-items:center;">${brandLabel}</div>
                             </div>
                         </div>
-                        ${station.vicinity ? `<div style="font-size:11px;color:#666;margin-bottom:4px;">📍 ${station.vicinity}</div>` : ''}
+                        ${station.vicinity ? `<div style="font-size:11px;color:#666;margin-bottom:4px;">📍 ${escHtml(station.vicinity)}</div>` : ''}
                         ${fuelHtml}
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
                             <span style="font-size:10px;color:#999;">${station.last_report_at ? '🕐 ' + new Date(station.last_report_at).toLocaleString('th-TH') : ''}</span>
@@ -549,13 +555,13 @@
                 }
 
                 const photos = (incident.photos || []).slice(0, 3).map(url =>
-                    `<img src="${url}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.remove()">`
+                    `<img src="${escHtml(url)}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onerror="this.remove()">`
                 ).join('');
 
                 const infoContent = `<div style="color:#000;font-size:12px;min-width:200px;max-width:280px;font-family:sans-serif;">
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
                         <span style="font-size:16px">${emoji}</span>
-                        <strong style="flex:1;font-size:13px;">${incident.title || 'เหตุการณ์'}</strong>
+                        <strong style="flex:1;font-size:13px;">${escHtml(incident.title) || 'เหตุการณ์'}</strong>
                     </div>
                     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
                         ${demoBadge}
@@ -563,9 +569,9 @@
                         <span style="background:#334155;color:#94a3b8;padding:1px 5px;border-radius:8px;font-size:9px;">${catLabel}</span>
                         ${statusBadge}
                     </div>
-                    ${incident.description ? '<p style="color:#555;font-size:11px;margin:4px 0;">' + incident.description.substring(0, 120) + '</p>' : ''}
-                    ${incident.road_name ? '<p style="color:#888;font-size:10px;">📍 ' + incident.road_name + '</p>' : ''}
-                    ${incident.location_name ? '<p style="color:#888;font-size:10px;">📌 ' + incident.location_name + '</p>' : ''}
+                    ${incident.description ? '<p style="color:#555;font-size:11px;margin:4px 0;">' + escHtml(incident.description.substring(0, 120)) + '</p>' : ''}
+                    ${incident.road_name ? '<p style="color:#888;font-size:10px;">📍 ' + escHtml(incident.road_name) + '</p>' : ''}
+                    ${incident.location_name ? '<p style="color:#888;font-size:10px;">📌 ' + escHtml(incident.location_name) + '</p>' : ''}
                     ${incident.has_injuries ? '<p style="color:#dc2626;font-size:10px;font-weight:bold;">🚑 มีผู้บาดเจ็บ</p>' : ''}
                     ${photos ? '<div style="display:flex;gap:3px;margin-top:4px;">' + photos + '</div>' : ''}
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:4px;border-top:1px solid #e2e8f0;">
@@ -720,13 +726,13 @@
                 });
 
                 const connHtml = (ev.connectors || []).map(c =>
-                    `<div style="font-size:10px;color:#666;">🔌 ${c.type} — ${c.power_kw} kW × ${c.quantity}</div>`
+                    `<div style="font-size:10px;color:#666;">🔌 ${escHtml(c.type)} — ${c.power_kw} kW × ${c.quantity}</div>`
                 ).join('');
 
                 const iw = new google.maps.InfoWindow({
                     content: `<div style="color:#000;font-size:12px;min-width:180px;">
-                        <strong>${speedIcon} ${ev.name}</strong>
-                        <div style="color:#666;font-size:10px;margin:2px 0;">${ev.operator || ''}</div>
+                        <strong>${speedIcon} ${escHtml(ev.name)}</strong>
+                        <div style="color:#666;font-size:10px;margin:2px 0;">${escHtml(ev.operator)}</div>
                         <div style="display:inline-block;background:${speedColor};color:#fff;padding:1px 6px;border-radius:8px;font-size:9px;margin:3px 0;">
                             ${ev.max_power_kw} kW ${ev.speed_category === 'fast' ? 'DC Fast' : ev.speed_category === 'medium' ? 'AC' : 'Slow'}
                         </div>
@@ -881,7 +887,7 @@
             });
             const iw = new google.maps.InfoWindow({
                 content: `<div style="color:#000;font-size:12px;min-width:180px;">
-                    <strong>🫨 ${eq.title}</strong>
+                    <strong>🫨 ${escHtml(eq.title)}</strong>
                     <div style="margin-top:4px;font-size:11px;">
                         <div>ขนาด: <strong style="color:#f97316;">${eq.magnitude}</strong></div>
                         <div>ลึก: ${eq.depth_km} กม.</div>
@@ -917,7 +923,7 @@
                 <span class="text-lg">${w.icon || '🌤️'}</span>
                 <span class="text-white font-bold text-sm">${w.temp}°C</span>
             </div>
-            <div class="text-slate-400">${w.description || ''}</div>
+            <div class="text-slate-400">${escHtml(w.description)}</div>
             <div class="text-slate-500 text-[10px]">💧 ${w.humidity}% · 💨 ${w.wind_speed} km/h</div>`;
             if (w.rain > 0) {
                 html += `<div class="text-cyan-400 text-[10px]">🌧️ ฝน ${w.rain} mm</div>`;
@@ -1045,15 +1051,15 @@
                     });
 
                     const photos = (news.image_urls || []).map(url =>
-                        `<img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;" onerror="this.remove()">`
+                        `<img src="${escHtml(url)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;" onerror="this.remove()">`
                     ).join('');
 
                     const iw = new google.maps.InfoWindow({
                         content: `<div style="color:#000;max-width:280px;font-family:sans-serif;">
                             <div style="background:#dc2626;color:#fff;padding:4px 8px;border-radius:8px 8px 0 0;font-size:11px;font-weight:bold;">🔴 ข่าวด่วน — ${news.reporter_count} คนรายงาน</div>
                             <div style="padding:8px;">
-                                <p style="font-size:13px;font-weight:bold;margin:0 0 4px;">${news.title}</p>
-                                <p style="font-size:11px;color:#555;margin:0 0 6px;">${news.content?.substring(0, 150)}...</p>
+                                <p style="font-size:13px;font-weight:bold;margin:0 0 4px;">${escHtml(news.title)}</p>
+                                <p style="font-size:11px;color:#555;margin:0 0 6px;">${escHtml(news.content?.substring(0, 150))}...</p>
                                 ${photos ? '<div style="display:flex;gap:4px;flex-wrap:wrap;">' + photos + '</div>' : ''}
                                 <p style="font-size:10px;color:#999;margin-top:4px;">— น้องหญิง รายงาน</p>
                             </div>
@@ -1078,8 +1084,8 @@
         const list = document.getElementById('breaking-news-list');
         list.innerHTML = breakingNewsData.map(news => `
             <div class="p-3">
-                <p class="text-xs font-medium text-white">${news.title}</p>
-                <p class="text-[11px] text-slate-400 mt-1 line-clamp-3">${news.content || ''}</p>
+                <p class="text-xs font-medium text-white">${escHtml(news.title)}</p>
+                <p class="text-[11px] text-slate-400 mt-1 line-clamp-3">${escHtml(news.content)}</p>
                 <div class="flex items-center gap-2 mt-2 text-[10px] text-slate-500">
                     <span>👥 ${news.reporter_count} คนรายงาน</span>
                     <span>•</span>

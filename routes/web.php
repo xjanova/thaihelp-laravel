@@ -22,11 +22,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'loginNickname'])->name('login.nickname');
 });
 
-// Auth - Social
-Route::get('/auth/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
-Route::get('/auth/google/callback', [AuthController::class, 'callbackGoogle'])->name('auth.google.callback');
-Route::get('/auth/line', [AuthController::class, 'redirectLine'])->name('auth.line');
-Route::get('/auth/line/callback', [AuthController::class, 'callbackLine'])->name('auth.line.callback');
+// Auth - Social (rate limited to prevent abuse)
+Route::middleware('throttle:10,1')->group(function () {
+    Route::get('/auth/google', [AuthController::class, 'redirectGoogle'])->name('auth.google');
+    Route::get('/auth/google/callback', [AuthController::class, 'callbackGoogle'])->name('auth.google.callback');
+    Route::get('/auth/line', [AuthController::class, 'redirectLine'])->name('auth.line');
+    Route::get('/auth/line/callback', [AuthController::class, 'callbackLine'])->name('auth.line.callback');
+});
 
 // Auth - Logout
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

@@ -17,17 +17,20 @@ class ImageService
             $image = self::createImageResource($file->getPathname(), $file->getMimeType());
             if (!$image) return null;
 
-            $filename = Str::uuid() . '.webp';
-            $path = storage_path("app/public/{$directory}/{$filename}");
+            try {
+                $filename = Str::uuid() . '.webp';
+                $path = storage_path("app/public/{$directory}/{$filename}");
 
-            // Ensure directory exists
-            $dir = dirname($path);
-            if (!is_dir($dir)) mkdir($dir, 0775, true);
+                // Ensure directory exists
+                $dir = dirname($path);
+                if (!is_dir($dir)) mkdir($dir, 0775, true);
 
-            imagewebp($image, $path, $quality);
-            imagedestroy($image);
+                imagewebp($image, $path, $quality);
 
-            return "storage/{$directory}/{$filename}";
+                return "storage/{$directory}/{$filename}";
+            } finally {
+                imagedestroy($image);
+            }
         } catch (\Exception $e) {
             \Log::error('WebP conversion failed', ['error' => $e->getMessage()]);
             return null;
@@ -63,6 +66,13 @@ class ImageService
 
     private static function createImageResource(string $path, ?string $mime)
     {
+        // Reject oversized images to prevent memory exhaustion
+        $info = @getimagesize($path);
+        if ($info && ($info[0] > 8000 || $info[1] > 8000)) {
+            \Log::warning('Image too large', ['width' => $info[0], 'height' => $info[1]]);
+            return null;
+        }
+
         return match (true) {
             str_contains($mime ?? '', 'png') => imagecreatefrompng($path),
             str_contains($mime ?? '', 'jpeg'), str_contains($mime ?? '', 'jpg') => imagecreatefromjpeg($path),

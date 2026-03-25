@@ -140,6 +140,7 @@ class GamificationService
             }
 
             $userChallenge->increment('progress');
+            $userChallenge->refresh();
 
             if ($userChallenge->progress >= $challenge->target_count) {
                 $userChallenge->update([

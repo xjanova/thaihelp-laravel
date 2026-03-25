@@ -38,7 +38,7 @@ class GooglePlacesService
 
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($lat, $lng, $radius) {
             try {
-                $response = Http::get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', [
+                $response = Http::timeout(10)->get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', [
                     'location' => "{$lat},{$lng}",
                     'radius' => $radius,
                     'type' => 'gas_station',

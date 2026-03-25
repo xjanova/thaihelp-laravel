@@ -223,7 +223,7 @@
         // Greetings based on time of day
         function getDailyGreeting() {
             const hour = new Date().getHours();
-            const user = '{{ auth()->user()?->nickname ?? "" }}';
+            const user = @json(auth()->user()?->nickname ?? '');
             const name = user ? ` คุณ${user}` : '';
 
             if (hour < 6) return `ยังไม่นอนเหรอคะ${name}? หญิงห่วงนะคะ 🌙`;

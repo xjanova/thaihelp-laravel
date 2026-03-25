@@ -96,17 +96,15 @@ class Incident extends Model
         'affected_lanes',
         'has_injuries',
         'emergency_notified',
-        'reporter_ip',
         'report_source',
-        'upvotes',
-        'confirmation_count',
         'is_active',
         'is_demo',
-        'is_danger_zone',
-        'danger_radius_km',
         'expires_at',
         'resolved_at',
     ];
+
+    // These fields are managed by application logic only — NOT mass-assignable:
+    // reporter_ip, upvotes, confirmation_count, is_danger_zone, danger_radius_km
 
     protected function casts(): array
     {
@@ -177,26 +175,28 @@ class Incident extends Model
     public function addConfirmation(): void
     {
         $this->increment('confirmation_count');
-        $count = $this->fresh()->confirmation_count;
+        $fresh = $this->fresh();
+        $count = $fresh->confirmation_count;
 
         // Stage 1: 3+ confirmations → confirmed status
-        if ($count >= 3 && $this->status === 'active') {
-            $this->update(['status' => 'confirmed']);
+        if ($count >= 3 && $fresh->status === 'active') {
+            $fresh->update(['status' => 'confirmed']);
         }
 
         // Stage 2: 5+ confirmations or critical severity → emergency report
         // น้องหญิงแจ้งฉุกเฉินเมื่อมีคนยืนยันเยอะพอ
-        if ($count >= 5 || ($this->severity === 'critical' && $count >= 3) || $this->has_injuries) {
+        if ($count >= 5 || ($fresh->severity === 'critical' && $count >= 3) || $fresh->has_injuries) {
             try {
-                app(\App\Services\EmergencyReportService::class)->evaluate($this->fresh());
+                app(\App\Services\EmergencyReportService::class)->evaluate($fresh);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::warning('Emergency evaluate failed', ['error' => $e->getMessage()]);
             }
         }
 
         // Stage 3: 10+ confirmations → danger zone (ตีกรอบแดงห้ามเข้า)
-        if ($count >= 10 && !$this->is_danger_zone) {
-            $this->update(['is_danger_zone' => true]);
+        if ($count >= 10 && !$fresh->is_danger_zone) {
+            $fresh->is_danger_zone = true;
+            $fresh->save();
         }
     }
 

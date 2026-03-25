@@ -99,7 +99,7 @@ class ChatController extends Controller
 
             return response()->json([
                 'success' => false,
-                'reply' => 'ขอโทษค่ะ ระบบขัดข้องชั่วคราวค่ะ: ' . class_basename($e) . ' 🙏',
+                'reply' => 'ขอโทษค่ะ ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งนะคะ',
             ], 500);
         }
     }
