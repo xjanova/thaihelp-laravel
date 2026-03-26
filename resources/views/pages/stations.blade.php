@@ -243,7 +243,7 @@
                 const brandCfg = brandKey ? this.brandConfig[brandKey] : null;
 
                 // Brand logo HTML
-                const brandLogoHtml = `<img src="${brandCfg?.icon || '/images/brands/default.webp'}" alt="${brandCfg?.name || 'ปั๊ม'}" class="w-12 h-12 rounded-xl" onerror="this.outerHTML='<span class=\\'text-3xl\\'>⛽</span>'">`;
+                const brandLogoHtml = `<img src="${brandCfg?.icon || '/images/brands/default.webp?v2'}" alt="${brandCfg?.name || 'ปั๊ม'}" class="w-12 h-12 rounded-xl" onerror="this.outerHTML='<span class=\\'text-3xl\\'>⛽</span>'">`;
 
                 // Fuel reports HTML
                 let fuelsHtml = '';
@@ -318,7 +318,7 @@
                 caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.webp' },
                 susco:    { name: 'Susco',     color: '#7c3aed', icon: '/images/brands/susco.webp' },
                 pt:       { name: 'PT',        color: '#ea580c', icon: '/images/brands/pt.webp' },
-                pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.webp' },
+                pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.webp?v2' },
                 irpc:     { name: 'IRPC',      color: '#0d9488', icon: '/images/brands/irpc.webp' },
             },
             detectBrand(name) {

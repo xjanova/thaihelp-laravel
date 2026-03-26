@@ -268,6 +268,7 @@
     }
 
     // ─── Brand Configuration — real WebP icons at /images/brands/ ───
+    const _BRAND_ICON_VER = 'v2';
     const _BRAND_CFG = {
         ptt:      { name: 'PTT',      color: '#1e3a8a', icon: '/images/brands/ptt.webp' },
         shell:    { name: 'Shell',     color: '#dd1d21', icon: '/images/brands/shell.webp' },
@@ -276,7 +277,7 @@
         caltex:   { name: 'Caltex',    color: '#c8102e', icon: '/images/brands/caltex.webp' },
         susco:    { name: 'Susco',     color: '#f59e0b', icon: '/images/brands/susco.webp' },
         pt:       { name: 'PT',        color: '#16a34a', icon: '/images/brands/pt.webp' },
-        pure:     { name: 'PURE',      color: '#0284c7', icon: '/images/brands/default.webp' },
+        pure:     { name: 'PURE',      color: '#0284c7', icon: `/images/brands/default.webp?${_BRAND_ICON_VER}` },
         irpc:     { name: 'IRPC',      color: '#1e40af', icon: '/images/brands/irpc.webp' },
         lpg:      { name: 'LPG',       color: '#15803d', icon: '/images/brands/lpg.webp' },
     };
@@ -285,7 +286,7 @@
     function _makeBrandIcon(brand) {
         const cfg = brand ? _BRAND_CFG[brand] : null;
         return {
-            url: cfg?.icon || '/images/brands/default.webp',
+            url: cfg?.icon || `/images/brands/default.webp?${_BRAND_ICON_VER}`,
             scaledSize: new google.maps.Size(40, 40),
             anchor: new google.maps.Point(20, 20),
         };
@@ -415,7 +416,7 @@
                 });
 
                 // Rich info window with brand logo + fuel status + nav button
-                const brandBadge = `<img src="${brandCfg?.icon || '/images/brands/default.webp'}" style="width:32px;height:32px;border-radius:8px;" onerror="this.outerHTML='⛽'">`;
+                const brandBadge = `<img src="${brandCfg?.icon || '/images/brands/default.webp?' + _BRAND_ICON_VER}" style="width:32px;height:32px;border-radius:8px;" onerror="this.outerHTML='⛽'">`;
                 const brandLabel = brandCfg ? `<span style="font-size:11px;color:${brandCfg.color};font-weight:600;">${brandCfg.name}</span>` : '';
 
                 let fuelHtml = '';

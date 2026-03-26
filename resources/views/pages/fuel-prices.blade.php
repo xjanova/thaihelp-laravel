@@ -43,7 +43,7 @@
 
                 {{-- Brand logo & name --}}
                 <div class="flex items-center gap-2 mb-2">
-                    <img :src="brandLogos[item.brand] || '/images/brands/default.webp'"
+                    <img :src="brandLogos[item.brand] || '/images/brands/default.webp?v2'"
                          :alt="item.brand"
                          class="w-8 h-8 rounded-lg"
                          onerror="this.outerHTML='⛽'">
@@ -200,7 +200,7 @@ function fuelPricesPage() {
             'caltex': '/images/brands/caltex.webp',
             'pt': '/images/brands/pt.webp',
             'susco': '/images/brands/susco.webp',
-            'pure': '/images/brands/default.webp',
+            'pure': '/images/brands/default.webp?v2',
             'irpc': '/images/brands/irpc.webp',
         },
 
