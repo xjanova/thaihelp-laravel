@@ -88,10 +88,18 @@
                 @foreach($categories as $cat)
                 <button type="button"
                     @click="incident.category = '{{ $cat }}'"
-                    :class="incident.category === '{{ $cat }}' ? 'ring-2 ring-orange-500 bg-orange-500/10' : 'metal-panel-hover'"
-                    class="metal-panel rounded-xl p-3 text-center transition-all">
+                    :class="incident.category === '{{ $cat }}'
+                        ? 'ring-2 ring-orange-500 bg-orange-500/15 scale-[1.05] shadow-[0_0_12px_rgba(249,115,22,0.4)]'
+                        : 'metal-panel-hover'"
+                    class="metal-panel rounded-xl p-3 text-center transition-all duration-200 relative">
                     <div class="text-2xl mb-1">{{ $categoryEmoji[$cat] ?? '📌' }}</div>
-                    <div class="text-[11px] text-slate-300">{{ $categoryLabels[$cat] ?? $cat }}</div>
+                    <div class="text-[11px]" :class="incident.category === '{{ $cat }}' ? 'text-orange-300 font-semibold' : 'text-slate-300'">{{ $categoryLabels[$cat] ?? $cat }}</div>
+                    <div x-show="incident.category === '{{ $cat }}'" x-transition.scale
+                         class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
                 </button>
                 @endforeach
             </div>
@@ -101,10 +109,10 @@
         <div class="mb-3">
             <label class="text-xs text-slate-400 mb-2 block">ความรุนแรง</label>
             <div class="flex gap-2">
-                <button @click="incident.severity = 'low'" :class="incident.severity === 'low' ? 'ring-2 ring-green-500 bg-green-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🟢 เล็กน้อย</button>
-                <button @click="incident.severity = 'medium'" :class="incident.severity === 'medium' ? 'ring-2 ring-yellow-500 bg-yellow-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🟡 ปานกลาง</button>
-                <button @click="incident.severity = 'high'" :class="incident.severity === 'high' ? 'ring-2 ring-orange-500 bg-orange-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🟠 รุนแรง</button>
-                <button @click="incident.severity = 'critical'" :class="incident.severity === 'critical' ? 'ring-2 ring-red-500 bg-red-500/10' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs text-slate-300">🔴 วิกฤต</button>
+                <button @click="incident.severity = 'low'" :class="incident.severity === 'low' ? 'ring-2 ring-green-500 bg-green-500/15 shadow-[0_0_10px_rgba(34,197,94,0.3)] scale-[1.03]' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs transition-all duration-200" :class2="incident.severity === 'low' ? 'text-green-300 font-semibold' : 'text-slate-300'"><span :class="incident.severity === 'low' ? 'text-green-300 font-semibold' : 'text-slate-300'">🟢 เล็กน้อย</span></button>
+                <button @click="incident.severity = 'medium'" :class="incident.severity === 'medium' ? 'ring-2 ring-yellow-500 bg-yellow-500/15 shadow-[0_0_10px_rgba(234,179,8,0.3)] scale-[1.03]' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs transition-all duration-200"><span :class="incident.severity === 'medium' ? 'text-yellow-300 font-semibold' : 'text-slate-300'">🟡 ปานกลาง</span></button>
+                <button @click="incident.severity = 'high'" :class="incident.severity === 'high' ? 'ring-2 ring-orange-500 bg-orange-500/15 shadow-[0_0_10px_rgba(249,115,22,0.3)] scale-[1.03]' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs transition-all duration-200"><span :class="incident.severity === 'high' ? 'text-orange-300 font-semibold' : 'text-slate-300'">🟠 รุนแรง</span></button>
+                <button @click="incident.severity = 'critical'" :class="incident.severity === 'critical' ? 'ring-2 ring-red-500 bg-red-500/15 shadow-[0_0_10px_rgba(239,68,68,0.3)] scale-[1.03]' : 'metal-panel-hover'" class="metal-panel flex-1 rounded-lg p-2 text-center text-xs transition-all duration-200"><span :class="incident.severity === 'critical' ? 'text-red-300 font-semibold' : 'text-slate-300'">🔴 วิกฤต</span></button>
             </div>
         </div>
 
@@ -198,9 +206,15 @@
             <div class="grid grid-cols-3 gap-2 mb-3">
                 <template x-for="ft in fuelTypes" :key="ft.key">
                     <button type="button" @click="toggleFuel(ft.key)"
-                            :class="fuel.selectedFuels[ft.key] ? 'ring-2 ring-orange-500 bg-orange-500/10' : 'metal-panel-hover'"
-                            class="metal-panel rounded-lg p-2 text-center transition-all">
-                        <div class="text-xs text-slate-300" x-text="ft.label"></div>
+                            :class="fuel.selectedFuels[ft.key] ? 'ring-2 ring-orange-500 bg-orange-500/15 shadow-[0_0_10px_rgba(249,115,22,0.3)] scale-[1.03]' : 'metal-panel-hover'"
+                            class="metal-panel rounded-lg p-2 text-center transition-all duration-200 relative">
+                        <div class="text-xs" :class="fuel.selectedFuels[ft.key] ? 'text-orange-300 font-semibold' : 'text-slate-300'" x-text="ft.label"></div>
+                        <div x-show="fuel.selectedFuels[ft.key]" x-transition.scale
+                             class="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center shadow">
+                            <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
                     </button>
                 </template>
             </div>
@@ -235,10 +249,10 @@
             <div class="grid grid-cols-2 gap-2">
                 <template x-for="f in facilityList" :key="f.key">
                     <button type="button" @click="fuel.selectedFacilities[f.key] = !fuel.selectedFacilities[f.key]"
-                            :class="fuel.selectedFacilities[f.key] ? 'ring-2 ring-blue-500 bg-blue-500/10' : 'metal-panel-hover'"
-                            class="metal-panel rounded-lg p-2 text-left flex items-center gap-2 transition-all">
+                            :class="fuel.selectedFacilities[f.key] ? 'ring-2 ring-blue-500 bg-blue-500/15 shadow-[0_0_10px_rgba(59,130,246,0.3)] scale-[1.03]' : 'metal-panel-hover'"
+                            class="metal-panel rounded-lg p-2 text-left flex items-center gap-2 transition-all duration-200">
                         <span class="text-sm" x-text="f.icon"></span>
-                        <span class="text-xs text-slate-300" x-text="f.label"></span>
+                        <span class="text-xs" :class="fuel.selectedFacilities[f.key] ? 'text-blue-300 font-semibold' : 'text-slate-300'" x-text="f.label"></span>
                     </button>
                 </template>
             </div>
