@@ -89,8 +89,8 @@
                 <button type="button"
                     @click="incident.category = '{{ $cat }}'"
                     :class="incident.category === '{{ $cat }}'
-                        ? 'ring-2 ring-orange-500 bg-orange-500/15 scale-[1.05] shadow-[0_0_12px_rgba(249,115,22,0.4)]'
-                        : 'metal-panel-hover'"
+                        ? 'ring-2 ring-orange-500 bg-orange-500/15 scale-[1.05] shadow-[0_0_12px_rgba(249,115,22,0.4)] z-10'
+                        : 'metal-panel-hover z-0'"
                     class="metal-panel rounded-xl p-3 text-center transition-all duration-200 relative">
                     <div class="text-2xl mb-1">{{ $categoryEmoji[$cat] ?? '📌' }}</div>
                     <div class="text-[11px]" :class="incident.category === '{{ $cat }}' ? 'text-orange-300 font-semibold' : 'text-slate-300'">{{ $categoryLabels[$cat] ?? $cat }}</div>
@@ -206,7 +206,7 @@
             <div class="grid grid-cols-3 gap-2 mb-3">
                 <template x-for="ft in fuelTypes" :key="ft.key">
                     <button type="button" @click="toggleFuel(ft.key)"
-                            :class="fuel.selectedFuels[ft.key] ? 'ring-2 ring-orange-500 bg-orange-500/15 shadow-[0_0_10px_rgba(249,115,22,0.3)] scale-[1.03]' : 'metal-panel-hover'"
+                            :class="fuel.selectedFuels[ft.key] ? 'ring-2 ring-orange-500 bg-orange-500/15 shadow-[0_0_10px_rgba(249,115,22,0.3)] scale-[1.03] z-10' : 'metal-panel-hover z-0'"
                             class="metal-panel rounded-lg p-2 text-center transition-all duration-200 relative">
                         <div class="text-xs" :class="fuel.selectedFuels[ft.key] ? 'text-orange-300 font-semibold' : 'text-slate-300'" x-text="ft.label"></div>
                         <div x-show="fuel.selectedFuels[ft.key]" x-transition.scale
