@@ -80,8 +80,30 @@ Route::get('/challenges', [App\Http\Controllers\GamificationController::class, '
 
 // Fuel Prices
 Route::get('/fuel-prices', function () {
-    $prices = app(\App\Services\FuelPriceService::class)->getTodayPrices();
-    return response()->json(['success' => true, 'data' => $prices, 'date' => now()->toDateString()]);
+    $service = app(\App\Services\FuelPriceService::class);
+    $prices = $service->getTodayPrices();
+
+    $isFallback = false;
+    $source = 'official';
+    $items = [];
+
+    foreach ($prices as $type => $info) {
+        if (!empty($info['is_fallback'])) $isFallback = true;
+        $items[$type] = [
+            'price' => $info['price'] ?? 0,
+            'name' => $info['name'] ?? $type,
+            'updated_at' => $info['updated_at'] ?? now()->toDateString(),
+            'source' => $info['source'] ?? 'eppo',
+        ];
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => $items,
+        'is_fallback' => $isFallback,
+        'source' => $isFallback ? 'fallback' : $source,
+        'date' => now()->format('Y-m-d H:i'),
+    ]);
 })->middleware('throttle:20,1');
 
 Route::get('/fuel-prices/history', function (\Illuminate\Http\Request $request) {

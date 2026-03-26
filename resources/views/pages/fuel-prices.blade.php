@@ -5,154 +5,143 @@
 
     {{-- Header --}}
     <div class="text-center mb-4">
-        <h1 class="text-lg font-bold text-white">&#9981; ราคาน้ำมันวันนี้</h1>
-        <p class="text-[10px] text-slate-500" x-text="'อัพเดท: ' + date"></p>
-    </div>
-
-    {{-- Loading spinner --}}
-    <div x-show="loading" class="flex justify-center py-12">
-        <svg class="animate-spin h-8 w-8 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-    </div>
-
-    {{-- Fuel type tabs --}}
-    <div x-show="!loading" class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        <template x-for="ft in fuelTypes" :key="ft.key">
-            <button @click="selectedType = ft.key; loadHistory()"
-                    :class="selectedType === ft.key
-                        ? 'metal-btn-accent text-white shadow-lg shadow-pink-500/20'
-                        : 'metal-btn text-slate-400 hover:text-slate-200'"
-                    class="px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all duration-200">
-                <span x-text="ft.label"></span>
-            </button>
-        </template>
-    </div>
-
-    {{-- Today's prices grid --}}
-    <div x-show="!loading" class="grid grid-cols-2 gap-2">
-        <template x-for="item in filteredPrices" :key="item.brand">
-            <div class="metal-panel rounded-xl p-3 relative overflow-hidden transition-all duration-300 hover:scale-[1.02]"
-                 :class="item.price < avgPrice ? 'border border-emerald-500/30' : (item.price > avgPrice ? 'border border-red-500/30' : 'border border-slate-700/50')">
-
-                {{-- Color indicator strip --}}
-                <div class="absolute top-0 left-0 right-0 h-0.5"
-                     :class="item.price < avgPrice ? 'bg-emerald-500' : (item.price > avgPrice ? 'bg-red-500' : 'bg-slate-600')">
-                </div>
-
-                {{-- Brand logo & name --}}
-                <div class="flex items-center gap-2 mb-2">
-                    <img :src="brandLogos[item.brand] || '/images/brands/default.webp?v2'"
-                         :alt="item.brand"
-                         class="w-8 h-8 rounded-lg"
-                         onerror="this.outerHTML='⛽'">
-                    <div>
-                        <p class="text-[11px] font-bold text-white leading-tight" x-text="brandNames[item.brand] || item.brand"></p>
-                        <p class="text-[9px] text-slate-500" x-text="selectedTypeLabel"></p>
-                    </div>
-                </div>
-
-                {{-- Price --}}
-                <div class="flex items-end justify-between">
-                    <div>
-                        <span class="text-xl font-black"
-                              :class="item.price < avgPrice ? 'text-emerald-400' : (item.price > avgPrice ? 'text-red-400' : 'text-white')"
-                              x-text="item.price.toFixed(2)"></span>
-                        <span class="text-[9px] text-slate-500 ml-0.5">บาท/ลิตร</span>
-                    </div>
-
-                    {{-- Change indicator --}}
-                    <div x-show="item.change !== 0" class="flex items-center gap-0.5"
-                         :class="item.change > 0 ? 'text-red-400' : 'text-emerald-400'">
-                        <svg x-show="item.change > 0" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                        </svg>
-                        <svg x-show="item.change < 0" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="text-[10px] font-bold" x-text="Math.abs(item.change).toFixed(2)"></span>
-                    </div>
-                </div>
-            </div>
-        </template>
-    </div>
-
-    {{-- No data state --}}
-    <div x-show="!loading && filteredPrices.length === 0" class="metal-panel rounded-xl p-6 text-center">
-        <p class="text-slate-500 text-sm">ไม่พบข้อมูลราคาน้ำมันประเภทนี้</p>
-    </div>
-
-    {{-- Price summary --}}
-    <div x-show="!loading && filteredPrices.length > 0" class="metal-panel rounded-xl p-3">
-        <h3 class="text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">สรุปราคา <span x-text="selectedTypeLabel" class="text-white"></span></h3>
-        <div class="grid grid-cols-3 gap-3">
-            {{-- Average --}}
-            <div class="text-center">
-                <p class="text-[9px] text-slate-500 mb-0.5">เฉลี่ย</p>
-                <p class="text-sm font-black text-amber-400" x-text="avgPrice.toFixed(2)"></p>
-                <p class="text-[8px] text-slate-600">บาท/ลิตร</p>
-            </div>
-            {{-- Min --}}
-            <div class="text-center">
-                <p class="text-[9px] text-slate-500 mb-0.5">ต่ำสุด</p>
-                <p class="text-sm font-black text-emerald-400" x-text="minPrice.toFixed(2)"></p>
-                <p class="text-[8px] text-emerald-700" x-text="minBrand"></p>
-            </div>
-            {{-- Max --}}
-            <div class="text-center">
-                <p class="text-[9px] text-slate-500 mb-0.5">สูงสุด</p>
-                <p class="text-sm font-black text-red-400" x-text="maxPrice.toFixed(2)"></p>
-                <p class="text-[8px] text-red-700" x-text="maxBrand"></p>
-            </div>
-        </div>
-        {{-- Price range bar --}}
-        <div class="mt-3 px-2">
-            <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden relative">
-                <div class="absolute inset-0 rounded-full"
-                     style="background: linear-gradient(to right, #10b981, #f59e0b, #ef4444);"></div>
-            </div>
-            <div class="flex justify-between mt-1">
-                <span class="text-[8px] text-emerald-500" x-text="minPrice.toFixed(2)"></span>
-                <span class="text-[8px] text-red-500" x-text="maxPrice.toFixed(2)"></span>
-            </div>
-        </div>
-    </div>
-
-    {{-- History chart --}}
-    <div x-show="!loading" class="metal-panel rounded-xl p-3">
-        <div class="flex items-center justify-between mb-3">
-            <h3 class="text-xs font-bold text-white">&#128200; กราฟราคาย้อนหลัง 30 วัน</h3>
-            <span class="text-[9px] text-slate-600" x-text="selectedTypeLabel"></span>
-        </div>
-        <div class="relative" style="height: 200px;">
-            <canvas id="priceChart"></canvas>
-        </div>
-        <div x-show="historyLoading" class="absolute inset-0 flex items-center justify-center">
-            <svg class="animate-spin h-5 w-5 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        <h1 class="text-lg font-bold text-white flex items-center justify-center gap-2">
+            <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h10a1 1 0 011 1v10a2 2 0 01-2 2H5a2 2 0 01-2-2V6zm10 3h2.5a1.5 1.5 0 011.5 1.5v4a1.5 1.5 0 01-1.5 1.5H13m4-7l2-2m0 0v4m-6-8V3m-4 0v2"/>
             </svg>
-        </div>
+            ราคาน้ำมันวันนี้
+        </h1>
+        <p class="text-[10px] text-slate-500 mt-1" x-text="date"></p>
+        <p class="text-[9px] mt-0.5" :class="isFallback ? 'text-yellow-500' : 'text-emerald-500'">
+            <span x-show="!isFallback">&#x2705; ข้อมูลจาก สนพ./บางจาก (อัปเดตทุก 6 ชม.)</span>
+            <span x-show="isFallback">&#x26A0;&#xFE0F; ราคาโดยประมาณ (ไม่สามารถเชื่อมต่อแหล่งข้อมูลได้)</span>
+        </p>
     </div>
 
-    {{-- Ying summary --}}
-    <div x-show="!loading && filteredPrices.length > 0" class="metal-panel rounded-xl p-3 border-l-4 border-pink-500">
-        <div class="flex items-start gap-2">
-            <div class="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm">&#128135;&#8205;&#9792;&#65039;</span>
-            </div>
-            <div>
-                <p class="text-[10px] font-bold text-pink-400 mb-1">น้องหญิงสรุปให้ค่ะ</p>
-                <p class="text-[11px] text-slate-300 leading-relaxed" x-text="getYingSummary()"></p>
-            </div>
-        </div>
+    {{-- Loading --}}
+    <div x-show="loading" class="flex flex-col items-center justify-center py-16 gap-3">
+        <div class="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-slate-400 text-sm">กำลังดึงราคาน้ำมัน...</p>
     </div>
 
-    {{-- Auto-refresh indicator --}}
-    <div class="text-center">
-        <p class="text-[9px] text-slate-700">รีเฟรชอัตโนมัติทุก 1 ชั่วโมง</p>
+    {{-- Error --}}
+    <div x-show="error && !loading" class="text-center py-12">
+        <p class="text-red-400 text-sm mb-3" x-text="error"></p>
+        <button @click="load()" class="metal-btn-accent px-4 py-2 rounded-lg text-sm text-white">ลองใหม่</button>
     </div>
+
+    <template x-if="!loading && !error && Object.keys(prices).length > 0">
+        <div class="space-y-4">
+
+            {{-- Price Cards Grid --}}
+            <div class="grid grid-cols-1 gap-2">
+                <template x-for="ft in fuelTypes" :key="ft.key">
+                    <div x-show="prices[ft.key]"
+                         class="metal-panel rounded-xl p-3 border transition-all duration-200"
+                         :class="selectedType === ft.key ? 'border-orange-500/50 bg-orange-500/5' : 'border-slate-700/50'"
+                         @click="selectedType = ft.key; loadHistory()">
+
+                        <div class="flex items-center justify-between">
+                            {{-- Fuel info --}}
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+                                     :class="ft.color">
+                                    <span x-text="ft.icon"></span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-white" x-text="ft.label"></p>
+                                    <p class="text-[9px] text-slate-500" x-text="prices[ft.key]?.source === 'bangchak' ? 'บางจาก' : 'สนพ.'"></p>
+                                </div>
+                            </div>
+
+                            {{-- Price --}}
+                            <div class="text-right">
+                                <div class="flex items-baseline gap-1">
+                                    <span class="text-2xl font-black text-orange-400" x-text="prices[ft.key]?.price?.toFixed(2) || '-'"></span>
+                                    <span class="text-[10px] text-slate-500">บาท/ลิตร</span>
+                                </div>
+                                <p class="text-[9px] text-slate-600" x-text="'อัปเดต ' + (prices[ft.key]?.updated_at || '')"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Price Comparison Bar --}}
+            <div class="metal-panel rounded-xl p-4 border border-slate-700/50">
+                <h3 class="text-xs font-bold text-white mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    เปรียบเทียบราคาทุกชนิด
+                </h3>
+                <div class="space-y-2">
+                    <template x-for="ft in sortedByPrice" :key="ft.key">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-slate-400 w-24 truncate" x-text="ft.label"></span>
+                            <div class="flex-1 h-5 bg-slate-800 rounded-full overflow-hidden relative">
+                                <div class="h-full rounded-full transition-all duration-700"
+                                     :style="`width: ${ft.pct}%`"
+                                     :class="ft.cheapest ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : (ft.expensive ? 'bg-gradient-to-r from-red-600 to-red-400' : 'bg-gradient-to-r from-orange-600 to-orange-400')">
+                                </div>
+                            </div>
+                            <span class="text-xs font-bold w-14 text-right"
+                                  :class="ft.cheapest ? 'text-emerald-400' : (ft.expensive ? 'text-red-400' : 'text-orange-400')"
+                                  x-text="ft.price.toFixed(2)"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- History Chart --}}
+            <div class="metal-panel rounded-xl p-4 border border-slate-700/50">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-bold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-5z"/>
+                        </svg>
+                        กราฟราคาย้อนหลัง 30 วัน
+                    </h3>
+                    <span class="text-[9px] text-slate-500 px-2 py-0.5 rounded-full bg-slate-800" x-text="selectedTypeLabel"></span>
+                </div>
+                <div class="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+                    <template x-for="ft in fuelTypes" :key="'tab-'+ft.key">
+                        <button x-show="prices[ft.key]"
+                                @click="selectedType = ft.key; loadHistory()"
+                                :class="selectedType === ft.key ? 'metal-btn-accent text-white' : 'metal-btn text-slate-400'"
+                                class="px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap transition-all">
+                            <span x-text="ft.shortLabel || ft.label"></span>
+                        </button>
+                    </template>
+                </div>
+                <div class="relative" style="height: 200px;">
+                    <canvas id="priceChart"></canvas>
+                </div>
+                <div x-show="historyLoading" class="flex justify-center py-4">
+                    <div class="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </div>
+
+            {{-- Ying Summary --}}
+            <div class="metal-panel rounded-xl p-3 border-l-4 border-orange-500">
+                <div class="flex items-start gap-2.5">
+                    <div class="w-9 h-9 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
+                        <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-orange-400 mb-1">น้องหญิงสรุปให้ค่ะ</p>
+                        <p class="text-[11px] text-slate-300 leading-relaxed" x-text="getYingSummary()"></p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Auto-refresh --}}
+            <div class="text-center text-[9px] text-slate-600 pb-4">
+                อัปเดตล่าสุด: <span x-text="lastRefresh"></span> | รีเฟรชอัตโนมัติทุก 1 ชั่วโมง
+            </div>
+        </div>
+    </template>
 </div>
 @endsection
 
@@ -164,132 +153,118 @@ function fuelPricesPage() {
         prices: {},
         history: [],
         date: '',
+        lastRefresh: '',
+        isFallback: false,
         selectedType: 'diesel',
         chart: null,
         loading: true,
         historyLoading: false,
+        error: null,
         refreshInterval: null,
 
         fuelTypes: [
-            { key: 'diesel', label: 'ดีเซล' },
-            { key: 'diesel_b7', label: 'ดีเซล B7' },
-            { key: 'gasohol95', label: 'แก๊สโซฮอล์ 95' },
-            { key: 'gasohol91', label: 'แก๊สโซฮอล์ 91' },
-            { key: 'e20', label: 'E20' },
-            { key: 'e85', label: 'E85' },
-            { key: 'premium_diesel', label: 'ดีเซลพรีเมียม' },
+            { key: 'diesel',         label: 'ดีเซล',            shortLabel: 'ดีเซล',   icon: '\u26FD', color: 'bg-blue-500/20' },
+            { key: 'diesel_b7',      label: 'ดีเซล B7',         shortLabel: 'B7',      icon: '\u26FD', color: 'bg-sky-500/20' },
+            { key: 'premium_diesel', label: 'ดีเซลพรีเมียม',     shortLabel: 'พรีเมียม', icon: '\u2B50', color: 'bg-amber-500/20' },
+            { key: 'gasohol95',      label: '\u0E41\u0E01\u0E4A\u0E2A\u0E42\u0E0B\u0E2E\u0E2D\u0E25\u0E4C 95', shortLabel: 'G95', icon: '\u{1F7E2}', color: 'bg-emerald-500/20' },
+            { key: 'gasohol91',      label: '\u0E41\u0E01\u0E4A\u0E2A\u0E42\u0E0B\u0E2E\u0E2D\u0E25\u0E4C 91', shortLabel: 'G91', icon: '\u{1F7E1}', color: 'bg-yellow-500/20' },
+            { key: 'e20',            label: 'E20',               shortLabel: 'E20',     icon: '\u{1F7E0}', color: 'bg-orange-500/20' },
+            { key: 'e85',            label: 'E85',               shortLabel: 'E85',     icon: '\u{1F7E3}', color: 'bg-purple-500/20' },
+            { key: 'ngv',            label: 'NGV',               shortLabel: 'NGV',     icon: '\u{1F535}', color: 'bg-cyan-500/20' },
+            { key: 'lpg',            label: 'LPG',               shortLabel: 'LPG',     icon: '\u{1F534}', color: 'bg-red-500/20' },
         ],
-
-        brandNames: {
-            'ptt': 'PTT Station',
-            'bcp': 'บางจาก',
-            'shell': 'Shell',
-            'esso': 'Esso',
-            'caltex': 'Caltex',
-            'pt': 'PT',
-            'susco': 'ซัสโก้',
-            'pure': 'เพียว',
-            'irpc': 'IRPC',
-        },
-
-        brandLogos: {
-            'ptt': '/images/brands/ptt.webp',
-            'bcp': '/images/brands/bangchak.webp',
-            'shell': '/images/brands/shell.webp',
-            'esso': '/images/brands/esso.webp',
-            'caltex': '/images/brands/caltex.webp',
-            'pt': '/images/brands/pt.webp',
-            'susco': '/images/brands/susco.webp',
-            'pure': '/images/brands/default.webp?v2',
-            'irpc': '/images/brands/irpc.webp',
-        },
 
         get selectedTypeLabel() {
             const ft = this.fuelTypes.find(f => f.key === this.selectedType);
             return ft ? ft.label : this.selectedType;
         },
 
-        get filteredPrices() {
-            if (!this.prices[this.selectedType]) return [];
-            return this.prices[this.selectedType].sort((a, b) => a.price - b.price);
-        },
+        get sortedByPrice() {
+            const items = [];
+            const allPrices = [];
 
-        get avgPrice() {
-            const items = this.filteredPrices;
-            if (items.length === 0) return 0;
-            return items.reduce((sum, i) => sum + i.price, 0) / items.length;
-        },
+            for (const ft of this.fuelTypes) {
+                if (this.prices[ft.key]) {
+                    allPrices.push(this.prices[ft.key].price);
+                }
+            }
+            const maxP = Math.max(...allPrices, 1);
+            const minP = Math.min(...allPrices);
+            const maxPVal = Math.max(...allPrices);
+            const minPVal = Math.min(...allPrices);
 
-        get minPrice() {
-            const items = this.filteredPrices;
-            if (items.length === 0) return 0;
-            return Math.min(...items.map(i => i.price));
-        },
+            for (const ft of this.fuelTypes) {
+                if (!this.prices[ft.key]) continue;
+                const price = this.prices[ft.key].price;
+                items.push({
+                    key: ft.key,
+                    label: ft.label,
+                    price: price,
+                    pct: maxP > 0 ? Math.max((price / maxP) * 100, 15) : 0,
+                    cheapest: price === minPVal,
+                    expensive: price === maxPVal,
+                });
+            }
 
-        get maxPrice() {
-            const items = this.filteredPrices;
-            if (items.length === 0) return 0;
-            return Math.max(...items.map(i => i.price));
-        },
-
-        get minBrand() {
-            const items = this.filteredPrices;
-            if (items.length === 0) return '';
-            const min = items.reduce((a, b) => a.price < b.price ? a : b);
-            return this.brandNames[min.brand] || min.brand;
-        },
-
-        get maxBrand() {
-            const items = this.filteredPrices;
-            if (items.length === 0) return '';
-            const max = items.reduce((a, b) => a.price > b.price ? a : b);
-            return this.brandNames[max.brand] || max.brand;
+            return items.sort((a, b) => a.price - b.price);
         },
 
         async load() {
             this.loading = true;
+            this.error = null;
             try {
                 const res = await fetch('/api/fuel-prices');
-                const data = await res.json();
-                this.prices = data.data || {};
-                this.date = data.date || new Date().toLocaleDateString('th-TH', {
-                    year: 'numeric', month: 'long', day: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
+                if (!res.ok) throw new Error('ไม่สามารถโหลดข้อมูลได้');
+                const json = await res.json();
+                if (!json.success) throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด');
 
-                // Auto-select first available type if current has no data
-                if (!this.prices[this.selectedType] || this.prices[this.selectedType].length === 0) {
-                    const available = Object.keys(this.prices).find(k => this.prices[k].length > 0);
+                this.prices = json.data || {};
+                this.isFallback = json.is_fallback || false;
+                this.date = this.formatDate(json.date);
+                this.lastRefresh = new Date().toLocaleTimeString('th-TH');
+
+                // Auto-select first available type
+                if (!this.prices[this.selectedType]) {
+                    const available = Object.keys(this.prices)[0];
                     if (available) this.selectedType = available;
                 }
-            } catch (e) {
-                console.error('Failed to load fuel prices:', e);
-                // Use demo data for preview
-                this.prices = this.getDemoData();
-                this.date = new Date().toLocaleDateString('th-TH', {
-                    year: 'numeric', month: 'long', day: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
-            }
-            this.loading = false;
-            await this.loadHistory();
 
-            // Auto-refresh every hour
-            this.refreshInterval = setInterval(() => this.load(), 3600000);
+                this.loading = false;
+                await this.loadHistory();
+
+                if (!this.refreshInterval) {
+                    this.refreshInterval = setInterval(() => this.load(), 3600000);
+                }
+            } catch (e) {
+                this.error = e.message || 'เกิดข้อผิดพลาด';
+                this.loading = false;
+            }
         },
 
         async loadHistory() {
             this.historyLoading = true;
             try {
                 const res = await fetch(`/api/fuel-prices/history?type=${this.selectedType}&days=30`);
-                const data = await res.json();
-                this.history = data.data || [];
+                const json = await res.json();
+                this.history = json.data || [];
             } catch (e) {
-                console.error('Failed to load price history:', e);
-                this.history = this.getDemoHistory();
+                this.history = [];
             }
             this.historyLoading = false;
             this.$nextTick(() => this.renderChart());
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr);
+                return d.toLocaleDateString('th-TH', {
+                    year: 'numeric', month: 'long', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch {
+                return dateStr;
+            }
         },
 
         renderChart() {
@@ -297,23 +272,18 @@ function fuelPricesPage() {
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
 
-            if (this.chart) {
-                this.chart.destroy();
-            }
-
+            if (this.chart) this.chart.destroy();
             if (this.history.length === 0) return;
 
             const labels = this.history.map(h => {
                 const d = new Date(h.date);
                 return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
             });
-            const prices = this.history.map(h => h.avg_price);
+            const data = this.history.map(h => h.avg_price);
 
-            // Gradient fill
             const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-            gradient.addColorStop(0, 'rgba(236, 72, 153, 0.3)');
-            gradient.addColorStop(0.5, 'rgba(236, 72, 153, 0.1)');
-            gradient.addColorStop(1, 'rgba(236, 72, 153, 0)');
+            gradient.addColorStop(0, 'rgba(249, 115, 22, 0.3)');
+            gradient.addColorStop(1, 'rgba(249, 115, 22, 0)');
 
             this.chart = new Chart(ctx, {
                 type: 'line',
@@ -321,67 +291,50 @@ function fuelPricesPage() {
                     labels: labels,
                     datasets: [{
                         label: this.selectedTypeLabel,
-                        data: prices,
-                        borderColor: '#ec4899',
+                        data: data,
+                        borderColor: '#f97316',
                         backgroundColor: gradient,
-                        borderWidth: 2,
+                        borderWidth: 2.5,
                         fill: true,
                         tension: 0.4,
                         pointRadius: 0,
-                        pointHoverRadius: 5,
-                        pointHoverBackgroundColor: '#ec4899',
-                        pointHoverBorderColor: '#fff',
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#f97316',
+                        pointHoverBorderColor: '#1e293b',
                         pointHoverBorderWidth: 2,
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
                             backgroundColor: 'rgba(15, 23, 42, 0.95)',
                             titleColor: '#94a3b8',
                             bodyColor: '#f1f5f9',
-                            borderColor: '#334155',
+                            borderColor: 'rgba(249, 115, 22, 0.3)',
                             borderWidth: 1,
+                            cornerRadius: 8,
                             titleFont: { size: 10 },
                             bodyFont: { size: 12, weight: 'bold' },
-                            padding: 8,
+                            padding: 10,
                             displayColors: false,
                             callbacks: {
-                                label: (ctx) => ctx.parsed.y.toFixed(2) + ' บาท/ลิตร'
+                                label: (ctx) => ctx.parsed.y.toFixed(2) + ' \u0E1A\u0E32\u0E17/\u0E25\u0E34\u0E15\u0E23'
                             }
                         }
                     },
                     scales: {
                         x: {
-                            ticks: {
-                                color: '#475569',
-                                font: { size: 9 },
-                                maxRotation: 0,
-                                maxTicksLimit: 7,
-                            },
-                            grid: {
-                                color: 'rgba(51, 65, 85, 0.3)',
-                                drawBorder: false,
-                            },
+                            ticks: { color: '#475569', font: { size: 9 }, maxRotation: 0, maxTicksLimit: 7 },
+                            grid: { color: 'rgba(51, 65, 85, 0.2)' },
                             border: { display: false },
                         },
                         y: {
-                            ticks: {
-                                color: '#475569',
-                                font: { size: 9 },
-                                callback: (v) => v.toFixed(2),
-                            },
-                            grid: {
-                                color: 'rgba(51, 65, 85, 0.3)',
-                                drawBorder: false,
-                            },
+                            ticks: { color: '#475569', font: { size: 9 }, callback: v => v.toFixed(2) },
+                            grid: { color: 'rgba(51, 65, 85, 0.2)' },
                             border: { display: false },
                         }
                     }
@@ -390,66 +343,35 @@ function fuelPricesPage() {
         },
 
         getYingSummary() {
-            const items = this.filteredPrices;
-            if (items.length === 0) return 'ยังไม่มีข้อมูลค่ะ';
+            const types = this.fuelTypes.filter(ft => this.prices[ft.key]);
+            if (types.length === 0) return '\u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E04\u0E48\u0E30';
 
-            const min = items.reduce((a, b) => a.price < b.price ? a : b);
-            const max = items.reduce((a, b) => a.price > b.price ? a : b);
-            const minName = this.brandNames[min.brand] || min.brand;
-            const maxName = this.brandNames[max.brand] || max.brand;
-            const avg = this.avgPrice;
-            const diff = (max.price - min.price).toFixed(2);
-            const label = this.selectedTypeLabel;
+            const sorted = types.map(ft => ({
+                label: ft.label,
+                price: this.prices[ft.key].price
+            })).sort((a, b) => a.price - b.price);
 
-            let trend = '';
-            if (this.history.length >= 2) {
-                const last = this.history[this.history.length - 1]?.avg_price || 0;
-                const prev = this.history[this.history.length - 2]?.avg_price || 0;
-                if (last > prev) trend = ' แนวโน้มราคาปรับขึ้นค่ะ';
-                else if (last < prev) trend = ' แนวโน้มราคาปรับลดลงค่ะ';
-                else trend = ' ราคาทรงตัวค่ะ';
+            const cheapest = sorted[0];
+            const expensive = sorted[sorted.length - 1];
+            const diesel = this.prices['diesel'];
+            const g95 = this.prices['gasohol95'];
+
+            let summary = '';
+            if (diesel) {
+                summary += `\u0E14\u0E35\u0E40\u0E0B\u0E25\u0E27\u0E31\u0E19\u0E19\u0E35\u0E49 ${diesel.price.toFixed(2)} \u0E1A\u0E32\u0E17/\u0E25\u0E34\u0E15\u0E23`;
+            }
+            if (g95) {
+                summary += `${summary ? ' ' : ''}\u0E41\u0E01\u0E4A\u0E2A\u0E42\u0E0B\u0E2E\u0E2D\u0E25\u0E4C 95 \u0E2D\u0E22\u0E39\u0E48\u0E17\u0E35\u0E48 ${g95.price.toFixed(2)} \u0E1A\u0E32\u0E17\u0E04\u0E48\u0E30`;
+            }
+            if (cheapest && expensive && cheapest.label !== expensive.label) {
+                summary += ` \u0E16\u0E39\u0E01\u0E2A\u0E38\u0E14\u0E04\u0E37\u0E2D${cheapest.label} ${cheapest.price.toFixed(2)} \u0E1A\u0E32\u0E17 \u0E41\u0E1E\u0E07\u0E2A\u0E38\u0E14\u0E04\u0E37\u0E2D${expensive.label} ${expensive.price.toFixed(2)} \u0E1A\u0E32\u0E17\u0E04\u0E48\u0E30`;
             }
 
-            return `${label}วันนี้ ราคาเฉลี่ย ${avg.toFixed(2)} บาท/ลิตร ` +
-                   `ถูกสุดที่ ${minName} ${min.price.toFixed(2)} บาท ` +
-                   `แพงสุดที่ ${maxName} ${max.price.toFixed(2)} บาท ` +
-                   `ต่างกัน ${diff} บาท${trend}`;
-        },
-
-        getDemoData() {
-            const brands = ['ptt', 'bcp', 'shell', 'esso', 'caltex', 'pt'];
-            const types = {
-                diesel: { base: 29.94, range: 1.5 },
-                diesel_b7: { base: 29.44, range: 1.2 },
-                gasohol95: { base: 36.45, range: 2.0 },
-                gasohol91: { base: 35.98, range: 1.8 },
-                e20: { base: 33.44, range: 1.5 },
-                e85: { base: 25.44, range: 2.0 },
-                premium_diesel: { base: 35.96, range: 3.0 },
-            };
-            const result = {};
-            for (const [type, cfg] of Object.entries(types)) {
-                result[type] = brands.map(brand => ({
-                    brand: brand,
-                    price: +(cfg.base + (Math.random() * cfg.range - cfg.range / 2)).toFixed(2),
-                    change: +((Math.random() * 1.0 - 0.5)).toFixed(2),
-                }));
+            if (this.isFallback) {
+                summary += ' (\u0E23\u0E32\u0E04\u0E32\u0E42\u0E14\u0E22\u0E1B\u0E23\u0E30\u0E21\u0E32\u0E13 \u0E23\u0E2D\u0E2D\u0E31\u0E1B\u0E40\u0E14\u0E17\u0E04\u0E48\u0E30)';
             }
-            return result;
-        },
 
-        getDemoHistory() {
-            const history = [];
-            const base = this.selectedType === 'diesel' ? 29.94 : 36.0;
-            for (let i = 30; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                history.push({
-                    date: d.toISOString().split('T')[0],
-                    price: +(base + Math.sin(i / 5) * 0.8 + (Math.random() * 0.4 - 0.2)).toFixed(2),
-                });
-            }
-            return history;
+            return summary || '\u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E04\u0E48\u0E30';
         },
 
         destroy() {
