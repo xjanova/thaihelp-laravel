@@ -53,25 +53,6 @@
         <div id="breaking-news-list" class="divide-y divide-slate-700/30"></div>
     </div>
 
-    {{-- Quick Report Buttons (ลอยบนแผนที่) --}}
-    <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex gap-2" x-data="{ reporting: false, done: false }">
-        <button x-show="!reporting && !done" @click="quickReport('empty')"
-                class="bg-red-600/90 backdrop-blur-sm hover:bg-red-500 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1.5 active:scale-95 transition-all">
-            🔴 น้ำมันหมดที่นี่!
-        </button>
-        <button x-show="!reporting && !done" @click="quickReport('available')"
-                class="bg-green-600/90 backdrop-blur-sm hover:bg-green-500 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl flex items-center gap-1.5 active:scale-95 transition-all">
-            🟢 ยังเติมได้!
-        </button>
-        <div x-show="reporting" class="metal-panel px-4 py-2.5 rounded-full text-xs text-slate-300 flex items-center gap-2">
-            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/><path d="M4 12a8 8 0 018-8V0" fill="currentColor" opacity="0.75"/></svg>
-            กำลังรายงาน...
-        </div>
-        <div x-show="done" class="bg-green-600/90 backdrop-blur-sm px-4 py-2.5 rounded-full text-xs text-white font-bold">
-            ✅ รายงานแล้ว ขอบคุณค่ะ!
-        </div>
-    </div>
-
     {{-- Data Layers Panel (เปิดปิดได้) --}}
     <div id="data-layers-panel" class="absolute top-3 right-3 z-10" x-data="{ open: false }">
         <button @click="open = !open" class="metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white shadow-lg">
@@ -785,65 +766,6 @@
     }
 
     // ─── Quick Report (กดปุ่มเดียวรายงานสถานะปั๊มใกล้ตัว) ───
-    async function quickReport(status) {
-        if (!userPos.lat || !userPos.lng) {
-            alert('กรุณาเปิด GPS ก่อนรายงาน');
-            return;
-        }
-
-        const el = document.querySelector('[x-data]');
-        if (el && el.__x) {
-            el.__x.$data.reporting = true;
-        }
-
-        try {
-            // Find nearest station from Google Places
-            const stRes = await fetch(`/api/stations?lat=${userPos.lat}&lng=${userPos.lng}&radius=500`);
-            const stData = await stRes.json();
-            const stations = stData.data || [];
-
-            let stationName = 'ปั๊มใกล้ตัว';
-            let placeId = null;
-            let brand = null;
-
-            if (stations.length > 0) {
-                const nearest = stations[0];
-                stationName = nearest.name || 'ปั๊มน้ำมัน';
-                placeId = nearest.place_id || null;
-                brand = nearest.brand || null;
-            }
-
-            // Submit quick report
-            const res = await fetch('/api/stations/report', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    station_name: stationName,
-                    brand: brand,
-                    place_id: placeId,
-                    latitude: userPos.lat,
-                    longitude: userPos.lng,
-                    fuels: [{ fuel_type: 'diesel', status: status, price: null }],
-                }),
-            });
-
-            if (el && el.__x) {
-                el.__x.$data.reporting = false;
-                el.__x.$data.done = true;
-                setTimeout(() => { el.__x.$data.done = false; }, 3000);
-            }
-
-            // Refresh map data
-            setTimeout(() => loadMapData(), 1000);
-        } catch (e) {
-            console.error('Quick report failed:', e);
-            if (el && el.__x) {
-                el.__x.$data.reporting = false;
-            }
-            alert('รายงานไม่สำเร็จ กรุณาลองใหม่');
-        }
-    }
-
     async function loadExternalData() {
         try {
             const res = await fetch(`/api/external-data?lat=${userPos.lat}&lng=${userPos.lng}`);
