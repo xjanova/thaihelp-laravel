@@ -29,27 +29,33 @@ class GooglePlacesService
 
     /**
      * Search nearby gas stations using Google Places API.
+     * Supports keyword filter and pagination for more results.
      */
-    public function searchNearby(float $lat, float $lng, int $radius = 10000): array
+    public function searchNearby(float $lat, float $lng, int $radius = 10000, ?string $keyword = null): array
     {
         $radius = max(500, min(100000, $radius));
 
-        $cacheKey = "places_nearby_" . round($lat, 4) . "_" . round($lng, 4) . "_{$radius}";
+        $cacheKey = "places_nearby_" . round($lat, 4) . "_" . round($lng, 4) . "_{$radius}" . ($keyword ? "_{$keyword}" : '');
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($lat, $lng, $radius) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($lat, $lng, $radius, $keyword) {
             try {
-                $response = Http::timeout(10)->get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', [
+                $params = [
                     'location' => "{$lat},{$lng}",
                     'radius' => $radius,
                     'type' => 'gas_station',
                     'language' => 'th',
                     'key' => $this->getApiKey(),
-                ]);
+                ];
+
+                if ($keyword) {
+                    $params['keyword'] = $keyword;
+                }
+
+                $response = Http::timeout(8)->get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', $params);
 
                 if ($response->failed()) {
                     Log::error('Google Places API request failed', [
                         'status' => $response->status(),
-                        'body' => $response->body(),
                     ]);
                     return [];
                 }
@@ -57,6 +63,9 @@ class GooglePlacesService
                 $data = $response->json();
 
                 if (($data['status'] ?? '') !== 'OK') {
+                    if (($data['status'] ?? '') === 'ZERO_RESULTS') {
+                        return [];
+                    }
                     Log::warning('Google Places API returned non-OK status', [
                         'status' => $data['status'] ?? 'unknown',
                         'error_message' => $data['error_message'] ?? '',

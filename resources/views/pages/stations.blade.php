@@ -39,10 +39,41 @@
             <span class="text-xs text-orange-500 font-medium whitespace-nowrap" id="radius-value">10 กม.</span>
         </div>
 
+        {{-- Brand Filter --}}
+        <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button class="metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white whitespace-nowrap" data-brand="all">
+                ทุกแบรนด์
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="ptt">
+                <img src="/images/brands/ptt.webp" class="w-4 h-4 rounded" onerror="this.remove()"> PTT
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="shell">
+                <img src="/images/brands/shell.webp" class="w-4 h-4 rounded" onerror="this.remove()"> Shell
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="bangchak">
+                <img src="/images/brands/bangchak.webp" class="w-4 h-4 rounded" onerror="this.remove()"> Bangchak
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="pt">
+                <img src="/images/brands/pt.webp" class="w-4 h-4 rounded" onerror="this.remove()"> PT
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="esso">
+                <img src="/images/brands/esso.webp" class="w-4 h-4 rounded" onerror="this.remove()"> Esso
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="caltex">
+                <img src="/images/brands/caltex.webp" class="w-4 h-4 rounded" onerror="this.remove()"> Caltex
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="susco">
+                <img src="/images/brands/susco.webp" class="w-4 h-4 rounded" onerror="this.remove()"> Susco
+            </button>
+            <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap flex items-center gap-1" data-brand="irpc">
+                <img src="/images/brands/irpc.webp" class="w-4 h-4 rounded" onerror="this.remove()"> IRPC
+            </button>
+        </div>
+
         {{-- Fuel Type Filter --}}
         <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             <button class="metal-btn-accent px-3 py-1.5 rounded-full text-xs font-medium text-white whitespace-nowrap" data-fuel="all">
-                ทั้งหมด
+                ทุกประเภท
             </button>
             <button class="metal-btn px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 whitespace-nowrap" data-fuel="gasohol95">
                 แก๊สโซฮอล์ 95
@@ -128,6 +159,7 @@
             radius: 10,
             searchQuery: '',
             selectedFuel: 'all',
+            selectedBrand: 'all',
             userLat: 13.7563,
             userLng: 100.5018,
 
@@ -151,6 +183,18 @@
                 searchInput.addEventListener('input', (e) => {
                     this.searchQuery = e.target.value;
                     this.renderStations();
+                });
+
+                // Brand filter buttons — triggers new API search with keyword
+                document.querySelectorAll('[data-brand]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('[data-brand]').forEach(b => {
+                            b.className = b.className.replace('metal-btn-accent', 'metal-btn').replace('text-white', 'text-slate-300');
+                        });
+                        btn.className = btn.className.replace('metal-btn', 'metal-btn-accent').replace('text-slate-300', 'text-white');
+                        this.selectedBrand = btn.dataset.brand;
+                        this.searchStations(); // Re-fetch from API with brand keyword
+                    });
                 });
 
                 // Fuel filter buttons
@@ -187,9 +231,11 @@
                 this.loading = true;
                 this.showLoading(true);
                 try {
-                    const res = await axios.get('/api/stations', {
-                        params: { lat: this.userLat, lng: this.userLng, radius: this.radius * 1000 }
-                    });
+                    const params = { lat: this.userLat, lng: this.userLng, radius: this.radius * 1000 };
+                    if (this.selectedBrand && this.selectedBrand !== 'all') {
+                        params.brand = this.selectedBrand;
+                    }
+                    const res = await axios.get('/api/stations', { params });
                     if (res.data.success) {
                         this.stations = res.data.data || [];
                     } else {

@@ -35,16 +35,32 @@ class StationController extends Controller
             'lat' => ['required', 'numeric', 'between:-90,90'],
             'lng' => ['required', 'numeric', 'between:-180,180'],
             'radius' => ['nullable', 'integer', 'min:100', 'max:50000'],
+            'brand' => ['nullable', 'string', 'max:50'],
         ]);
 
         try {
             $lat = $validated['lat'];
             $lng = $validated['lng'];
             $radius = $validated['radius'] ?? 5000;
+            $brand = $validated['brand'] ?? null;
+
+            // Map brand key to search keyword for Google Places
+            $brandKeywords = [
+                'ptt' => 'PTT ปตท',
+                'shell' => 'Shell เชลล์',
+                'bangchak' => 'Bangchak บางจาก',
+                'esso' => 'Esso เอสโซ',
+                'caltex' => 'Caltex คาลเท็กซ์',
+                'susco' => 'Susco ซัสโก้',
+                'pt' => 'PT พีที สถานีบริการ',
+                'pure' => 'PURE เพียว',
+                'irpc' => 'IRPC',
+            ];
+            $keyword = $brand ? ($brandKeywords[$brand] ?? $brand) : null;
 
             // Get stations from Google Places API
             $placesService = app(GooglePlacesService::class);
-            $stations = $placesService->searchNearby($lat, $lng, $radius);
+            $stations = $placesService->searchNearby($lat, $lng, $radius, $keyword);
 
             // Get user-submitted fuel reports from DB (last 6 hours)
             $placeIds = collect($stations)->pluck('place_id')->filter()->toArray();
