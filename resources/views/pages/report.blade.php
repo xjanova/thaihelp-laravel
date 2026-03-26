@@ -249,10 +249,16 @@
             <div class="grid grid-cols-2 gap-2">
                 <template x-for="f in facilityList" :key="f.key">
                     <button type="button" @click="fuel.selectedFacilities[f.key] = !fuel.selectedFacilities[f.key]"
-                            :class="fuel.selectedFacilities[f.key] ? 'ring-2 ring-blue-500 bg-blue-500/15 shadow-[0_0_10px_rgba(59,130,246,0.3)] scale-[1.03]' : 'metal-panel-hover'"
-                            class="metal-panel rounded-lg p-2 text-left flex items-center gap-2 transition-all duration-200">
+                            :class="fuel.selectedFacilities[f.key] ? 'ring-2 ring-blue-500 bg-blue-500/15 shadow-[0_0_12px_rgba(59,130,246,0.35)] scale-[1.03] z-10' : 'metal-panel-hover z-0'"
+                            class="metal-panel rounded-lg p-2.5 text-left flex items-center gap-2 transition-all duration-200 relative">
                         <span class="text-sm" x-text="f.icon"></span>
                         <span class="text-xs" :class="fuel.selectedFacilities[f.key] ? 'text-blue-300 font-semibold' : 'text-slate-300'" x-text="f.label"></span>
+                        <div x-show="fuel.selectedFacilities[f.key]" x-transition.scale
+                             class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
                     </button>
                 </template>
             </div>
