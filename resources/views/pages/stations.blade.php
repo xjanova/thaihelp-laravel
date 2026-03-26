@@ -365,7 +365,17 @@
                     wrapper.classList.add('station-card');
 
                     card.querySelector('.station-name').textContent = station.name || 'ปั๊มน้ำมัน';
-                    card.querySelector('.station-brand').textContent = station.brand || '';
+                    // Use backend brand or re-detect from name
+                    const brandKey = (station.brand && station.brand !== 'other')
+                        ? station.brand.toLowerCase()
+                        : this.detectBrand(station.name || '');
+                    const bCfg = brandKey ? this.brandConfig[brandKey] : null;
+                    const brandEl = card.querySelector('.station-brand');
+                    if (bCfg) {
+                        brandEl.innerHTML = `<img src="${bCfg.icon}" class="inline-block w-4 h-4 rounded mr-1" onerror="this.remove()"><span style="color:${bCfg.color}">${bCfg.name}</span>`;
+                    } else {
+                        brandEl.textContent = station.brand || '';
+                    }
 
                     const distKm = station.distance; // distance is in KM from server
                     if (distKm !== undefined && distKm !== null) {

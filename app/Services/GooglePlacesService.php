@@ -108,15 +108,18 @@ class GooglePlacesService
      */
     public function detectBrand(string $name): string
     {
+        // Keys match frontend brandConfig keys (lowercase)
         $brands = [
-            'PTT' => ['ptt', 'ปตท', 'พีทีที'],
-            'Shell' => ['shell', 'เชลล์'],
-            'Bangchak' => ['bangchak', 'บางจาก'],
-            'Esso' => ['esso', 'เอสโซ่'],
-            'Caltex' => ['caltex', 'คาลเท็กซ์'],
-            'Susco' => ['susco', 'ซัสโก้'],
-            'PT' => ['pt ', 'พีที'],
-            'Cosmo' => ['cosmo', 'คอสโม'],
+            'ptt' => ['ptt', 'ปตท', 'พีทีที'],
+            'shell' => ['shell', 'เชลล์'],
+            'bangchak' => ['bangchak', 'บางจาก'],
+            'esso' => ['esso', 'เอสโซ'],
+            'caltex' => ['caltex', 'คาลเท็กซ์'],
+            'susco' => ['susco', 'ซัสโก้'],
+            'pt' => ['พีที', 'พีทีแม็กซ์', 'ptmax', 'pt max'],
+            'pure' => ['pure', 'เพียว'],
+            'irpc' => ['irpc', 'ไออาร์พีซี'],
+            'cosmo' => ['cosmo', 'คอสโม'],
         ];
 
         $lowerName = mb_strtolower($name);
@@ -129,7 +132,13 @@ class GooglePlacesService
             }
         }
 
-        return 'อื่นๆ';
+        // PT needs word-boundary check: "pt" alone but not inside "ptt"
+        // Already checked 'ptt' above, so if "pt" appears as standalone word it's PT brand
+        if (preg_match('/\bpt\b/i', $lowerName)) {
+            return 'pt';
+        }
+
+        return 'other';
     }
 
     /**
