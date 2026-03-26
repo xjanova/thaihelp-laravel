@@ -142,6 +142,45 @@
                 </div>
             </div>
 
+            {{-- Charts Row 3: Users by Device + Usage Periods --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {{-- Users by Device Doughnut --}}
+                <div class="metal-panel rounded-xl p-4 border border-slate-700/50">
+                    <h3 class="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        ผู้ใช้งานแยกตามอุปกรณ์
+                    </h3>
+                    <div class="relative" style="height: 220px;">
+                        <canvas id="chartDevice"></canvas>
+                    </div>
+                    {{-- Device summary cards --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3" x-show="stats.users_by_device && Object.keys(stats.users_by_device).length > 0">
+                        <template x-for="(count, device) in stats.users_by_device" :key="device">
+                            <div class="text-center p-2 rounded-lg bg-slate-800/50">
+                                <div class="text-lg" x-text="device === 'ios' ? '🍎' : device === 'android' ? '🤖' : device === 'desktop' ? '💻' : '❓'"></div>
+                                <div class="text-xs font-bold mt-1" :class="device === 'ios' ? 'text-blue-400' : device === 'android' ? 'text-green-400' : device === 'desktop' ? 'text-purple-400' : 'text-slate-400'" x-text="(count || 0).toLocaleString('th-TH')"></div>
+                                <div class="text-[9px] text-slate-500 mt-0.5" x-text="device === 'ios' ? 'iOS' : device === 'android' ? 'Android' : device === 'desktop' ? 'Desktop' : 'ไม่ทราบ'"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Usage Periods Chart --}}
+                <div class="metal-panel rounded-xl p-4 border border-slate-700/50">
+                    <h3 class="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        ช่วงเวลาที่ใช้งาน (7 วัน)
+                    </h3>
+                    <div class="relative" style="height: 260px;">
+                        <canvas id="chartUsagePeriod"></canvas>
+                    </div>
+                </div>
+            </div>
+
             {{-- Leaderboard --}}
             <div class="metal-panel rounded-xl p-4 border border-slate-700/50">
                 <h3 class="text-sm font-medium text-white mb-3 flex items-center gap-2">
@@ -564,6 +603,157 @@ function statsPage() {
                             animateRotate: true,
                             duration: 1000,
                             easing: 'easeOutQuart',
+                        },
+                    },
+                });
+            }
+
+            // ═══ Users by Device Doughnut ═══
+            const deviceCtx = document.getElementById('chartDevice');
+            if (deviceCtx) {
+                const deviceLabels = {
+                    'ios': 'iOS',
+                    'android': 'Android',
+                    'desktop': 'Desktop',
+                    'unknown': 'ไม่ทราบ',
+                };
+                const deviceColors = {
+                    'ios': '#3b82f6',
+                    'android': '#10b981',
+                    'desktop': '#a855f7',
+                    'unknown': '#6b7280',
+                };
+                const devices = Object.keys(this.stats.users_by_device || {});
+                const hasDeviceData = devices.length > 0;
+                const totalDeviceUsers = hasDeviceData ? devices.reduce((sum, d) => sum + (this.stats.users_by_device[d] || 0), 0) : 0;
+
+                this.charts.device = new Chart(deviceCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: hasDeviceData ? devices.map(d => deviceLabels[d] || d) : ['ยังไม่มีข้อมูล'],
+                        datasets: [{
+                            data: hasDeviceData ? devices.map(d => this.stats.users_by_device[d]) : [1],
+                            backgroundColor: hasDeviceData ? devices.map(d => deviceColors[d] || '#6b7280') : ['#334155'],
+                            borderColor: '#0f172a',
+                            borderWidth: 3,
+                            hoverOffset: 8,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '55%',
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { boxWidth: 10, padding: 8, usePointStyle: true, pointStyle: 'rectRounded' },
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                titleColor: '#f1f5f9',
+                                bodyColor: '#cbd5e1',
+                                borderColor: 'rgba(59, 130, 246, 0.3)',
+                                borderWidth: 1,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: ctx => {
+                                        const pct = totalDeviceUsers > 0 ? ((ctx.parsed / totalDeviceUsers) * 100).toFixed(1) : 0;
+                                        return `${ctx.label}: ${ctx.parsed.toLocaleString('th-TH')} คน (${pct}%)`;
+                                    },
+                                },
+                            },
+                        },
+                        animation: {
+                            animateRotate: true,
+                            duration: 1000,
+                            easing: 'easeOutQuart',
+                        },
+                    },
+                });
+            }
+
+            // ═══ Usage Periods Bar Chart ═══
+            const usageCtx = document.getElementById('chartUsagePeriod');
+            if (usageCtx) {
+                const ctx = usageCtx.getContext('2d');
+                const periods = this.stats.usage_periods || [];
+
+                // Color bars by time of day
+                const barColors = periods.map(p => {
+                    const h = parseInt(p.hour);
+                    if (h >= 6 && h < 12) return 'rgba(251, 191, 36, 0.7)';   // Morning - amber
+                    if (h >= 12 && h < 18) return 'rgba(249, 115, 22, 0.7)';  // Afternoon - orange
+                    if (h >= 18 && h < 22) return 'rgba(139, 92, 246, 0.7)';  // Evening - violet
+                    return 'rgba(59, 130, 246, 0.5)';                          // Night - blue
+                });
+                const borderColors = periods.map(p => {
+                    const h = parseInt(p.hour);
+                    if (h >= 6 && h < 12) return 'rgba(251, 191, 36, 0.9)';
+                    if (h >= 12 && h < 18) return 'rgba(249, 115, 22, 0.9)';
+                    if (h >= 18 && h < 22) return 'rgba(139, 92, 246, 0.9)';
+                    return 'rgba(59, 130, 246, 0.7)';
+                });
+
+                this.charts.usagePeriod = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: periods.map(p => p.hour),
+                        datasets: [{
+                            label: 'ผู้ใช้งาน',
+                            data: periods.map(p => p.count),
+                            backgroundColor: barColors,
+                            borderColor: borderColors,
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            borderSkipped: false,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                titleColor: '#f1f5f9',
+                                bodyColor: '#cbd5e1',
+                                borderColor: 'rgba(139, 92, 246, 0.3)',
+                                borderWidth: 1,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    title: ctx => {
+                                        const h = parseInt(ctx[0].label);
+                                        let period = 'กลางคืน 🌙';
+                                        if (h >= 6 && h < 12) period = 'เช้า ☀️';
+                                        else if (h >= 12 && h < 18) period = 'บ่าย 🌤️';
+                                        else if (h >= 18 && h < 22) period = 'เย็น 🌆';
+                                        return `${ctx[0].label} น. (${period})`;
+                                    },
+                                    label: ctx => `${ctx.parsed.y} คน`,
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: tickColor,
+                                    maxRotation: 0,
+                                    callback: function(val, idx) {
+                                        return idx % 3 === 0 ? this.getLabelForValue(val) : '';
+                                    },
+                                },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: gridColor },
+                                ticks: { color: tickColor, precision: 0 },
+                            },
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeOutQuart',
+                            delay: (ctx) => ctx.dataIndex * 30,
                         },
                     },
                 });

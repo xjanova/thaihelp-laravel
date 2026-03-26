@@ -70,6 +70,29 @@ class StatsController extends Controller
             ];
         }
 
+        // Users by device type
+        $usersByDevice = User::selectRaw("COALESCE(device_type, 'unknown') as device, count(*) as total")
+            ->groupBy('device')
+            ->pluck('total', 'device')
+            ->toArray();
+
+        // User activity by time period (based on last_active_at, grouped by hour of day)
+        $activityByPeriod = User::whereNotNull('last_active_at')
+            ->where('last_active_at', '>=', now()->subDays(7))
+            ->selectRaw("HOUR(last_active_at) as hour, count(*) as total")
+            ->groupBy('hour')
+            ->pluck('total', 'hour')
+            ->toArray();
+
+        // Fill all 24 hours
+        $usagePeriods = [];
+        for ($h = 0; $h < 24; $h++) {
+            $usagePeriods[] = [
+                'hour' => sprintf('%02d:00', $h),
+                'count' => $activityByPeriod[$h] ?? 0,
+            ];
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -87,6 +110,8 @@ class StatsController extends Controller
                 'fuel_stats' => $fuelStats,
                 'top_reporters' => $topReporters,
                 'hourly_activity' => $hourlyActivity,
+                'users_by_device' => $usersByDevice,
+                'usage_periods' => $usagePeriods,
             ],
         ]);
     }
