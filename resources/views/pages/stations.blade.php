@@ -330,7 +330,7 @@
                 if (n.includes('esso') || n.includes('เอสโซ'))         return 'esso';
                 if (n.includes('caltex') || n.includes('คาลเท็กซ์'))   return 'caltex';
                 if (n.includes('susco') || n.includes('ซัสโก้'))       return 'susco';
-                if (n.includes('pt ') || n === 'pt')                     return 'pt';
+                if (/\bpt\b/.test(n) || n.includes('พีที') || n.includes('พีทีแม็กซ์') || n.includes('ptmax')) return 'pt';
                 if (n.includes('pure') || n.includes('เพียว'))           return 'pure';
                 if (n.includes('irpc'))                                  return 'irpc';
                 return null;

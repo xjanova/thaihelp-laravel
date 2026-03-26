@@ -16,7 +16,7 @@ class FuelPriceService
         'e85'            => ['E85', 'Gasohol E85', 'แก๊สโซฮอล์ E85'],
         'diesel'         => ['HSD', 'Diesel', 'ดีเซล', 'Hi Diesel', 'ไฮดีเซล', 'Diesel B10'],
         'diesel_b7'      => ['B7', 'Diesel B7', 'ดีเซล B7'],
-        'premium_diesel' => ['PHSD', 'Premium Diesel', 'ดีเซลพรีเมียม', 'V-Power Diesel'],
+        'premium_diesel' => ['PHSD', 'Premium Diesel', 'ดีเซลพรีเมียม', 'V-Power Diesel', 'Hi Premium Diesel', 'ไฮพรีเมียมดีเซล'],
         'ngv'            => ['NGV', 'CNG'],
         'lpg'            => ['LPG', 'แอลพีจี'],
     ];
@@ -29,8 +29,9 @@ class FuelPriceService
     {
         return Cache::remember('fuel_prices_today', 60 * 60 * 6, function () {
             $sources = [
-                'EPPO'          => fn () => $this->fetchFromEppo(),
                 'Bangchak'      => fn () => $this->fetchFromBangchak(),
+                'Motorist'      => fn () => $this->fetchFromMotorist(),
+                'EPPO'          => fn () => $this->fetchFromEppo(),
                 'PTT OR'        => fn () => $this->fetchFromPttOr(),
                 'Shell'         => fn () => $this->fetchFromShell(),
                 'PTT Scrape'    => fn () => $this->fetchFromPttScrape(),
@@ -95,31 +96,65 @@ class FuelPriceService
     }
 
     /**
-     * 2. Bangchak — API ราคาน้ำมันบางจาก
+     * 1. Bangchak — API ราคาน้ำมันบางจาก (primary, confirmed working)
+     * Endpoint: https://www.bangchak.co.th/api/oilprice
+     * Returns: {"code":200,"data":{"items":[{"OilName":"...","OilNameEng":"...","PriceToday":56.84,...}]}}
      */
     private function fetchFromBangchak(): ?array
     {
         $response = Http::timeout(10)
-            ->get('https://oil-price.bangchak.co.th/ApiOilPrice2/en/GetOilPrice2');
+            ->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 ThaiHelp/1.0',
+                'Accept' => 'application/json',
+            ])
+            ->get('https://www.bangchak.co.th/api/oilprice');
 
         if (!$response->ok()) return null;
 
         $data = $response->json();
-        if (empty($data)) return null;
+        if (empty($data['data']['items'])) return null;
+
+        // Direct mapping from Bangchak OilNameEng to our fuel types
+        // Bangchak returns premium variants (e.g. "Hi Premium 97 Gasohol 95") — skip those
+        // in favor of the standard variants (e.g. "Gasohol 95 S EVO")
+        $bangchakMap = [
+            'Hi Premium Diesel'  => 'premium_diesel',
+            'Hi Diesel'          => 'diesel',
+            'Gasohol 95 S EVO'   => 'gasohol95',
+            'Gasohol 91 S EVO'   => 'gasohol91',
+            'Gasohol E20 S EVO'  => 'e20',
+            'Gasohol E85 S EVO'  => 'e85',
+        ];
 
         $prices = [];
-        foreach ($data as $item) {
-            $name = $item['ProductName'] ?? $item['Name'] ?? '';
-            $price = $item['Price'] ?? $item['Sell'] ?? null;
-            if (!$price || !$name || (float) $price <= 0) continue;
+        foreach ($data['data']['items'] as $item) {
+            $nameEng = $item['OilNameEng'] ?? '';
+            $nameTh = $item['OilName'] ?? '';
+            $price = $item['PriceToday'] ?? null;
 
-            $key = $this->matchFuelType($name);
-            if ($key) {
+            if (!$price || (float) $price <= 0) continue;
+
+            // Try direct mapping from English name first
+            $key = null;
+            foreach ($bangchakMap as $pattern => $fuelKey) {
+                if (stripos($nameEng, $pattern) !== false) {
+                    $key = $fuelKey;
+                    break;
+                }
+            }
+
+            // Fallback: try generic matchFuelType on both names
+            if (!$key) {
+                $key = $this->matchFuelType($nameEng) ?? $this->matchFuelType($nameTh);
+            }
+
+            // Only set if not already set (first match wins — standard variants listed first)
+            if ($key && !isset($prices[$key])) {
                 $prices[$key] = [
                     'price' => round((float) $price, 2),
-                    'name' => $name,
+                    'name' => $nameTh ?: $nameEng,
                     'updated_at' => now()->toDateString(),
-                    'source' => 'Bangchak',
+                    'source' => 'บางจาก',
                 ];
             }
         }
@@ -291,6 +326,72 @@ class FuelPriceService
     }
 
     /**
+     * Motorist.co.th — aggregator with reliable HTML table of all brand prices.
+     * Scrapes the PTT column (standard reference prices).
+     */
+    private function fetchFromMotorist(): ?array
+    {
+        $response = Http::timeout(15)
+            ->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept' => 'text/html',
+            ])
+            ->get('https://www.motorist.co.th/en/petrol-prices');
+
+        if (!$response->ok()) return null;
+
+        $html = $response->body();
+        if (empty($html) || strlen($html) < 1000) return null;
+
+        // Parse the fuel_comparison table — first data column is typically PTT prices
+        // Pattern: <td>Fuel Name</td><td>฿XX.XX</td>...
+        $prices = [];
+
+        // Match rows: fuel name followed by first price (PTT column)
+        $fuelPatterns = [
+            'gasohol95'      => '/Gasohol\s*95(?!\s*Premium)[^฿]*?฿\s*(\d{2,3}\.\d{2})/si',
+            'gasohol91'      => '/Gasohol\s*91[^฿]*?฿\s*(\d{2,3}\.\d{2})/si',
+            'e20'            => '/Gasohol\s*E20[^฿]*?฿\s*(\d{2,3}\.\d{2})/si',
+            'e85'            => '/Gasohol\s*E85[^฿]*?฿\s*(\d{2,3}\.\d{2})/si',
+            'diesel'         => '/Diesel\s*B7(?!\s*Premium)[^฿]*?฿\s*(\d{2,3}\.\d{2})/si',
+            'premium_diesel' => '/Diesel\s*B7\s*Premium[^฿]*?฿\s*(\d{2,3}\.\d{2})/si',
+        ];
+
+        foreach ($fuelPatterns as $key => $pattern) {
+            if (preg_match($pattern, $html, $m)) {
+                $p = (float) $m[1];
+                if ($p > 10 && $p < 100) {
+                    $prices[$key] = [
+                        'price' => round($p, 2),
+                        'name' => $this->fuelThaiName($key),
+                        'updated_at' => now()->toDateString(),
+                        'source' => 'Motorist',
+                    ];
+                }
+            }
+        }
+
+        return !empty($prices) ? $prices : null;
+    }
+
+    /** Thai display names for fuel types */
+    private function fuelThaiName(string $key): string
+    {
+        return match ($key) {
+            'gasohol95'      => 'แก๊สโซฮอล์ 95',
+            'gasohol91'      => 'แก๊สโซฮอล์ 91',
+            'e20'            => 'แก๊สโซฮอล์ E20',
+            'e85'            => 'แก๊สโซฮอล์ E85',
+            'diesel'         => 'ดีเซล B7',
+            'diesel_b7'      => 'ดีเซล B7',
+            'premium_diesel' => 'ดีเซลพรีเมียม',
+            'ngv'            => 'NGV',
+            'lpg'            => 'LPG',
+            default          => $key,
+        };
+    }
+
+    /**
      * Match a fuel product name to our standard fuel type key.
      */
     private function matchFuelType(string $name): ?string
@@ -332,14 +433,15 @@ class FuelPriceService
             'is_fallback' => true,
         ];
 
+        // Updated 2026-03-26 — real prices after subsidy reduction (+6 THB)
         return [
-            'gasohol95'      => $fb(36.04, 'แก๊สโซฮอล์ 95'),
-            'gasohol91'      => $fb(33.54, 'แก๊สโซฮอล์ 91'),
-            'e20'            => $fb(32.04, 'แก๊สโซฮอล์ E20'),
-            'e85'            => $fb(25.04, 'แก๊สโซฮอล์ E85'),
-            'diesel'         => $fb(29.94, 'ดีเซล'),
-            'diesel_b7'      => $fb(29.94, 'ดีเซล B7'),
-            'premium_diesel' => $fb(34.94, 'ดีเซลพรีเมียม'),
+            'gasohol95'      => $fb(41.05, 'แก๊สโซฮอล์ 95'),
+            'gasohol91'      => $fb(40.68, 'แก๊สโซฮอล์ 91'),
+            'e20'            => $fb(36.05, 'แก๊สโซฮอล์ E20'),
+            'e85'            => $fb(32.79, 'แก๊สโซฮอล์ E85'),
+            'diesel'         => $fb(38.94, 'ดีเซล B7'),
+            'diesel_b7'      => $fb(38.94, 'ดีเซล B7'),
+            'premium_diesel' => $fb(54.64, 'ดีเซลพรีเมียม'),
             'ngv'            => $fb(18.59, 'NGV'),
             'lpg'            => $fb(23.47, 'LPG'),
         ];
