@@ -4,19 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'ThaiHelp - ช่วยเหลือคนไทย' }}</title>
+    <title>{{ $title ?? 'ThaiHelp - ชุมชนช่วยเหลือนักเดินทาง' }}</title>
+    <meta name="description" content="{{ $description ?? 'ThaiHelp แอปชุมชนช่วยเหลือนักเดินทาง แจ้งเหตุ ราคาน้ำมัน ปั๊มน้ำมัน สภาพถนน โรงพยาบาลใกล้เคียง แผนที่เรียลไทม์' }}">
+    <meta name="keywords" content="ThaiHelp, ราคาน้ำมัน, ปั๊มน้ำมัน, แจ้งเหตุ, สภาพถนน, โรงพยาบาล, แผนที่, ช่วยเหลือนักเดินทาง">
+    <meta name="author" content="ThaiHelp">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    {{-- Open Graph / Facebook --}}
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $title ?? 'ThaiHelp - ชุมชนช่วยเหลือนักเดินทาง' }}">
+    <meta property="og:description" content="{{ $description ?? 'แอปชุมชนช่วยเหลือนักเดินทาง แจ้งเหตุ ราคาน้ำมัน ปั๊มน้ำมัน สภาพถนน โรงพยาบาลใกล้เคียง' }}">
+    <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="ThaiHelp">
+    <meta property="og:locale" content="th_TH">
+
+    {{-- Twitter Card --}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $title ?? 'ThaiHelp - ชุมชนช่วยเหลือนักเดินทาง' }}">
+    <meta name="twitter:description" content="{{ $description ?? 'แอปชุมชนช่วยเหลือนักเดินทาง แจ้งเหตุ ราคาน้ำมัน ปั๊มน้ำมัน สภาพถนน' }}">
+    <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
+
+    {{-- LINE --}}
+    <meta property="og:image:alt" content="ThaiHelp - น้องหญิง ชุมชนช่วยเหลือนักเดินทาง">
 
     {{-- Google Fonts: Noto Sans Thai --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    {{-- Favicon --}}
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+
     {{-- PWA --}}
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <meta name="theme-color" content="#f97316">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ThaiHelp">
 
     {{-- Vite CSS --}}
     @vite(['resources/css/app.css'])
