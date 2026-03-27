@@ -324,14 +324,14 @@
     </script>
     @endunless
 
-    {{-- SOS Button (เล็กลง ชิดขวาบน ไม่บังอะไร) --}}
-    <div class="fixed top-16 right-3 z-40" x-data="{ showSOS: false }">
+    {{-- SOS Button (ขวาล่าง เหนือ bottom-nav ไม่บังปุ่มข้อมูล) --}}
+    <div class="fixed bottom-[5.5rem] right-3 z-40" x-data="{ showSOS: false }">
         <button @click="showSOS = !showSOS"
-                class="w-9 h-9 rounded-full bg-red-600/80 backdrop-blur-sm shadow-lg flex items-center justify-center text-xs text-white hover:bg-red-500 active:scale-95 transition-all">
+                class="w-10 h-10 rounded-full bg-red-600/90 backdrop-blur-sm shadow-lg shadow-red-500/30 flex items-center justify-center text-sm text-white hover:bg-red-500 active:scale-95 transition-all ring-2 ring-red-400/50">
             🆘
         </button>
         <div x-show="showSOS" x-transition @click.outside="showSOS = false"
-             class="absolute top-11 right-0 w-56 metal-panel rounded-2xl p-3 shadow-2xl border border-red-500/30 space-y-2">
+             class="absolute bottom-12 right-0 w-56 metal-panel rounded-2xl p-3 shadow-2xl border border-red-500/30 space-y-2">
             <p class="text-xs font-bold text-red-400 text-center">🆘 เบอร์ฉุกเฉิน</p>
             <div class="grid grid-cols-2 gap-1.5">
                 <a href="tel:1669" class="flex items-center gap-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg px-2.5 py-2 transition-colors">

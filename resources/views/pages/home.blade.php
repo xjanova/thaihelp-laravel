@@ -146,22 +146,25 @@
         </div>
     </div>
 
-    {{-- News Ticker Panel --}}
+    {{-- News Ticker Panel (ซ้าย + ลากได้) --}}
     <div id="news-panel" x-data="newsPanel()" x-show="show" x-transition
-         class="absolute top-14 right-3 z-10 w-80 max-h-[60vh] metal-panel rounded-xl overflow-hidden shadow-2xl border border-slate-700/50">
-        {{-- Header --}}
-        <div class="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-orange-600/80 to-red-600/80 backdrop-blur-sm">
+         :style="'left:' + panelX + 'px; top:' + panelY + 'px;'"
+         class="absolute z-10 w-72 sm:w-80 max-h-[60vh] metal-panel rounded-xl overflow-hidden shadow-2xl border border-slate-700/50"
+         style="left: 12px; top: 56px;">
+        {{-- Header (ลากได้) --}}
+        <div class="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-orange-600/80 to-red-600/80 backdrop-blur-sm cursor-move select-none"
+             @mousedown="startDrag($event)" @touchstart.passive="startDrag($event)">
             <div class="flex items-center gap-2">
                 <span class="text-sm">📰</span>
                 <span class="text-xs font-bold text-white">ข่าวพลังงาน</span>
                 <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px] text-white" x-text="newsCount + ' ข่าว'"></span>
             </div>
             <div class="flex items-center gap-1">
-                <button @click="expanded = !expanded" class="text-white/70 hover:text-white p-0.5">
+                <button @click.stop="expanded = !expanded" class="text-white/70 hover:text-white p-0.5">
                     <svg x-show="!expanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     <svg x-show="expanded" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                 </button>
-                <button @click="show = false; $dispatch('news-closed')" class="text-white/70 hover:text-white p-0.5">
+                <button @click.stop="show = false; $dispatch('news-closed')" class="text-white/70 hover:text-white p-0.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -202,7 +205,7 @@
             @news-closed.window="visible = true"
             @click="visible = false; document.getElementById('news-panel').__x.$data.show = true"
             x-transition
-            class="absolute top-14 right-3 z-10 metal-btn p-2 rounded-full shadow-lg">
+            class="absolute top-14 left-3 z-10 metal-btn p-2 rounded-full shadow-lg">
         <span class="text-sm">📰</span>
     </button>
 
@@ -381,9 +384,24 @@
     }
 
     async function loadMapData() {
+        // Clear old markers
+        stationMarkers.forEach(m => m.setMap(null));
+        stationMarkers = [];
+        incidentMarkers.forEach(m => { if (m.setMap) m.setMap(null); });
+        incidentMarkers = [];
+
         try {
-            // Load stations
-            const stationsRes = await fetch(`/api/stations?lat=${userPos.lat}&lng=${userPos.lng}&radius=10000`);
+            // Use map center if available (follows pan/zoom), else use userPos
+            let center = userPos;
+            if (map) {
+                const mc = map.getCenter();
+                if (mc) center = { lat: mc.lat(), lng: mc.lng() };
+            }
+
+            // Dynamic radius based on zoom (like getMapRadius() but for stations in meters)
+            const stationRadius = map ? getStationRadius() : 20000;
+
+            const stationsRes = await fetch(`/api/stations?lat=${center.lat}&lng=${center.lng}&radius=${stationRadius}`);
             const stationsData = await stationsRes.json();
             const stations = stationsData.success ? (stationsData.data || []) : (stationsData.data || []);
             stations.forEach(station => {
@@ -468,9 +486,14 @@
         }
 
         try {
-            // Load incidents (radius-filtered)
+            // Load incidents (radius-filtered, use map center)
+            let incCenter = userPos;
+            if (map) {
+                const mc = map.getCenter();
+                if (mc) incCenter = { lat: mc.lat(), lng: mc.lng() };
+            }
             const mapRadius = getMapRadius();
-            const incidentsRes = await fetch(`/api/incidents?lat=${userPos.lat}&lng=${userPos.lng}&radius=${mapRadius}`);
+            const incidentsRes = await fetch(`/api/incidents?lat=${incCenter.lat}&lng=${incCenter.lng}&radius=${mapRadius}`);
             const incidentsData = await incidentsRes.json();
             const incidents = incidentsData.success ? (incidentsData.data || []) : (incidentsData.data || []);
 
@@ -632,6 +655,15 @@
             zoomControlOptions: {
                 position: google.maps.ControlPosition.RIGHT_CENTER
             },
+        });
+
+        // ─── Reload data when map is panned/zoomed ───
+        let _reloadTimer = null;
+        map.addListener('idle', () => {
+            clearTimeout(_reloadTimer);
+            _reloadTimer = setTimeout(() => {
+                loadMapData();
+            }, 800); // debounce 800ms
         });
 
         // ─── Google Traffic Layer (real-time, free) ───
@@ -872,13 +904,22 @@
     function getMapRadius() {
         if (!map) return 50;
         const zoom = map.getZoom();
-        // Approximate radius in km based on zoom
         if (zoom >= 16) return 2;
         if (zoom >= 14) return 5;
         if (zoom >= 12) return 15;
         if (zoom >= 10) return 50;
         if (zoom >= 8) return 100;
         return 200;
+    }
+
+    /** Station radius in meters based on zoom — ปั๊มโหลดตาม zoom level (max 50km = Google Places limit) */
+    function getStationRadius() {
+        if (!map) return 20000;
+        const zoom = map.getZoom();
+        if (zoom >= 16) return 3000;     // 3km
+        if (zoom >= 14) return 8000;     // 8km
+        if (zoom >= 12) return 20000;    // 20km
+        return 50000;                    // 50km (max for Google Places)
     }
 
     // ─── Balloon Labels for stations/incidents ───
@@ -1031,17 +1072,63 @@
         });
     }
 
-    // News Panel Alpine component
+    // News Panel Alpine component (draggable)
     function newsPanel() {
         return {
             show: true,
             expanded: true,
             news: [],
             newsCount: 0,
+            // Drag state
+            panelX: 12,
+            panelY: 56,
+            _dragging: false,
+            _dragOffsetX: 0,
+            _dragOffsetY: 0,
             init() {
                 this.loadNews();
-                // Refresh every 30 min
                 setInterval(() => this.loadNews(), 30 * 60 * 1000);
+
+                // Restore saved position
+                const saved = localStorage.getItem('thaihelp_news_pos');
+                if (saved) {
+                    try {
+                        const pos = JSON.parse(saved);
+                        this.panelX = pos.x;
+                        this.panelY = pos.y;
+                    } catch (e) {}
+                }
+
+                // Mouse/touch move handlers (bound to window)
+                const moveHandler = (e) => {
+                    if (!this._dragging) return;
+                    e.preventDefault();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    const container = this.$el.parentElement;
+                    const rect = container.getBoundingClientRect();
+                    this.panelX = Math.max(0, Math.min(rect.width - 200, clientX - rect.left - this._dragOffsetX));
+                    this.panelY = Math.max(0, Math.min(rect.height - 60, clientY - rect.top - this._dragOffsetY));
+                };
+                const upHandler = () => {
+                    if (this._dragging) {
+                        this._dragging = false;
+                        localStorage.setItem('thaihelp_news_pos', JSON.stringify({ x: this.panelX, y: this.panelY }));
+                    }
+                };
+                window.addEventListener('mousemove', moveHandler);
+                window.addEventListener('mouseup', upHandler);
+                window.addEventListener('touchmove', moveHandler, { passive: false });
+                window.addEventListener('touchend', upHandler);
+            },
+            startDrag(e) {
+                this._dragging = true;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const container = this.$el.parentElement;
+                const rect = container.getBoundingClientRect();
+                this._dragOffsetX = clientX - rect.left - this.panelX;
+                this._dragOffsetY = clientY - rect.top - this.panelY;
             },
             async loadNews() {
                 try {
