@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\GroqAIService;
+use App\Services\YingMemoryService;
+use App\Services\YingTrainingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -16,7 +18,7 @@ class ChatController extends Controller
     }
 
     /**
-     * API: Send a chat message with location context.
+     * API: Send a chat message with location context + memory + learning.
      */
     public function apiChat(Request $request): JsonResponse
     {
@@ -50,23 +52,36 @@ class ChatController extends Controller
             $messages[] = ['role' => 'user', 'content' => $messageText];
         } else {
             $messages = $validated['messages'];
-            // Extract last user message for smart context
             $lastUser = collect($messages)->where('role', 'user')->last();
             $messageText = $lastUser['content'] ?? '';
         }
 
-        // Build location context if GPS available
-        $locationContext = '';
+        $userId = $request->user()?->id;
+        $sessionId = $request->session()->getId();
         $lat = $validated['latitude'] ?? null;
         $lng = $validated['longitude'] ?? null;
 
-        // Fix: use !== null instead of truthiness (lat=0.0 is valid at equator)
+        // === Memory: extract and store memories from user message ===
+        $memoryService = app(YingMemoryService::class);
+        try {
+            $newMemories = $memoryService->extractMemories($messageText);
+            foreach ($newMemories as $mem) {
+                $memoryService->remember($userId, $sessionId, $mem['category'], $mem['key'], $mem['value'], $messageText);
+            }
+            // Track behavioral patterns
+            $memoryService->trackBehavior($userId, $sessionId, $messageText, [
+                'lat' => $lat, 'lng' => $lng,
+            ]);
+        } catch (\Exception $e) {
+            // Memory should never break chat
+            Log::warning('Memory processing failed', ['error' => $e->getMessage()]);
+        }
+
+        // === Build location context ===
+        $locationContext = '';
         if ($lat !== null && $lng !== null) {
             try {
-                // Cache by location only (0.01° ≈ 1.1km grid) — NOT per-message!
-                // Smart loading still works inside build(), but cache is shared for same area
                 $locKey = round($lat, 2) . '_' . round($lng, 2);
-                $userId = $request->user()?->id;
                 $cacheKey = "ying_ctx_{$locKey}" . ($userId ? "_{$userId}" : '');
 
                 $locationContext = Cache::remember($cacheKey, 120, function () use ($lat, $lng, $userId, $messageText) {
@@ -78,6 +93,17 @@ class ChatController extends Controller
             }
         }
 
+        // === Memory context: inject user memories into prompt ===
+        $memoryContext = '';
+        try {
+            $memoryContext = $memoryService->buildMemoryContext($userId, $sessionId, $messageText);
+        } catch (\Exception $e) {
+            Log::warning('Memory context build failed', ['error' => $e->getMessage()]);
+        }
+
+        // Combine location + memory context
+        $fullContext = $locationContext . $memoryContext;
+
         try {
             $groqService = app(GroqAIService::class);
 
@@ -88,7 +114,24 @@ class ChatController extends Controller
                 ], 503);
             }
 
-            $reply = $groqService->chat($messages, $locationContext);
+            $reply = $groqService->chat($messages, $fullContext);
+
+            // === Process REMEMBER commands from AI reply ===
+            $reply = $this->processRememberCommands($reply, $userId, $sessionId, $memoryService);
+
+            // === Collect training data ===
+            try {
+                app(YingTrainingService::class)->collect(
+                    $userId,
+                    $messageText,
+                    $reply,
+                    null, // system prompt is large, skip for storage efficiency
+                    null, // auto-categorize
+                    array_filter(['lat' => $lat, 'lng' => $lng, 'hour' => now()->hour])
+                );
+            } catch (\Exception $e) {
+                // Training collection should never break chat
+            }
 
             return response()->json([
                 'success' => true,
@@ -102,5 +145,24 @@ class ChatController extends Controller
                 'reply' => 'ขอโทษค่ะ ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งนะคะ',
             ], 500);
         }
+    }
+
+    /**
+     * Extract [REMEMBER:...] commands from AI reply and store them.
+     * Strip the tags from the displayed reply.
+     */
+    private function processRememberCommands(string $reply, ?int $userId, ?string $sessionId, YingMemoryService $memoryService): string
+    {
+        return preg_replace_callback('/\[REMEMBER:\{([^}]+)\}\]/', function ($matches) use ($userId, $sessionId, $memoryService) {
+            try {
+                $json = json_decode('{' . $matches[1] . '}', true);
+                if ($json && isset($json['cat'], $json['key'], $json['val'])) {
+                    $memoryService->remember($userId, $sessionId, $json['cat'], $json['key'], $json['val']);
+                }
+            } catch (\Exception $e) {
+                // Silent fail
+            }
+            return ''; // Strip from display
+        }, $reply);
     }
 }

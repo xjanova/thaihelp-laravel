@@ -579,34 +579,60 @@
                         }
                     }
 
-                    // Handle app navigation commands
-                    if (reply.includes('[OPEN_STATIONS]')) {
-                        setTimeout(() => window.location.href = '/stations', 1500);
+                    // Handle app navigation commands with parameters
+                    const stationsMatch = reply.match(/\[OPEN_STATIONS(?::(\{[^}]*\}))?\]/);
+                    if (stationsMatch) {
+                        let url = '/stations';
+                        if (stationsMatch[1]) {
+                            try {
+                                const p = JSON.parse(stationsMatch[1]);
+                                const params = new URLSearchParams();
+                                if (p.brand) params.set('brand', p.brand);
+                                if (p.fuel) params.set('fuel', p.fuel);
+                                if (params.toString()) url += '?' + params.toString();
+                            } catch {}
+                        }
+                        setTimeout(() => window.location.href = url, 1500);
                     }
-                    if (reply.includes('[OPEN_TRIP]')) {
-                        setTimeout(() => window.location.href = '/trip', 1500);
+
+                    const tripMatch = reply.match(/\[OPEN_TRIP(?::(\{[^}]*\}))?\]/);
+                    if (tripMatch) {
+                        let url = '/trip';
+                        if (tripMatch[1]) {
+                            try {
+                                const p = JSON.parse(tripMatch[1]);
+                                const params = new URLSearchParams();
+                                if (p.from) params.set('from', p.from);
+                                if (p.to) params.set('to', p.to);
+                                if (params.toString()) url += '?' + params.toString();
+                            } catch {}
+                        }
+                        setTimeout(() => window.location.href = url, 1500);
                     }
+
                     if (reply.includes('[OPEN_HOSPITALS]')) {
                         setTimeout(() => window.location.href = '/hospitals', 1500);
                     }
                     if (reply.includes('[CALL_SOS]')) {
-                        // Trigger SOS if available
                         if (window.triggerSOS) window.triggerSOS();
                     }
 
-                    // Clean command tags from displayed messages
+                    // Clean ALL command tags from displayed messages
                     const lastMsg = this.messages[this.messages.length - 1];
                     if (lastMsg && lastMsg.role === 'assistant') {
                         lastMsg.content = lastMsg.content
-                            .replace(/\[FUEL_REPORT:.*?\]/g, '')
-                            .replace(/\[INCIDENT_REPORT:.*?\]/g, '')
-                            .replace(/\[CONDITION:.*?\]/g, '')
-                            .replace(/\[NAVIGATE:.*?\]/g, '')
+                            .replace(/\[FUEL_REPORT:[^\]]*\]/g, '')
+                            .replace(/\[INCIDENT_REPORT:[^\]]*\]/g, '')
+                            .replace(/\[CONDITION:[^\]]*\]/g, '')
+                            .replace(/\[NAVIGATE:[^\]]*\]/g, '')
+                            .replace(/\[REMEMBER:[^\]]*\]/g, '')
                             .replace(/\[PLAY_VIDEO\]/g, '')
-                            .replace(/\[OPEN_STATIONS\]/g, '')
-                            .replace(/\[OPEN_TRIP\]/g, '')
+                            .replace(/\[OPEN_STATIONS[^\]]*\]/g, '')
+                            .replace(/\[OPEN_TRIP[^\]]*\]/g, '')
                             .replace(/\[OPEN_HOSPITALS\]/g, '')
                             .replace(/\[CALL_SOS\]/g, '')
+                            .replace(/\[[A-Z_]{3,}[^\]]*\]/g, '') // catch-all
+                            .replace(/\s{2,}/g, ' ')
                             .trim();
                     }
                 } catch (err) {
