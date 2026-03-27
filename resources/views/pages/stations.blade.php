@@ -16,6 +16,10 @@
                     <div class="text-lg font-bold text-blue-500" id="nearby-count">--</div>
                     <div class="text-[10px] text-slate-500">ใกล้คุณ</div>
                 </div>
+                <div class="text-center" id="density-info" style="display:none">
+                    <div class="text-lg font-bold text-emerald-500" id="density-label">--</div>
+                    <div class="text-[10px] text-slate-500">ความหนาแน่น</div>
+                </div>
             </div>
         </div>
     </div>
@@ -110,7 +114,15 @@
             <p class="text-xs text-slate-500 mt-1">ลองขยายรัศมีการค้นหา</p>
         </div>
 
-        {{-- Station Cards (populated by JS/Livewire) --}}
+        {{-- Loading More Indicator --}}
+        <div id="station-loading-more" class="text-center py-3 hidden">
+            <div class="inline-flex items-center gap-2 metal-panel rounded-full px-4 py-2">
+                <div class="w-4 h-4 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></div>
+                <span class="text-xs text-slate-400">กำลังโหลดเพิ่ม... <span id="loading-page-info"></span></span>
+            </div>
+        </div>
+
+        {{-- Station Cards (populated by JS) --}}
         <template id="station-card-template">
             <div class="metal-panel metal-panel-hover rounded-xl p-4">
                 <div class="flex items-start justify-between mb-2">
@@ -156,12 +168,16 @@
         Alpine.data('stationsPage', () => ({
             stations: [],
             loading: true,
+            loadingMore: false,
             radius: 10,
             searchQuery: '',
             selectedFuel: 'all',
             selectedBrand: 'all',
             userLat: 13.7563,
             userLng: 100.5018,
+            densityLabel: '',
+            effectiveRadius: 0,
+            _searchId: 0, // cancel stale progressive loads
 
             async init() {
                 await this.getUserLocation();
@@ -180,12 +196,16 @@
 
                 // Search input
                 const searchInput = document.getElementById('station-search');
+                let searchTimer;
                 searchInput.addEventListener('input', (e) => {
-                    this.searchQuery = e.target.value;
-                    this.renderStations();
+                    clearTimeout(searchTimer);
+                    searchTimer = setTimeout(() => {
+                        this.searchQuery = e.target.value;
+                        this.renderStations();
+                    }, 200);
                 });
 
-                // Brand filter buttons — triggers new API search with keyword
+                // Brand filter buttons
                 document.querySelectorAll('[data-brand]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         document.querySelectorAll('[data-brand]').forEach(b => {
@@ -193,7 +213,7 @@
                         });
                         btn.className = btn.className.replace('metal-btn', 'metal-btn-accent').replace('text-slate-300', 'text-white');
                         this.selectedBrand = btn.dataset.brand;
-                        this.searchStations(); // Re-fetch from API with brand keyword
+                        this.searchStations();
                     });
                 });
 
@@ -219,7 +239,8 @@
                                 this.userLng = pos.coords.longitude;
                                 resolve();
                             },
-                            () => resolve()
+                            () => resolve(),
+                            { timeout: 5000 }
                         );
                     } else {
                         resolve();
@@ -228,25 +249,113 @@
             },
 
             async searchStations() {
+                const searchId = ++this._searchId;
                 this.loading = true;
+                this.stations = [];
                 this.showLoading(true);
+
                 try {
                     const params = { lat: this.userLat, lng: this.userLng, radius: this.radius * 1000 };
                     if (this.selectedBrand && this.selectedBrand !== 'all') {
                         params.brand = this.selectedBrand;
                     }
+
+                    // Page 1 — show immediately
                     const res = await axios.get('/api/stations', { params });
+                    if (searchId !== this._searchId) return; // cancelled
+
                     if (res.data.success) {
                         this.stations = res.data.data || [];
-                    } else {
-                        this.stations = res.data.data || res.data || [];
                     }
-                } catch (err) {
-                    console.error('Failed to load stations:', err);
-                    this.stations = [];
-                } finally {
+
+                    // Update density info
+                    this.updateDensityInfo(res.data);
+
                     this.loading = false;
                     this.renderStations();
+
+                    // Progressive load: fetch remaining pages
+                    if (res.data.has_more && res.data.page_token) {
+                        await this.loadMorePages(res.data.page_token, searchId, 2);
+                    }
+                } catch (err) {
+                    if (searchId !== this._searchId) return;
+                    console.error('Failed to load stations:', err);
+                    this.stations = [];
+                    this.loading = false;
+                    this.renderStations();
+                }
+            },
+
+            async loadMorePages(pageToken, searchId, pageNum) {
+                this.loadingMore = true;
+                const moreEl = document.getElementById('station-loading-more');
+                const pageInfo = document.getElementById('loading-page-info');
+                if (moreEl) moreEl.classList.remove('hidden');
+                if (pageInfo) pageInfo.textContent = `(รอบ ${pageNum})`;
+
+                // Wait 2.5s for Google's next_page_token to become valid
+                await new Promise(r => setTimeout(r, 2500));
+                if (searchId !== this._searchId) { this.hideLoadingMore(); return; }
+
+                try {
+                    const res = await axios.get('/api/stations', {
+                        params: { lat: this.userLat, lng: this.userLng, page_token: pageToken }
+                    });
+                    if (searchId !== this._searchId) { this.hideLoadingMore(); return; }
+
+                    if (res.data.success && res.data.data?.length > 0) {
+                        // Deduplicate by place_id
+                        const existingIds = new Set(this.stations.map(s => s.place_id));
+                        const newStations = res.data.data.filter(s => !existingIds.has(s.place_id));
+                        this.stations = [...this.stations, ...newStations];
+                        this.renderStations();
+
+                        // Continue to next page if available
+                        if (res.data.has_more && res.data.page_token) {
+                            await this.loadMorePages(res.data.page_token, searchId, pageNum + 1);
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Failed to load more stations:', err);
+                }
+
+                this.hideLoadingMore();
+            },
+
+            hideLoadingMore() {
+                this.loadingMore = false;
+                const moreEl = document.getElementById('station-loading-more');
+                if (moreEl) moreEl.classList.add('hidden');
+            },
+
+            updateDensityInfo(data) {
+                const densityEl = document.getElementById('density-info');
+                const labelEl = document.getElementById('density-label');
+                if (!densityEl || !labelEl) return;
+
+                const labels = {
+                    very_dense: 'หนาแน่นมาก',
+                    dense: 'หนาแน่น',
+                    moderate: 'ปานกลาง',
+                    sparse: 'เบาบาง',
+                };
+
+                if (data.density_label) {
+                    labelEl.textContent = labels[data.density_label] || data.density_label;
+                    densityEl.style.display = '';
+
+                    // Show effective radius if capped
+                    if (data.radius_capped) {
+                        const radiusKm = Math.round((data.effective_radius || 0) / 1000);
+                        const radiusValue = document.getElementById('radius-value');
+                        if (radiusValue && radiusKm < this.radius) {
+                            radiusValue.innerHTML = `${this.radius} กม. <span class="text-emerald-400 text-[10px]">(จำกัด ${radiusKm} กม.)</span>`;
+                        }
+                    }
+                } else {
+                    densityEl.style.display = 'none';
                 }
             },
 

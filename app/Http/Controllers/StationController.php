@@ -36,6 +36,7 @@ class StationController extends Controller
             'lng' => ['required', 'numeric', 'between:-180,180'],
             'radius' => ['nullable', 'integer', 'min:100', 'max:50000'],
             'brand' => ['nullable', 'string', 'max:50'],
+            'page_token' => ['nullable', 'string', 'max:100'],
         ]);
 
         try {
@@ -43,6 +44,7 @@ class StationController extends Controller
             $lng = $validated['lng'];
             $radius = $validated['radius'] ?? 5000;
             $brand = $validated['brand'] ?? null;
+            $pageToken = $validated['page_token'] ?? null;
 
             // Map brand key to search keyword for Google Places
             $brandKeywords = [
@@ -58,24 +60,28 @@ class StationController extends Controller
             ];
             $keyword = $brand ? ($brandKeywords[$brand] ?? $brand) : null;
 
-            // Get stations from Google Places API
+            // Get stations from Google Places API (paged)
             $placesService = app(GooglePlacesService::class);
-            $stations = $placesService->searchNearby($lat, $lng, $radius, $keyword);
+            $result = $placesService->searchNearbyPaged($lat, $lng, $radius, $keyword, $pageToken);
+            $stations = $result['stations'] ?? [];
 
             // Get user-submitted fuel reports from DB (last 6 hours)
             $placeIds = collect($stations)->pluck('place_id')->filter()->toArray();
 
-            $recentReports = StationReport::whereIn('place_id', $placeIds)
-                ->where('created_at', '>=', now()->subHours(6))
-                ->with('fuelReports')
-                ->latest()
-                ->get()
-                ->keyBy('place_id');
+            $recentReports = [];
+            if (!empty($placeIds)) {
+                $recentReports = StationReport::whereIn('place_id', $placeIds)
+                    ->where('created_at', '>=', now()->subHours(6))
+                    ->with('fuelReports')
+                    ->latest()
+                    ->get()
+                    ->keyBy('place_id');
+            }
 
             // Merge Google data with user fuel reports
             $merged = collect($stations)->map(function ($station) use ($recentReports) {
                 $placeId = $station['place_id'] ?? null;
-                $report = $placeId ? $recentReports->get($placeId) : null;
+                $report = $placeId ? ($recentReports[$placeId] ?? null) : null;
 
                 return [
                     ...$station,
@@ -89,6 +95,13 @@ class StationController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $merged->values(),
+                'page' => $result['page'] ?? 1,
+                'has_more' => $result['has_more'] ?? false,
+                'page_token' => $result['page_token'] ?? null,
+                'density' => $result['density'] ?? null,
+                'density_label' => $result['density_label'] ?? null,
+                'effective_radius' => $result['effective_radius'] ?? $radius,
+                'radius_capped' => $result['radius_capped'] ?? false,
             ]);
         } catch (\Exception $e) {
             Log::error('Station search failed', ['error' => $e->getMessage()]);
