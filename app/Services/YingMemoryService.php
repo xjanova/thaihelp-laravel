@@ -66,12 +66,10 @@ class YingMemoryService
 
         try {
             $query = YingMemory::forUser($userId, $sessionId)
-                ->where('admin_approved', true)
-                ->orderByDesc('use_count')
-                ->orderByDesc('updated_at');
+                ->where('admin_approved', true);
 
             if ($topic) {
-                // Prioritize memories matching the topic
+                // Prioritize memories matching the topic FIRST, then by usage
                 $query->orderByRaw("CASE
                     WHEN `key` LIKE ? THEN 0
                     WHEN `value` LIKE ? THEN 1
@@ -79,11 +77,18 @@ class YingMemoryService
                 END", ["%{$topic}%", "%{$topic}%"]);
             }
 
+            $query->orderByDesc('use_count')->orderByDesc('updated_at');
+
             $memories = $query->limit($limit)->get();
 
-            // Mark as used
-            foreach ($memories as $memory) {
-                $memory->markUsed();
+            // Mark topic-relevant memories as used (not all recalled)
+            if ($topic) {
+                foreach ($memories as $memory) {
+                    if (str_contains(mb_strtolower($memory->value), mb_strtolower($topic))
+                        || str_contains(mb_strtolower($memory->key), mb_strtolower($topic))) {
+                        $memory->markUsed();
+                    }
+                }
             }
 
             return $memories->toArray();
@@ -248,8 +253,13 @@ class YingMemoryService
         return (bool) $this->getConfig('memory_enabled', true);
     }
 
+    private static array $_configCache = [];
+
     private function getConfig(string $key, $default = null)
     {
-        return DB::table('ying_learning_config')->where('key', $key)->value('value') ?? $default;
+        if (!isset(self::$_configCache[$key])) {
+            self::$_configCache[$key] = DB::table('ying_learning_config')->where('key', $key)->value('value');
+        }
+        return self::$_configCache[$key] ?? $default;
     }
 }

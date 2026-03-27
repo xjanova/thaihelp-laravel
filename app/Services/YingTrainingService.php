@@ -80,7 +80,12 @@ class YingTrainingService
     public function pushToHuggingFace(): array
     {
         $repo = $this->getConfig('huggingface_repo');
-        $token = $this->getConfig('huggingface_token');
+        $rawToken = $this->getConfig('huggingface_token');
+        try {
+            $token = $rawToken ? decrypt($rawToken) : null;
+        } catch (\Exception $e) {
+            $token = $rawToken; // fallback for legacy plain text
+        }
 
         if (!$repo || !$token) {
             return ['success' => false, 'error' => 'HuggingFace repo or token not configured'];
@@ -181,8 +186,13 @@ class YingTrainingService
         return (bool) ($this->getConfig('auto_collect_training') ?? true);
     }
 
+    private static array $_configCache = [];
+
     private function getConfig(string $key, $default = null)
     {
-        return DB::table('ying_learning_config')->where('key', $key)->value('value') ?? $default;
+        if (!isset(self::$_configCache[$key])) {
+            self::$_configCache[$key] = DB::table('ying_learning_config')->where('key', $key)->value('value');
+        }
+        return self::$_configCache[$key] ?? $default;
     }
 }

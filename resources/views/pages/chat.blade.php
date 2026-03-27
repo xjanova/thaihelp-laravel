@@ -293,7 +293,13 @@
             memoryWarned: memory.warned,
             memoryTimer: null,
 
+            _initialized: false,
+
             init() {
+                // Guard against Alpine double-init (page transition / re-mount)
+                if (this._initialized) return;
+                this._initialized = true;
+
                 // Check speech recognition support (iOS Safari may not have it)
                 this.speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -313,8 +319,9 @@
 
                 this.scrollToBottom();
 
-                // ถ้าเป็นครั้งแรก (ไม่มีข้อความเก่า) → ทักทาย
-                if (this.messages.length === 0) {
+                // ถ้าเป็นครั้งแรก (ไม่มีข้อความเก่า) → ทักทาย (เช็คซ้ำว่ายังไม่มี greeting)
+                if (this.messages.length === 0 && !this._greetingSent) {
+                    this._greetingSent = true;
                     this.messages.push({
                         role: 'assistant',
                         content: 'สวัสดีค่ะ! หญิงเองค่ะ 😊 มีอะไรให้ช่วยไหมคะ?',

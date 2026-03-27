@@ -96,7 +96,12 @@ class YingLearningManager extends Page
         $this->memoryMaxPerUser = (int) ($configs['memory_max_per_user'] ?? 50);
         $this->trainingMinQuality = (int) ($configs['training_min_quality'] ?? 3);
         $this->huggingfaceRepo = $configs['huggingface_repo'] ?? '';
-        $this->huggingfaceToken = $configs['huggingface_token'] ?? '';
+        $encToken = $configs['huggingface_token'] ?? '';
+        try {
+            $this->huggingfaceToken = $encToken ? decrypt($encToken) : '';
+        } catch (\Exception $e) {
+            $this->huggingfaceToken = $encToken; // fallback for legacy plain text
+        }
     }
 
     public function saveConfig(): void
@@ -109,7 +114,7 @@ class YingLearningManager extends Page
             'memory_max_per_user' => (string) $this->memoryMaxPerUser,
             'training_min_quality' => (string) $this->trainingMinQuality,
             'huggingface_repo' => $this->huggingfaceRepo,
-            'huggingface_token' => $this->huggingfaceToken,
+            'huggingface_token' => $this->huggingfaceToken ? encrypt($this->huggingfaceToken) : '',
         ];
 
         foreach ($settings as $key => $value) {

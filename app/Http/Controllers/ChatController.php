@@ -153,11 +153,14 @@ class ChatController extends Controller
      */
     private function processRememberCommands(string $reply, ?int $userId, ?string $sessionId, YingMemoryService $memoryService): string
     {
-        return preg_replace_callback('/\[REMEMBER:\{([^}]+)\}\]/', function ($matches) use ($userId, $sessionId, $memoryService) {
+        return preg_replace_callback('/\[REMEMBER:(\{[^]]*\})\]/', function ($matches) use ($userId, $sessionId, $memoryService) {
             try {
-                $json = json_decode('{' . $matches[1] . '}', true);
+                $json = json_decode($matches[1], true);
                 if ($json && isset($json['cat'], $json['key'], $json['val'])) {
-                    $memoryService->remember($userId, $sessionId, $json['cat'], $json['key'], $json['val']);
+                    // Sanitize values — prevent storing excessively long data
+                    $val = mb_substr($json['val'], 0, 500);
+                    $key = mb_substr($json['key'], 0, 100);
+                    $memoryService->remember($userId, $sessionId, $json['cat'], $key, $val);
                 }
             } catch (\Exception $e) {
                 // Silent fail
