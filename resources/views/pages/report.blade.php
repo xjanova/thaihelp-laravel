@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('needs-gmaps', true)
 
 @section('content')
 <div class="min-h-screen px-4 py-4 pb-24" x-data="reportPage()">

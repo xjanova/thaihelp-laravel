@@ -4,18 +4,7 @@
 <div class="flex flex-col" style="height: calc(100vh - 8rem); height: calc(100dvh - 8rem); padding-bottom: env(safe-area-inset-bottom, 0px);" x-data="chatApp()">
     {{-- Chat Messages --}}
     <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3" id="chat-messages" x-ref="messages">
-        {{-- Welcome Message --}}
-        <div class="flex gap-2 items-start">
-            <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-orange-500/50 flex-shrink-0">
-                <img src="/images/ying.webp" alt="น้องหญิง" class="w-full h-full object-cover">
-            </div>
-            <div class="metal-panel rounded-2xl rounded-tl-sm px-3 py-2 max-w-[80%]">
-                <p class="text-sm text-slate-200">สวัสดีค่ะ! หญิงเองค่ะ 😊 มีอะไรให้ช่วยไหมคะ?</p>
-                <p class="text-[10px] text-slate-500 mt-1">น้องหญิง AI</p>
-            </div>
-        </div>
-
-        {{-- Dynamic Messages --}}
+        {{-- Dynamic Messages (greeting is added by init() when messages is empty) --}}
         <template x-for="(msg, index) in messages" :key="index">
             <div>
                 {{-- Assistant Message --}}

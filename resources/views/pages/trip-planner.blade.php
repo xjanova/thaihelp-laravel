@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('needs-gmaps', true)
 
 @section('content')
 <div class="min-h-screen" x-data="tripPlanner()" x-init="init()">

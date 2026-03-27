@@ -52,11 +52,14 @@
     {{-- Vite CSS --}}
     @vite(['resources/css/app.css'])
 
-    {{-- Google Maps JS API --}}
+    {{-- Google Maps JS API — only on pages that need it --}}
     @php $gmapsKey = \App\Services\ApiKeyPool::getKey('google_maps') ?: \App\Models\SiteSetting::get('google_maps_api_key') ?: config('services.google_maps.api_key', ''); @endphp
-    @if($gmapsKey)
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ $gmapsKey }}&libraries=places&language=th" defer></script>
+    @hasSection('needs-gmaps')
+        @if($gmapsKey)
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ $gmapsKey }}&libraries=places&language=th" defer></script>
+        @endif
     @endif
+    @stack('head-scripts')
 
     @stack('styles')
 </head>

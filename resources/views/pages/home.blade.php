@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('needs-gmaps', true)
 
 @section('content')
 <div class="relative" style="height: calc(100vh - 7.5rem);">

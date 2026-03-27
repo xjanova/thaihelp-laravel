@@ -73,7 +73,32 @@ class GooglePlacesService
                     return [];
                 }
 
-                return $this->parseResults($data['results'] ?? [], $lat, $lng);
+                $allResults = $data['results'] ?? [];
+
+                // Fetch additional pages for more complete coverage (cached, so delay only on first call)
+                $nextToken = $data['next_page_token'] ?? null;
+                $page = 1;
+                while ($nextToken && $page < 3) { // max 3 pages = 60 results
+                    usleep(2000000); // Google requires ~2s delay before next_page_token is valid
+                    try {
+                        $nextResponse = Http::timeout(6)->get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', [
+                            'pagetoken' => $nextToken,
+                            'key' => $this->getApiKey(),
+                        ]);
+                        if ($nextResponse->ok() && ($nextResponse->json('status') === 'OK')) {
+                            $nextData = $nextResponse->json();
+                            $allResults = array_merge($allResults, $nextData['results'] ?? []);
+                            $nextToken = $nextData['next_page_token'] ?? null;
+                        } else {
+                            break;
+                        }
+                    } catch (\Exception $e) {
+                        break;
+                    }
+                    $page++;
+                }
+
+                return $this->parseResults($allResults, $lat, $lng);
             } catch (\Exception $e) {
                 Log::error('Google Places API exception', ['message' => $e->getMessage()]);
                 return [];
