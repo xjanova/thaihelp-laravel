@@ -92,6 +92,23 @@ class GroqAIService
             $systemPrompt .= "\n\n═══ ข้อมูล LIVE รอบตัวผู้ใช้ ═══\n" . $ctx;
         }
 
+        // === ลอง fine-tuned model ก่อน (ถ้ามี) ===
+        try {
+            $hfService = app(HuggingFaceInferenceService::class);
+            if ($hfService->isAvailable()) {
+                $hfReply = $hfService->chat($messages, $systemPrompt);
+                if ($hfReply) {
+                    Log::info('Used fine-tuned model', ['length' => mb_strlen($hfReply)]);
+                    return $hfReply;
+                }
+                // ถ้า HF ไม่ตอบ (cold start / error) → fallback to Groq
+                Log::info('Fine-tuned model unavailable, falling back to Groq');
+            }
+        } catch (\Exception $e) {
+            Log::warning('Fine-tuned model error, falling back to Groq', ['error' => $e->getMessage()]);
+        }
+
+        // === Fallback: Groq API ===
         $allMessages = array_merge(
             [['role' => 'system', 'content' => $systemPrompt]],
             $messages

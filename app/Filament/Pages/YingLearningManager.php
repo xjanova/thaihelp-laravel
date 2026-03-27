@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\YingMemory;
 use App\Models\YingTrainingData;
 use App\Models\YingUserPattern;
+use App\Services\HuggingFaceInferenceService;
 use App\Services\YingTrainingService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -49,6 +50,13 @@ class YingLearningManager extends Page
     public int $trainingMinQuality = 3;
     public string $huggingfaceRepo = '';
     public string $huggingfaceToken = '';
+
+    // Deploy config
+    public string $finetunedModelRepo = '';
+    public string $inferenceEndpoint = '';
+    public bool $useFinetunedModel = false;
+    public array $modelStatus = [];
+    public array $trainingJobs = [];
 
     public function mount(): void
     {
@@ -102,6 +110,18 @@ class YingLearningManager extends Page
         } catch (\Exception $e) {
             $this->huggingfaceToken = $encToken; // fallback for legacy plain text
         }
+
+        // Deploy config
+        $this->finetunedModelRepo = $configs['finetuned_model_repo'] ?? '';
+        $this->inferenceEndpoint = $configs['inference_endpoint'] ?? '';
+        $this->useFinetunedModel = ($configs['use_finetuned_model'] ?? 'false') === 'true';
+
+        // Training jobs
+        $this->trainingJobs = DB::table('ying_training_jobs')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get()
+            ->toArray();
     }
 
     public function saveConfig(): void
@@ -115,6 +135,9 @@ class YingLearningManager extends Page
             'training_min_quality' => (string) $this->trainingMinQuality,
             'huggingface_repo' => $this->huggingfaceRepo,
             'huggingface_token' => $this->huggingfaceToken ? encrypt($this->huggingfaceToken) : '',
+            'finetuned_model_repo' => $this->finetunedModelRepo,
+            'inference_endpoint' => $this->inferenceEndpoint,
+            'use_finetuned_model' => $this->useFinetunedModel ? 'true' : 'false',
         ];
 
         foreach ($settings as $key => $value) {
@@ -190,5 +213,68 @@ class YingLearningManager extends Page
             $memory->update(['admin_approved' => !$memory->admin_approved]);
         }
         $this->loadData();
+    }
+
+    /**
+     * ตรวจสอบสถานะโมเดลที่ fine-tune แล้ว
+     */
+    public function checkModelStatus(): void
+    {
+        $service = app(HuggingFaceInferenceService::class);
+        $this->modelStatus = $service->checkModelStatus();
+
+        $status = $this->modelStatus['status'] ?? 'unknown';
+        $msg = $this->modelStatus['message'] ?? '';
+
+        if ($status === 'ready') {
+            Notification::make()->title("✅ {$msg}")->success()->send();
+        } else {
+            Notification::make()->title("⚠️ {$msg}")->warning()->send();
+        }
+    }
+
+    /**
+     * ทดสอบ inference กับโมเดลที่ fine-tune แล้ว
+     */
+    public function testFinetunedModel(): void
+    {
+        $service = app(HuggingFaceInferenceService::class);
+
+        if (!$service->isAvailable()) {
+            Notification::make()->title('ยังไม่ได้ตั้งค่าโมเดล fine-tune')->danger()->send();
+            return;
+        }
+
+        $result = $service->testInference();
+
+        if ($result['success']) {
+            Notification::make()
+                ->title("✅ โมเดลตอบได้ ({$result['latency_ms']}ms)")
+                ->body(mb_substr($result['reply'], 0, 200))
+                ->success()->send();
+        } else {
+            Notification::make()
+                ->title("❌ {$result['message']}")
+                ->danger()->send();
+        }
+    }
+
+    /**
+     * อัปเดตสถานะ training job
+     */
+    public function updateJobStatus(int $jobId, string $status): void
+    {
+        $update = ['status' => $status, 'updated_at' => now()];
+
+        if ($status === 'running') {
+            $update['started_at'] = now();
+        } elseif (in_array($status, ['completed', 'failed'])) {
+            $update['completed_at'] = now();
+        }
+
+        DB::table('ying_training_jobs')->where('id', $jobId)->update($update);
+        $this->loadConfig();
+
+        Notification::make()->title("Job #{$jobId} → {$status}")->success()->send();
     }
 }

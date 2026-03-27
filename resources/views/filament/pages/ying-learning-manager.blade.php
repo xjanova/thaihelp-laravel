@@ -51,6 +51,9 @@
             <button @click="tab = 'export'" :class="tab === 'export' ? 'bg-primary-500 text-white' : 'bg-gray-800 text-gray-400'" class="px-4 py-2 rounded-lg text-sm font-medium transition">
                 Export / HuggingFace
             </button>
+            <button @click="tab = 'deploy'" :class="tab === 'deploy' ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-400'" class="px-4 py-2 rounded-lg text-sm font-medium transition">
+                🚀 Pipeline / Deploy
+            </button>
         </div>
 
         {{-- Training Data Tab --}}
@@ -244,6 +247,173 @@
                             รองรับ format ของ <code>trl</code> (Transformer Reinforcement Learning) library
                         </p>
                     </x-filament::section>
+                </div>
+            </x-filament::section>
+        </div>
+
+        {{-- Deploy / Pipeline Tab --}}
+        <div x-show="tab === 'deploy'" x-cloak>
+            {{-- Visual Pipeline --}}
+            <x-filament::section heading="🔄 Training Pipeline">
+                <div class="flex items-center gap-2 flex-wrap text-sm mb-6">
+                    <div class="flex items-center gap-1 px-3 py-2 rounded-lg {{ ($stats['total'] ?? 0) > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-800 text-gray-500' }}">
+                        <span>💬</span> เก็บข้อมูล ({{ $stats['total'] ?? 0 }})
+                    </div>
+                    <span class="text-gray-600">→</span>
+                    <div class="flex items-center gap-1 px-3 py-2 rounded-lg {{ ($stats['approved'] ?? 0) > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-800 text-gray-500' }}">
+                        <span>✅</span> อนุมัติ ({{ $stats['approved'] ?? 0 }})
+                    </div>
+                    <span class="text-gray-600">→</span>
+                    <div class="flex items-center gap-1 px-3 py-2 rounded-lg {{ ($stats['exported'] ?? 0) > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-800 text-gray-500' }}">
+                        <span>📦</span> Export ({{ $stats['exported'] ?? 0 }})
+                    </div>
+                    <span class="text-gray-600">→</span>
+                    <div class="flex items-center gap-1 px-3 py-2 rounded-lg {{ count($trainingJobs) > 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-800 text-gray-500' }}">
+                        <span>🧠</span> เทรน ({{ count($trainingJobs) }} jobs)
+                    </div>
+                    <span class="text-gray-600">→</span>
+                    <div class="flex items-center gap-1 px-3 py-2 rounded-lg {{ $useFinetunedModel && $finetunedModelRepo ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-800 text-gray-500' }}">
+                        <span>🚀</span> Deploy {{ $useFinetunedModel ? '(เปิดใช้)' : '(ยังไม่ได้เปิด)' }}
+                    </div>
+                </div>
+
+                <div class="bg-gray-900/50 rounded-lg p-4 text-xs text-gray-400 space-y-1">
+                    <p><strong class="text-white">วิธีใช้งาน:</strong></p>
+                    <p>1. 💬 <strong>เก็บข้อมูล</strong> — อัตโนมัติจากการแชทกับน้องหญิง</p>
+                    <p>2. ✅ <strong>อนุมัติ</strong> — ตรวจสอบและให้คะแนนในแท็บ "ข้อมูลเทรน"</p>
+                    <p>3. 📦 <strong>Export</strong> — กดปุ่ม "Push ไป HuggingFace" ในแท็บ Export</p>
+                    <p>4. 🧠 <strong>เทรน</strong> — รัน <code>php artisan ying:train --colab</code> แล้วเปิด Google Colab เทรน</p>
+                    <p>5. 🚀 <strong>Deploy</strong> — ใส่ชื่อโมเดลที่เทรนแล้วด้านล่าง เปิดสวิตช์ แล้วน้องหญิงจะใช้โมเดลใหม่</p>
+                </div>
+            </x-filament::section>
+
+            {{-- Training Jobs --}}
+            <x-filament::section heading="📋 Training Jobs">
+                @if(count($trainingJobs) > 0)
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="text-xs text-gray-400 border-b border-gray-700">
+                            <tr>
+                                <th class="py-2 text-left">#</th>
+                                <th class="py-2 text-left">แพลตฟอร์ม</th>
+                                <th class="py-2 text-left">โมเดล</th>
+                                <th class="py-2 text-center">สถานะ</th>
+                                <th class="py-2 text-left">สร้างเมื่อ</th>
+                                <th class="py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800">
+                            @foreach($trainingJobs as $job)
+                            <tr>
+                                <td class="py-2 text-gray-500">{{ $job->id }}</td>
+                                <td class="py-2">
+                                    <span class="px-2 py-0.5 rounded text-xs
+                                        {{ $job->platform === 'colab' ? 'bg-orange-500/20 text-orange-400' :
+                                           ($job->platform === 'kaggle' ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400') }}">
+                                        {{ $job->platform === 'colab' ? '🔥 Colab' : ($job->platform === 'kaggle' ? '📊 Kaggle' : '🤗 HF Spaces') }}
+                                    </span>
+                                </td>
+                                <td class="py-2 text-xs text-gray-400">{{ \Illuminate\Support\Str::limit($job->base_model, 30) }}</td>
+                                <td class="py-2 text-center">
+                                    <span class="px-2 py-0.5 rounded text-xs
+                                        {{ $job->status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                           ($job->status === 'running' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
+                                           ($job->status === 'failed' ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-400')) }}">
+                                        {{ $job->status === 'completed' ? '✅ เสร็จ' :
+                                           ($job->status === 'running' ? '🔄 กำลังเทรน' :
+                                           ($job->status === 'failed' ? '❌ ล้มเหลว' : '⏳ รอดำเนินการ')) }}
+                                    </span>
+                                </td>
+                                <td class="py-2 text-xs text-gray-500">{{ \Carbon\Carbon::parse($job->created_at)->diffForHumans() }}</td>
+                                <td class="py-2 flex gap-1">
+                                    @if($job->status === 'pending')
+                                    <x-filament::button wire:click="updateJobStatus({{ $job->id }}, 'running')" size="xs" color="info">เริ่ม</x-filament::button>
+                                    @elseif($job->status === 'running')
+                                    <x-filament::button wire:click="updateJobStatus({{ $job->id }}, 'completed')" size="xs" color="success">เสร็จ</x-filament::button>
+                                    <x-filament::button wire:click="updateJobStatus({{ $job->id }}, 'failed')" size="xs" color="danger">ล้มเหลว</x-filament::button>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @else
+                <div class="text-center py-6 text-gray-500">
+                    <p>ยังไม่มี training jobs</p>
+                    <p class="text-xs mt-1">รัน <code class="bg-gray-800 px-2 py-0.5 rounded">php artisan ying:train</code> เพื่อสร้าง job</p>
+                </div>
+                @endif
+            </x-filament::section>
+
+            {{-- Deploy Fine-tuned Model --}}
+            <x-filament::section heading="🚀 Deploy โมเดลที่เทรนแล้ว">
+                <div class="space-y-4">
+                    <div class="bg-gray-900/50 rounded-lg p-3 text-xs text-gray-400">
+                        <p>หลังเทรนเสร็จใน Colab/Kaggle ให้ merge adapter กับ base model แล้ว push ขึ้น HuggingFace Hub</p>
+                        <p class="mt-1">ใส่ชื่อโมเดลด้านล่าง แล้วกด "ทดสอบ" เพื่อตรวจว่าโมเดลพร้อมใช้</p>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-gray-400">ชื่อโมเดลที่ fine-tune แล้ว (เช่น xjanovaadmin/ying-model-v1)</label>
+                        <input type="text" wire:model.defer="finetunedModelRepo" placeholder="username/model-name" class="fi-input block w-full rounded-lg">
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-gray-400">Custom Inference Endpoint (ถ้ามี — ปล่อยว่างเพื่อใช้ HuggingFace Serverless ฟรี)</label>
+                        <input type="text" wire:model.defer="inferenceEndpoint" placeholder="https://api-inference.huggingface.co/..." class="fi-input block w-full rounded-lg">
+                    </div>
+
+                    <label class="flex items-center gap-3 p-3 rounded-lg bg-gray-800">
+                        <input type="checkbox" wire:model.defer="useFinetunedModel" class="rounded">
+                        <div>
+                            <span class="text-sm font-medium text-white">เปิดใช้โมเดลที่ fine-tune แล้ว</span>
+                            <p class="text-xs text-gray-500">ถ้าเปิด: น้องหญิงจะลองใช้โมเดลนี้ก่อน ถ้าไม่ตอบ → fallback กลับไปใช้ Groq</p>
+                        </div>
+                    </label>
+
+                    <div class="flex gap-3">
+                        <x-filament::button wire:click="saveConfig" color="primary">
+                            💾 บันทึก
+                        </x-filament::button>
+                        <x-filament::button wire:click="checkModelStatus" color="gray">
+                            🔍 ตรวจสอบโมเดล
+                        </x-filament::button>
+                        <x-filament::button wire:click="testFinetunedModel" color="success">
+                            🧪 ทดสอบ Inference
+                        </x-filament::button>
+                    </div>
+
+                    @if(!empty($modelStatus))
+                    <div class="p-3 rounded-lg {{ ($modelStatus['status'] ?? '') === 'ready' ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30' }}">
+                        <p class="text-sm font-medium {{ ($modelStatus['status'] ?? '') === 'ready' ? 'text-green-400' : 'text-yellow-400' }}">
+                            {{ $modelStatus['message'] ?? '' }}
+                        </p>
+                        @if(isset($modelStatus['pipeline_tag']))
+                        <p class="text-xs text-gray-400 mt-1">Pipeline: {{ $modelStatus['pipeline_tag'] }} | Downloads: {{ number_format($modelStatus['downloads'] ?? 0) }}</p>
+                        @endif
+                    </div>
+                    @endif
+                </div>
+            </x-filament::section>
+
+            {{-- Quick Reference --}}
+            <x-filament::section heading="📖 Artisan Commands" collapsed>
+                <div class="space-y-2 text-xs text-gray-400 font-mono bg-gray-900 rounded-lg p-4">
+                    <p class="text-gray-300"># ดูสถิติข้อมูลเทรน</p>
+                    <p class="text-green-400">php artisan ying:train --status</p>
+                    <br>
+                    <p class="text-gray-300"># Export ข้อมูล → push ขึ้น HuggingFace</p>
+                    <p class="text-green-400">php artisan ying:train --export</p>
+                    <br>
+                    <p class="text-gray-300"># สร้างคำแนะนำ Google Colab สำหรับเทรน</p>
+                    <p class="text-green-400">php artisan ying:train --colab</p>
+                    <br>
+                    <p class="text-gray-300"># รัน full pipeline (export + สร้าง job)</p>
+                    <p class="text-green-400">php artisan ying:train</p>
+                    <br>
+                    <p class="text-gray-300"># ระบุ base model อื่น</p>
+                    <p class="text-green-400">php artisan ying:train --base-model=scb10x/llama-3-typhoon-v1.5-8b-instruct</p>
                 </div>
             </x-filament::section>
         </div>
