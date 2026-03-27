@@ -62,6 +62,19 @@ class IncidentController extends Controller
 
             $incidents = $query->limit(200)->get();
 
+            // Add distance if user position is provided
+            if ($lat !== null && $lng !== null) {
+                $userLat = (float) $lat;
+                $userLng = (float) $lng;
+                $incidents->each(function ($inc) use ($userLat, $userLng) {
+                    if ($inc->latitude && $inc->longitude) {
+                        $inc->distance_km = round($this->haversine($userLat, $userLng, $inc->latitude, $inc->longitude), 2);
+                    }
+                });
+                // Sort by distance
+                $incidents = $incidents->sortBy('distance_km')->values();
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => $incidents,
@@ -320,5 +333,17 @@ class IncidentController extends Controller
             'success' => true,
             'data' => $incidents,
         ]);
+    }
+
+    /**
+     * Calculate distance between two points using Haversine formula.
+     */
+    private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadius = 6371; // km
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }

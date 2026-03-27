@@ -169,6 +169,44 @@
             </template>
             <span x-text="incidentSubmitting ? 'กำลังส่ง...' : '📤 ส่งรายงานเหตุการณ์'"></span>
         </button>
+
+        {{-- Nearby Incidents (auto-loaded) --}}
+        <div class="mt-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-bold text-white">📍 รายงานใกล้เคียง</h2>
+                <button @click="loadNearbyIncidents()" class="text-xs text-orange-400 hover:text-orange-300">🔄 รีเฟรช</button>
+            </div>
+            <div x-show="nearbyLoading" class="text-center py-4">
+                <div class="inline-block w-5 h-5 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></div>
+                <p class="text-xs text-slate-500 mt-2">กำลังโหลดรายงานใกล้เคียง...</p>
+            </div>
+            <div x-show="!nearbyLoading && nearbyIncidents.length === 0" class="text-center py-4">
+                <p class="text-xs text-slate-500">ไม่มีรายงานใกล้เคียงตอนนี้ — ปลอดภัยดีค่ะ ✨</p>
+            </div>
+            <div class="space-y-2">
+                <template x-for="inc in nearbyIncidents" :key="inc.id">
+                    <div class="metal-panel rounded-xl p-3">
+                        <div class="flex items-start gap-2">
+                            <span class="text-lg" x-text="inc.emoji || '📌'"></span>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-medium text-white truncate" x-text="inc.title"></span>
+                                    <span class="text-[10px] text-slate-500 ml-2 whitespace-nowrap" x-text="inc.time_ago"></span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-0.5" x-text="inc.category_label"></p>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full"
+                                          :class="inc.severity === 'critical' ? 'bg-red-500/20 text-red-400' : inc.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : inc.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'"
+                                          x-text="inc.severity_label"></span>
+                                    <span class="text-[10px] text-slate-500" x-text="inc.distance_text"></span>
+                                    <span class="text-[10px] text-blue-400" x-text="'👍 ' + (inc.confirmation_count || 0)"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
     </div>
 
     {{-- ═══ TAB 2: FUEL STATION ═══ --}}
@@ -342,6 +380,8 @@ function reportPage() {
 
         incident: { category: '', severity: 'medium', title: '', description: '' },
         incidentSubmitting: false,
+        nearbyIncidents: [],
+        nearbyLoading: false,
 
         fuel: {
             stationName: '',
@@ -376,6 +416,61 @@ function reportPage() {
 
         init() {
             this.refreshLocation();
+            // Auto-load nearby incidents after getting location
+            setTimeout(() => this.loadNearbyIncidents(), 2000);
+        },
+
+        async loadNearbyIncidents() {
+            if (!this.lat || !this.lng) {
+                // Retry after location is available
+                setTimeout(() => { if (this.lat && this.lng) this.loadNearbyIncidents(); }, 3000);
+                return;
+            }
+            this.nearbyLoading = true;
+            try {
+                const res = await fetch(`/api/incidents?lat=${this.lat}&lng=${this.lng}&radius=30`);
+                const data = await res.json();
+                const categoryEmoji = {
+                    accident: '🚗', flood: '🌊', roadblock: '🚧', checkpoint: '👮',
+                    construction: '🏗️', fuel_shortage: '⛽', fire: '🔥',
+                    protest: '✊', crime: '🚨', other: '📌'
+                };
+                const categoryLabels = {
+                    accident: 'อุบัติเหตุ', flood: 'น้ำท่วม', roadblock: 'ถนนปิด',
+                    checkpoint: 'ด่านตรวจ', construction: 'ก่อสร้าง', fuel_shortage: 'น้ำมันหมด',
+                    fire: 'เพลิงไหม้', protest: 'ชุมนุม', crime: 'อาชญากรรม', other: 'อื่นๆ'
+                };
+                const severityLabels = { critical: 'วิกฤต', high: 'รุนแรง', medium: 'ปานกลาง', low: 'เล็กน้อย' };
+
+                if (data.success) {
+                    this.nearbyIncidents = (data.data || []).slice(0, 10).map(inc => {
+                        const diff = Math.floor((Date.now() - new Date(inc.created_at).getTime()) / 1000);
+                        let timeAgo = 'เมื่อสักครู่';
+                        if (diff >= 86400) timeAgo = Math.floor(diff / 86400) + ' วันที่แล้ว';
+                        else if (diff >= 3600) timeAgo = Math.floor(diff / 3600) + ' ชม.ที่แล้ว';
+                        else if (diff >= 60) timeAgo = Math.floor(diff / 60) + ' นาทีที่แล้ว';
+
+                        let distText = '';
+                        if (inc.distance_km != null) {
+                            distText = inc.distance_km >= 1
+                                ? inc.distance_km.toFixed(1) + ' กม.'
+                                : Math.round(inc.distance_km * 1000) + ' ม.';
+                        }
+
+                        return {
+                            ...inc,
+                            emoji: categoryEmoji[inc.category] || '📌',
+                            category_label: categoryLabels[inc.category] || inc.category,
+                            severity_label: severityLabels[inc.severity] || inc.severity,
+                            time_ago: timeAgo,
+                            distance_text: distText ? '📍 ' + distText : '',
+                        };
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load nearby incidents:', e);
+            }
+            this.nearbyLoading = false;
         },
 
         // ─── Location with reverse geocode ───

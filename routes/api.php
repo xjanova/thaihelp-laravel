@@ -141,15 +141,33 @@ Route::post('/stations/report/{report}/confirm', [StationController::class, 'api
 
 // Note: /fuel-prices is defined above (lines 79-91) with FuelPriceService
 
-// News feed
+// News feed — auto-scrape on first request if DB is empty
 Route::get('/news', function () {
     $news = \App\Models\News::recent()
         ->orderByDesc('published_at')
         ->limit(15)
         ->get();
 
-    // If no news, return empty — don't block the request with sync scraping
-    // News scraping should happen via scheduled command (php artisan schedule:run)
+    // Auto-scrape if no news in DB (first run or stale data)
+    if ($news->isEmpty()) {
+        try {
+            $cacheKey = 'news_scrape_lock';
+            // Prevent concurrent scrapes — lock for 5 minutes
+            if (!\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                \Illuminate\Support\Facades\Cache::put($cacheKey, true, 300);
+                $count = app(\App\Services\NewsScraperService::class)->scrapeAll();
+                \Illuminate\Support\Facades\Log::info("Auto-scraped {$count} news articles on first request");
+
+                // Re-fetch after scrape
+                $news = \App\Models\News::recent()
+                    ->orderByDesc('published_at')
+                    ->limit(15)
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Auto news scrape failed', ['error' => $e->getMessage()]);
+        }
+    }
 
     return response()->json([
         'success' => true,

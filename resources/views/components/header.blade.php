@@ -9,8 +9,19 @@
             </span>
         </a>
 
-        {{-- Right: Social + Auth --}}
+        {{-- Right: Donate + Social + Auth --}}
         <div class="flex items-center gap-2">
+            {{-- ☕ Donate Button - eye-catching --}}
+            <a href="https://xman4289.com/apps/aipray/donate" target="_blank" rel="noopener"
+               class="relative flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-amber-900 transition-all hover:scale-105"
+               style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%); box-shadow: 0 0 12px rgba(251,191,36,0.4);"
+               title="☕ บริจาคค่ากาแฟนักพัฒนา">
+                <span class="text-sm">☕</span>
+                <span class="hidden sm:inline">บริจาค</span>
+                <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+            </a>
+
             {{-- LINE Add Friend --}}
             <a href="https://line.me/R/ti/p/@217vdyok" target="_blank" rel="noopener"
                class="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium bg-[#06C755] text-white hover:bg-[#05b04c] transition-colors"
