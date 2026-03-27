@@ -57,7 +57,16 @@ class ChatController extends Controller
         }
 
         $userId = $request->user()?->id;
-        $sessionId = $request->session()->getId();
+        // API routes don't have session middleware — use fallback
+        try {
+            $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+        } catch (\Exception $e) {
+            $sessionId = null;
+        }
+        // Generate a stable session-like ID from IP + User-Agent for anonymous users
+        if (!$sessionId) {
+            $sessionId = 'anon_' . substr(md5($request->ip() . $request->userAgent()), 0, 16);
+        }
         $lat = $validated['latitude'] ?? null;
         $lng = $validated['longitude'] ?? null;
 
