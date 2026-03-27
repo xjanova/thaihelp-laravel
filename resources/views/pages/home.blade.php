@@ -112,6 +112,13 @@
         </div>
     </div>
 
+    {{-- 🔄 Reload Button (กดเพื่อโหลดปั๊ม/เหตุการณ์ในบริเวณที่เลื่อนไป) --}}
+    <button onclick="reloadMapArea()" id="btn-reload-map"
+            class="absolute bottom-14 right-3 z-10 metal-btn-accent w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-lg hover:scale-110 active:scale-95 transition-all"
+            title="โหลดปั๊มในบริเวณนี้">
+        🔄
+    </button>
+
     {{-- Weather + AQI Widget (ด้านขวาล่าง) --}}
     <div id="weather-widget" class="absolute bottom-3 right-3 z-10 metal-panel rounded-xl px-3 py-2 text-xs max-w-[180px] shadow-lg">
         <div id="weather-content" class="space-y-1">
@@ -384,21 +391,21 @@
     }
 
     async function loadMapData() {
-        // Clear old markers
+        // Clear old station/incident markers
         stationMarkers.forEach(m => m.setMap(null));
         stationMarkers = [];
         incidentMarkers.forEach(m => { if (m.setMap) m.setMap(null); });
         incidentMarkers = [];
 
-        try {
-            // Use map center if available (follows pan/zoom), else use userPos
-            let center = userPos;
-            if (map) {
-                const mc = map.getCenter();
-                if (mc) center = { lat: mc.lat(), lng: mc.lng() };
-            }
+        // Use map center if available (follows pan/zoom), else use userPos
+        let center = userPos;
+        if (map) {
+            const mc = map.getCenter();
+            if (mc) center = { lat: mc.lat(), lng: mc.lng() };
+        }
 
-            // Dynamic radius based on zoom (like getMapRadius() but for stations in meters)
+        try {
+            // Dynamic radius based on zoom (max 50km = Google Places limit)
             const stationRadius = map ? getStationRadius() : 20000;
 
             const stationsRes = await fetch(`/api/stations?lat=${center.lat}&lng=${center.lng}&radius=${stationRadius}`);
@@ -598,11 +605,12 @@
             console.error('Failed to load incidents:', err);
         }
 
-        // Load breaking news
-        loadBreakingNews();
-
-        // Load external data (weather, AQI, earthquakes, floods)
-        loadExternalData();
+        // Load breaking news + external data only once (not on every pan)
+        if (!window._extDataLoaded) {
+            window._extDataLoaded = true;
+            loadBreakingNews();
+            loadExternalData();
+        }
     }
 
     // Radar pulse animation overlay
@@ -657,14 +665,7 @@
             },
         });
 
-        // ─── Reload data when map is panned/zoomed ───
-        let _reloadTimer = null;
-        map.addListener('idle', () => {
-            clearTimeout(_reloadTimer);
-            _reloadTimer = setTimeout(() => {
-                loadMapData();
-            }, 800); // debounce 800ms
-        });
+        // ไม่ auto-reload — ประหยัดโควต้า API (ใช้ปุ่มรีโหลดบนแผนที่แทน)
 
         // ─── Google Traffic Layer (real-time, free) ───
         window.trafficLayer = new google.maps.TrafficLayer();
@@ -912,6 +913,23 @@
         return 200;
     }
 
+    /** Reload map data (manual — กดปุ่มรีโหลดบนแผนที่) */
+    async function reloadMapArea() {
+        const btn = document.getElementById('btn-reload-map');
+        if (btn) {
+            btn.classList.add('animate-spin');
+            btn.disabled = true;
+        }
+        try {
+            await loadMapData();
+        } finally {
+            if (btn) {
+                btn.classList.remove('animate-spin');
+                btn.disabled = false;
+            }
+        }
+    }
+
     /** Station radius in meters based on zoom — ปั๊มโหลดตาม zoom level (max 50km = Google Places limit) */
     function getStationRadius() {
         if (!map) return 20000;
@@ -1072,7 +1090,7 @@
         });
     }
 
-    // News Panel Alpine component (draggable)
+    // News Panel Alpine component (draggable — ต้องลากจริง >5px ถึงเลื่อน)
     function newsPanel() {
         return {
             show: true,
@@ -1083,6 +1101,9 @@
             panelX: 12,
             panelY: 56,
             _dragging: false,
+            _dragReady: false, // mousedown แล้ว แต่ยังไม่ลากจริง
+            _dragStartX: 0,
+            _dragStartY: 0,
             _dragOffsetX: 0,
             _dragOffsetY: 0,
             init() {
@@ -1099,12 +1120,21 @@
                     } catch (e) {}
                 }
 
-                // Mouse/touch move handlers (bound to window)
+                // Mouse/touch move handlers
                 const moveHandler = (e) => {
-                    if (!this._dragging) return;
-                    e.preventDefault();
+                    if (!this._dragReady && !this._dragging) return;
                     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                    // ต้องลากจริง >5px ถึงเริ่มเลื่อน (กัน click เด้ง)
+                    if (!this._dragging) {
+                        const dx = clientX - this._dragStartX;
+                        const dy = clientY - this._dragStartY;
+                        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+                        this._dragging = true;
+                    }
+
+                    e.preventDefault();
                     const container = this.$el.parentElement;
                     const rect = container.getBoundingClientRect();
                     this.panelX = Math.max(0, Math.min(rect.width - 200, clientX - rect.left - this._dragOffsetX));
@@ -1112,9 +1142,10 @@
                 };
                 const upHandler = () => {
                     if (this._dragging) {
-                        this._dragging = false;
                         localStorage.setItem('thaihelp_news_pos', JSON.stringify({ x: this.panelX, y: this.panelY }));
                     }
+                    this._dragging = false;
+                    this._dragReady = false;
                 };
                 window.addEventListener('mousemove', moveHandler);
                 window.addEventListener('mouseup', upHandler);
@@ -1122,9 +1153,12 @@
                 window.addEventListener('touchend', upHandler);
             },
             startDrag(e) {
-                this._dragging = true;
+                this._dragReady = true;
+                this._dragging = false;
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                this._dragStartX = clientX;
+                this._dragStartY = clientY;
                 const container = this.$el.parentElement;
                 const rect = container.getBoundingClientRect();
                 this._dragOffsetX = clientX - rect.left - this.panelX;
